@@ -1,0 +1,41 @@
+# Constraint patterns for output filtering.
+# Kill = message is null-routed, never delivered.
+# Redact = message delivered with sensitive content removed.
+
+kill_patterns:
+  # PII
+  - pattern: '\b\d{3}-\d{2}-\d{4}\b'
+    category: pii_ssn
+  - pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    category: pii_email
+  - pattern: '\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'
+    category: pii_credit_card
+
+  # Credentials and secrets
+  - pattern: '(?:password|passwd|pwd)\s*[=:]\s*\S+'
+    category: credentials
+  - pattern: '(?:api[_-]?key|secret[_-]?key|access[_-]?token)\s*[=:]\s*\S+'
+    category: credentials
+  - pattern: '(?:Bearer|Basic)\s+[A-Za-z0-9+/=_-]{20,}'
+    category: credentials
+
+  # Financial specifics
+  - pattern: '\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?\s*(?:salary|compensation|comp\b)'
+    category: financial_compensation
+  - pattern: '(?:salary|compensation|comp)\s*(?:is|was|of|:)[\s:]*\$\d+'
+    category: financial_compensation
+
+  # HR sensitive
+  - pattern: '(?:termination|terminated|firing|fired|PIP)\s+(?:of|for)\s+\w+'
+    category: hr_sensitive
+  - pattern: '(?:equity|stock\s*options?|vesting)\s*(?:is|was|of|:)\s*\d+'
+    category: hr_sensitive
+
+redact_patterns:
+  - pattern: '\b\d{3}-\d{3}-\d{4}\b'
+    replacement: '[PHONE REDACTED]'
+    category: pii_phone
+
+  - pattern: '\b\d{1,5}\s+\w+\s+(?:St|Ave|Blvd|Dr|Rd|Ln|Way|Ct)\b'
+    replacement: '[ADDRESS REDACTED]'
+    category: pii_address

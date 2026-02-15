@@ -43,6 +43,7 @@ class Context:
         self.parent_id = parent_id
         self.neighbors: set[UUID] = set()
         self.business_weight = business_weight
+        self._business_weight_metrics = None  # Lazy init to avoid circular import
         self.capacity = capacity
 
         # Accumulated terms — both set (exact) and bloom filter (fast overlap)
@@ -100,6 +101,30 @@ class Context:
         if self.signal_count == 0:
             return 0.0
         return self.author_counts.get(author, 0) / self.signal_count
+
+    @property
+    def business_weight_metrics(self):
+        """Lazy-initialized business weight metrics to avoid circular import."""
+        if self._business_weight_metrics is None:
+            from stigmergy.core.business_weight import BusinessWeightMetrics
+            self._business_weight_metrics = BusinessWeightMetrics()
+        return self._business_weight_metrics
+
+    @business_weight_metrics.setter
+    def business_weight_metrics(self, value):
+        self._business_weight_metrics = value
+
+    @property
+    def effective_business_weight(self) -> float:
+        """Business weight with policy floor applied. Always >= 0.1."""
+        return max(self.business_weight, 0.1)
+
+    def recompute_business_weight(self) -> float:
+        """Recompute business weight from metrics. Updates cached value."""
+        from stigmergy.core.business_weight import compute_business_weight
+        result = compute_business_weight(self.business_weight_metrics)
+        self.business_weight = result.raw_weight
+        return result.effective_weight
 
     def fast_term_overlap(self, other_bloom: CountingBloomFilter) -> float:
         """Estimate term overlap using bloom filters. O(size) but vectorized."""

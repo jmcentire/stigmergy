@@ -50,14 +50,24 @@ from stigmergy.core.consensus import ConsensusResult, consensus
 from stigmergy.core.energy import ContextStatus
 from stigmergy.core.familiarity import FamiliarityWeights
 from stigmergy.core.lifecycle import LifecycleManager
+from stigmergy.core.merge import (
+    AssessmentSummary as MergeAssessmentSummary,
+    MergeReason,
+    TopologyAction,
+    compute_topology_updates,
+    detect_merge_candidates,
+    resolve_surviving_identity,
+)
 from stigmergy.mesh.topology import (
     detect_gap,
     select_peers,
     signal_position_distance,
 )
+from stigmergy.mesh.inquiry import engine_result_to_primitive, inquire
 from stigmergy.mesh.worker import ReceiveResult, WorkerNode
 from stigmergy.pipeline.processor import AgentRegistry
 from stigmergy.primitives.assessment import Assessment, AssessmentAction
+from stigmergy.primitives.inquiry import InquiryResult
 from stigmergy.primitives.context import Context
 from stigmergy.primitives.signal import Signal
 from stigmergy.services.embedding import EmbeddingService
@@ -97,6 +107,7 @@ class MeshTrace:
     output_delivered: bool = False
     output_content: str | None = None
     duplicate: bool = False
+    inquiry_result: InquiryResult | None = None
     insights: list = field(default_factory=list)  # list[Insight] — populated by agents
 
     @property
@@ -203,6 +214,12 @@ class Mesh:
 
         # Stability tracker (optional — for Lyapunov validation)
         self._stability_tracker = None
+
+        # Merge detection state — rolling window of signal/assessment data
+        self._signal_windows: dict[UUID, set[str]] = {}  # context_id -> signal_ids
+        self._assessment_windows: dict[UUID, dict[str, MergeAssessmentSummary]] = {}
+        self._merge_check_interval: int = 50  # check every N signals
+        self._merge_check_counter: int = 0
 
         # Stats
         self.signals_ingested: int = 0
@@ -532,6 +549,48 @@ class Mesh:
 
         self.signals_ingested += 1
 
+        # 5.1 Track signal/assessment data for merge detection
+        for wid in trace.accepted_workers:
+            if wid not in self._signal_windows:
+                self._signal_windows[wid] = set()
+            self._signal_windows[wid].add(str(signal.id))
+            # Record assessment summary for merge agreement computation
+            score = trace.familiarity_scores.get(wid, 0.0)
+            if wid not in self._assessment_windows:
+                self._assessment_windows[wid] = {}
+            self._assessment_windows[wid][str(signal.id)] = MergeAssessmentSummary(
+                accepted=True, familiarity_score=score
+            )
+        # Also track rejections for agreement computation
+        for hop in trace.hops:
+            if not hop.accepted and hop.worker_id in self._workers:
+                wid = hop.worker_id
+                if wid not in self._signal_windows:
+                    self._signal_windows[wid] = set()
+                self._signal_windows[wid].add(str(signal.id))
+                if wid not in self._assessment_windows:
+                    self._assessment_windows[wid] = {}
+                self._assessment_windows[wid][str(signal.id)] = MergeAssessmentSummary(
+                    accepted=False, familiarity_score=hop.score
+                )
+
+        # 5.5 Active inquiry — runs on the single accepting worker
+        if trace.accepted_workers:
+            # Pick the first (only) accepting worker (stop-on-first-accept)
+            accepting_wid = next(iter(trace.accepted_workers))
+            accepting_worker = self._workers.get(accepting_wid)
+            if accepting_worker is not None:
+                try:
+                    engine_result = await inquire(
+                        signal, accepting_worker.context, llm=self._llm
+                    )
+                    inquiry_result = engine_result_to_primitive(
+                        engine_result, str(accepting_worker.context.id)
+                    )
+                    trace.inquiry_result = inquiry_result
+                except Exception:
+                    logger.debug("Inquiry failed, continuing without", exc_info=True)
+
         # 6. Agent assessment in accepted workers
         all_assessments: list[Assessment] = []
         for wid in trace.accepted_workers:
@@ -602,22 +661,167 @@ class Mesh:
         """Run lifecycle checks after each signal.
 
         Order matters:
-          1. Fork overloaded/incoherent workers (creates new workers)
-          2. Recenter topology (rebalances neighbor sets after forks)
-          3. Decay idle workers (prunes workers with depleted energy)
+          1. Merge converged workers (before fork — merging reduces count)
+          2. Fork overloaded/incoherent workers (creates new workers)
+          3. Recenter topology (rebalances neighbor sets after forks)
+          4. Decay idle workers (prunes workers with depleted energy)
 
-        Each method has its own guards — _check_forks respects max_workers,
-        _recenter_workers only fires every recenter_interval accepts,
-        _check_decay protects recently-active workers.
+        Each method has its own guards — _check_merges runs periodically,
+        _check_forks respects max_workers, _recenter_workers only fires
+        every recenter_interval accepts, _check_decay protects recently-active.
 
         Args:
             signal_time: The signal's timestamp. Used for energy decay so
                 that backfill (weeks of signals in minutes) properly reflects
                 inter-signal time gaps rather than wall-clock elapsed time.
         """
+        self._check_merges()
         self._check_forks()
         self._recenter_workers()
         self._check_decay(signal_time=signal_time)
+
+    def _check_merges(self) -> None:
+        """Detect and execute merges between converged neighboring workers.
+
+        Runs periodically (every merge_check_interval signals) to avoid
+        overhead. When two neighbors share >70% signal overlap AND >80%
+        assessment agreement, they're merged: the higher-energy context
+        survives, the other is absorbed.
+        """
+        self._merge_check_counter += 1
+        if self._merge_check_counter < self._merge_check_interval:
+            return
+        self._merge_check_counter = 0
+
+        if len(self._workers) < 2:
+            return
+
+        # Build neighbor map from current topology
+        neighbors: dict[str, frozenset[str]] = {}
+        signal_windows: dict[str, frozenset[str]] = {}
+        assessments: dict[str, dict[str, MergeAssessmentSummary]] = {}
+
+        for wid, worker in self._workers.items():
+            wid_str = str(wid)
+            neighbors[wid_str] = frozenset(
+                str(nid) for nid in worker.context.neighbors
+                if nid in self._workers
+            )
+            signal_windows[wid_str] = frozenset(
+                self._signal_windows.get(wid, set())
+            )
+            assessments[wid_str] = dict(
+                self._assessment_windows.get(wid, {})
+            )
+
+        result = detect_merge_candidates(signal_windows, assessments, neighbors)
+
+        # Execute merges (one at a time to avoid conflicts)
+        for candidate in result.candidates:
+            # Find the actual workers
+            a_uuid = None
+            b_uuid = None
+            for wid in self._workers:
+                wid_str = str(wid)
+                if wid_str == candidate.context_id_a:
+                    a_uuid = wid
+                elif wid_str == candidate.context_id_b:
+                    b_uuid = wid
+
+            if a_uuid is None or b_uuid is None:
+                continue  # one was already merged/removed
+
+            worker_a = self._workers[a_uuid]
+            worker_b = self._workers[b_uuid]
+
+            # Determine survivor
+            survivor_id = resolve_surviving_identity(
+                str(a_uuid), str(b_uuid),
+                worker_a.context.energy, worker_b.context.energy,
+            )
+            if survivor_id == str(a_uuid):
+                survivor, absorbed = worker_a, worker_b
+                survivor_uuid, absorbed_uuid = a_uuid, b_uuid
+            else:
+                survivor, absorbed = worker_b, worker_a
+                survivor_uuid, absorbed_uuid = b_uuid, a_uuid
+
+            # Transfer knowledge from absorbed to survivor
+            survivor.context.terms.update(absorbed.context.terms)
+            survivor.context.term_bloom.add_many(absorbed.context.terms)
+            for src, cnt in absorbed.context.source_counts.items():
+                survivor.context.source_counts[src] = (
+                    survivor.context.source_counts.get(src, 0) + cnt
+                )
+            for auth, cnt in absorbed.context.author_counts.items():
+                survivor.context.author_counts[auth] = (
+                    survivor.context.author_counts.get(auth, 0) + cnt
+                )
+            # Max energy
+            survivor.context.energy = max(
+                survivor.context.energy, absorbed.context.energy
+            )
+
+            # Compute and apply topology updates
+            surviving_neighbors = {str(n) for n in survivor.context.neighbors}
+            absorbed_neighbors = {str(n) for n in absorbed.context.neighbors}
+            topo_updates = compute_topology_updates(
+                str(survivor_uuid), str(absorbed_uuid),
+                surviving_neighbors, absorbed_neighbors,
+            )
+            for update in topo_updates:
+                # Find the target worker by string ID
+                target_worker = None
+                target_uuid = None
+                for wid, w in self._workers.items():
+                    if str(wid) == update.context_id:
+                        target_worker = w
+                        target_uuid = wid
+                        break
+
+                if target_worker is None:
+                    continue
+
+                if update.action == TopologyAction.REMOVE_NEIGHBOR:
+                    # Find UUID for target_id
+                    for wid in list(target_worker.context.neighbors):
+                        if str(wid) == update.target_id:
+                            target_worker.context.neighbors.discard(wid)
+                            break
+                elif update.action == TopologyAction.ADD_NEIGHBOR:
+                    for wid in self._workers:
+                        if str(wid) == update.target_id:
+                            target_worker.context.neighbors.add(wid)
+                            break
+
+            # Remove absorbed worker
+            self.remove_worker(absorbed_uuid)
+
+            # Clean up merge tracking data
+            self._signal_windows.pop(absorbed_uuid, None)
+            self._assessment_windows.pop(absorbed_uuid, None)
+
+            if self._stability_tracker is not None:
+                self._stability_tracker.record_lifecycle(
+                    "merge",
+                    worker_id=str(survivor_uuid)[:8],
+                    detail={
+                        "absorbed": str(absorbed_uuid)[:8],
+                        "overlap": round(candidate.overlap, 4),
+                        "agreement": round(candidate.agreement, 4),
+                    },
+                )
+
+            logger.info(
+                "Workers merged: %s absorbed into %s (overlap=%.3f, agreement=%.3f)",
+                str(absorbed_uuid)[:8],
+                str(survivor_uuid)[:8],
+                candidate.overlap,
+                candidate.agreement,
+            )
+
+            # Only one merge per cycle to avoid cascading
+            break
 
     def _check_forks(self) -> None:
         """Fork workers that are full or incoherent.

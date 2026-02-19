@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stigmergy - Organizational Awareness Through Signal Processing</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-dim: #1f6feb;
+      --green: #3fb950;
+      --orange: #d29922;
+      --purple: #bc8cff;
+      --red: #f85149;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      background: var(--surface);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.85em;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(13, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      padding: 0 24px;
+    }
+    nav .inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    nav .logo {
+      font-weight: 700;
+      font-size: 1.15em;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    nav .links { display: flex; gap: 24px; }
+    nav .links a { color: var(--text-muted); font-size: 0.9em; }
+    nav .links a:hover { color: var(--text); text-decoration: none; }
+
+    /* Hero */
+    .hero {
+      padding: 140px 24px 80px;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .hero h1 {
+      font-size: 3em;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero .subtitle {
+      font-size: 1.25em;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+    .hero .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 0.78em;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .badge.art { border-color: var(--purple); color: var(--purple); }
+    .badge.python { border-color: var(--green); color: var(--green); }
+    .badge.mit { border-color: var(--orange); color: var(--orange); }
+    .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95em;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent-dim); color: #fff; }
+    .btn-primary:hover { background: var(--accent); text-decoration: none; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--text-muted); text-decoration: none; }
+
+    /* Sections */
+    section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+    section h2 {
+      font-size: 2em;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+    section .section-sub {
+      color: var(--text-muted);
+      margin-bottom: 48px;
+      font-size: 1.05em;
+    }
+
+    /* Feature grid */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+    }
+    .feature-card h3 {
+      font-size: 1.1em;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.92em;
+    }
+    .feature-card .tag {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75em;
+      font-weight: 600;
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent);
+    }
+
+    /* Architecture */
+    .arch-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 0.82em;
+      line-height: 1.7;
+      color: var(--text-muted);
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .arch-diagram .hl { color: var(--accent); }
+    .arch-diagram .hl-green { color: var(--green); }
+    .arch-diagram .hl-purple { color: var(--purple); }
+    .arch-diagram .hl-orange { color: var(--orange); }
+
+    /* Sources table */
+    .sources-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+    }
+    .sources-table th, .sources-table td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.92em;
+    }
+    .sources-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.82em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Quickstart */
+    .quickstart-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85em;
+      margin-bottom: 12px;
+    }
+    .step h4 {
+      margin-bottom: 8px;
+      font-size: 1em;
+    }
+    .step pre {
+      margin-top: 8px;
+      font-size: 0.82em;
+    }
+
+    /* Theory */
+    .theory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .theory-card {
+      border-left: 3px solid var(--border);
+      padding: 16px 20px;
+    }
+    .theory-card h4 { margin-bottom: 4px; font-size: 0.95em; }
+    .theory-card p { color: var(--text-muted); font-size: 0.88em; }
+    .theory-card .cite { color: var(--text-muted); font-size: 0.78em; font-style: italic; margin-top: 4px; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85em;
+    }
+    footer a { color: var(--text-muted); }
+    footer a:hover { color: var(--text); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2em; }
+      .hero .subtitle { font-size: 1.05em; }
+      section { padding: 48px 16px; }
+      nav .links { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <span class="logo">stigmergy</span>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#theory">Theory</a>
+      <a href="https://github.com/jmcentire/stigmergy">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Stigmergy</h1>
+  <p class="subtitle">Organizational awareness through stigmergic signal processing. Surface structural patterns across your engineering tools without anyone having to ask.</p>
+  <div class="badges">
+    <span class="badge art">Adaptive Resonance Theory</span>
+    <span class="badge python">Python 3.12+</span>
+    <span class="badge mit">MIT License</span>
+  </div>
+  <div class="cta-row">
+    <a href="#quickstart" class="btn btn-primary">Get Started</a>
+    <a href="https://github.com/jmcentire/stigmergy" class="btn btn-secondary">View on GitHub</a>
+    <a href="https://pypi.org/project/stigmergy/" class="btn btn-secondary">PyPI</a>
+  </div>
+</div>
+
+<section id="features">
+  <h2>What it does</h2>
+  <p class="section-sub">Ingest work artifacts. Route through a self-organizing mesh. Surface patterns no single tool reveals.</p>
+  <div class="features">
+    <div class="feature-card">
+      <h3>Multi-source ingestion</h3>
+      <p>GitHub PRs, issues, commits, and reviews. Linear issues and cycles. Slack threads and reactions. Grafana metrics and traces. All normalized into a unified signal format.</p>
+      <span class="tag">adapters</span>
+    </div>
+    <div class="feature-card">
+      <h3>ART mesh routing</h3>
+      <p>Signals route through a competitive mesh using Adaptive Resonance Theory. Workers self-organize into stable categories. New patterns fork new workers; stale ones decay. No retraining.</p>
+      <span class="tag">mesh</span>
+    </div>
+    <div class="feature-card">
+      <h3>Cross-signal correlation</h3>
+      <p>Detect coordination gaps between teams, knowledge silos forming around individuals, and dependency risks that span multiple tools and time horizons.</p>
+      <span class="tag">correlation</span>
+    </div>
+    <div class="feature-card">
+      <h3>Identity resolution</h3>
+      <p>Unify people across GitHub handles, Slack names, Linear UUIDs, and email addresses. Learns new aliases at runtime. Privacy-first with configurable sensitivity levels.</p>
+      <span class="tag">identity</span>
+    </div>
+    <div class="feature-card">
+      <h3>Constraint filtering</h3>
+      <p>All output passes through a constraint engine. SSNs, credit cards, credentials, and API keys are killed. Phone numbers and addresses are redacted. Fully configurable.</p>
+      <span class="tag">constraints</span>
+    </div>
+    <div class="feature-card">
+      <h3>Budget-aware LLM</h3>
+      <p>Optional LLM enrichment with hard daily and hourly caps. When budget is exhausted, falls back to deterministic heuristics. Never stops running, just reduces depth.</p>
+      <span class="tag">budget</span>
+    </div>
+  </div>
+</section>
+
+<section id="architecture">
+  <h2>Architecture</h2>
+  <p class="section-sub">One pattern at every scale: agent-context-signal. Workers, supervisors, and control layers are the same abstraction.</p>
+  <div class="arch-diagram"><span class="hl">signals</span> (GitHub, Linear, Slack, Grafana)
+    |
+    v
+[ <span class="hl-green">Ingestion</span> ] ---- normalized Signal objects
+    |
+    v
+[ <span class="hl-purple">Mesh Router</span> ] -- BFS competitive routing, stop-on-first-accept
+    |
+    v
+[ <span class="hl-purple">Workers</span> ] ----- ART categories: familiarity match, weight update, fork/merge/decay
+    |
+    v
+[ <span class="hl-green">Correlator</span> ] -- cross-signal pattern detection
+    |
+    v
+[ <span class="hl-orange">Constraints</span> ] - PII kill / credential redact
+    |
+    v
+[ <span class="hl">Output</span> ] ------ findings, insights, structural metrics</div>
+
+  <table class="sources-table" style="margin-top: 40px;">
+    <thead>
+      <tr>
+        <th>Source</th>
+        <th>Auth</th>
+        <th>Signals ingested</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>GitHub</td>
+        <td><code>gh auth login</code></td>
+        <td>PRs, issues, commits, reviews, comments</td>
+      </tr>
+      <tr>
+        <td>Linear</td>
+        <td><code>LINEAR_API_KEY</code></td>
+        <td>Issues, projects, cycles, comments</td>
+      </tr>
+      <tr>
+        <td>Slack</td>
+        <td><code>SLACK_BOT_TOKEN</code></td>
+        <td>Channel messages, threads, reactions</td>
+      </tr>
+      <tr>
+        <td>Grafana</td>
+        <td><code>GRAFANA_API_KEY</code></td>
+        <td>Dashboard metrics, Tempo traces, alerts</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="quickstart">
+  <h2>Quickstart</h2>
+  <p class="section-sub">Up and running in under a minute. No API keys needed for mock mode.</p>
+  <div class="quickstart-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Install</h4>
+      <pre><code>pip install stigmergy</code></pre>
+      <p style="color: var(--text-muted); font-size: 0.88em; margin-top: 8px;">Or clone and install in dev mode:</p>
+      <pre><code>git clone https://github.com/jmcentire/stigmergy.git
+cd stigmergy
+pip install -e ".[dev]"</code></pre>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Initialize</h4>
+      <pre><code>stigmergy init</code></pre>
+      <p style="color: var(--text-muted); font-size: 0.88em; margin-top: 8px;">Interactive setup walks you through sources, identity, and budget configuration. Creates <code>.stigmergy/config.yaml</code>.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Run</h4>
+      <pre><code># Mock data (no keys needed)
+stigmergy run --once
+
+# Live sources
+stigmergy run --once --live
+
+# Continuous monitoring
+stigmergy run --live</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Project structure</h2>
+  <p class="section-sub">Modular by design. Each package owns one concern.</p>
+  <pre><code>src/stigmergy/
+  adapters/         Source connectors (GitHub, Linear, Slack, Grafana &mdash; mock + live)
+  attention/        Attention model, portfolio scoring, surfacing
+  cli/              CLI entry point, config, budget, live adapters
+  constraints/      Output filtering (PII/credential kill and redaction)
+  core/             Algorithms: familiarity, consensus, energy, lifecycle
+  delivery/         Output delivery framework
+  identity/         Person identity resolution across sources
+  mesh/             ART mesh: routing, workers, topology, insights, stability
+  pipeline/         Signal ingestion pipeline
+  policy/           Policy engine, spectral analysis, budget enforcement
+  primitives/       Data types: Signal, Context, Agent, Assessment
+  services/         LLM, embedding, vector store, token budget
+  structures/       Bloom filters, LSH, SimHash, ring buffers, tries
+  unity/            Field equations, eigenmonitor, PID control
+  tracing/          Execution tracing</code></pre>
+</section>
+
+<section id="theory">
+  <h2>Theoretical foundations</h2>
+  <p class="section-sub">Built on established theory from computational neuroscience, biology, economics, and cybernetics.</p>
+  <div class="theory-grid">
+    <div class="theory-card" style="border-color: var(--purple);">
+      <h4>Adaptive Resonance Theory</h4>
+      <p>Stable category formation with vigilance-gated plasticity. New patterns create new categories; familiar patterns reinforce existing ones. Solves the stability-plasticity dilemma.</p>
+      <div class="cite">Grossberg & Carpenter, 1987</div>
+    </div>
+    <div class="theory-card" style="border-color: var(--green);">
+      <h4>Stigmergy</h4>
+      <p>Coordination through shared environment rather than direct communication. Agents leave traces in the medium; other agents respond to those traces. No central coordinator needed.</p>
+      <div class="cite">Grass&eacute;, 1959; Theraulaz & Bonabeau, 1999</div>
+    </div>
+    <div class="theory-card" style="border-color: var(--orange);">
+      <h4>Crawford-Sobel</h4>
+      <p>Information degradation under strategic communication. When sender bias exceeds 1/4, communication collapses to babbling equilibrium. Used to detect organizational signal decay.</p>
+      <div class="cite">Crawford & Sobel, 1982</div>
+    </div>
+    <div class="theory-card" style="border-color: var(--accent);">
+      <h4>Viable System Model</h4>
+      <p>Beer's cybernetic model for organizational viability. System 4 intelligence function: scanning the environment and modeling the future. Algedonic signals for pain/pleasure alerting.</p>
+      <div class="cite">Beer, 1972</div>
+    </div>
+    <div class="theory-card" style="border-color: var(--red);">
+      <h4>Spectral Graph Analysis</h4>
+      <p>Anomaly detection via Laplacian eigenvalue distribution. Structural changes in the communication graph surface as spectral perturbations before they become visible in metrics.</p>
+      <div class="cite">Chung, 1997</div>
+    </div>
+    <div class="theory-card" style="border-color: var(--text-muted);">
+      <h4>Simon's Satisficing</h4>
+      <p>Stop-on-first-accept routing: the first worker above threshold takes the signal. Bounded rationality over exhaustive optimization. Fast, stable, and biologically plausible.</p>
+      <div class="cite">Simon, 1956</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/jmcentire/stigmergy">GitHub</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://pypi.org/project/stigmergy/">PyPI</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://github.com/jmcentire/stigmergy/blob/main/LICENSE">MIT License</a>
+  </p>
+  <p style="margin-top: 8px;">&copy; 2025 Jeremy McEntire</p>
+</footer>
+
+</body>
+</html>

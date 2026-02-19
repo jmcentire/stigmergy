@@ -123,6 +123,7 @@ class SignalSource:
     DOCS = "docs"
     EMAIL = "email"
     DEPLOY = "deploy"
+    GRAFANA = "grafana"
     CADENCE = "mesh:cadence"
 
 

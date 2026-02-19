@@ -15,10 +15,17 @@ CONFIG_PATH = Path(".stigmergy") / "config.yaml"
 
 
 def _load_raw() -> dict:
+    """Load config YAML, hydrating through Pydantic to fill new defaults.
+
+    This ensures that newly added config sections (e.g. grafana) appear
+    in the raw dict even if the YAML file was written before they existed.
+    """
     if not CONFIG_PATH.exists():
         raise FileNotFoundError(f"{CONFIG_PATH} not found. Run `stigmergy init` first.")
     with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+    # Round-trip through Pydantic to populate missing defaults
+    return StigmergyConfig(**data).model_dump()
 
 
 def _load_config() -> StigmergyConfig:

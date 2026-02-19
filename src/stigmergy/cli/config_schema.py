@@ -34,10 +34,22 @@ class SlackSourceConfig(BaseModel):
     poll_interval: int = 300
 
 
+class GrafanaSourceConfig(BaseModel):
+    enabled: bool = False
+    mode: str = "mock"
+    base_url: str = ""  # e.g. https://grafana.example.com
+    api_key: str = ""  # glsa_... or set GRAFANA_API_KEY env var
+    dashboards: list[str] = Field(default_factory=list)  # dashboard UIDs for metric queries
+    tempo_services: list[str] = Field(default_factory=list)  # service names to query Tempo for
+    poll_interval: int = 300
+    anomaly_stddev_threshold: float = 2.5
+
+
 class SourcesConfig(BaseModel):
     github: GitHubSourceConfig = Field(default_factory=GitHubSourceConfig)
     linear: LinearSourceConfig = Field(default_factory=LinearSourceConfig)
     slack: SlackSourceConfig = Field(default_factory=SlackSourceConfig)
+    grafana: GrafanaSourceConfig = Field(default_factory=GrafanaSourceConfig)
 
 
 class ContextConfig(BaseModel):
@@ -254,6 +266,7 @@ def default_config() -> StigmergyConfig:
                 poll_interval=300,
             ),
             slack=SlackSourceConfig(enabled=False),
+            grafana=GrafanaSourceConfig(enabled=False),
         ),
         contexts={
             "engineering": ContextConfig(

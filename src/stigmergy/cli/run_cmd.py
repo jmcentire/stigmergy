@@ -18,6 +18,7 @@ from uuid import UUID, uuid5, NAMESPACE_DNS
 import yaml
 
 from stigmergy.adapters.github import MockGitHubAdapter
+from stigmergy.adapters.grafana import MockGrafanaAdapter
 from stigmergy.adapters.linear import MockLinearAdapter
 from stigmergy.adapters.slack import MockSlackAdapter
 from stigmergy.cli.budget import DollarBudgetTracker
@@ -659,6 +660,22 @@ def _slack_error(source: str, msg: str) -> None:
     warn(f"  slack ({source}): {msg[:120]}")
 
 
+def _grafana_progress(phase: str, current: int, total: int, count: int) -> None:
+    """Progress callback for Grafana adapter."""
+    bar_width = 20
+    filled = int(bar_width * current / total) if total > 0 else 0
+    bar = "=" * filled + "-" * (bar_width - filled)
+    suffix = f" {count} signals" if count else ""
+    print(f"\r  [{bar}] {current}/{total} phases  {phase:<20s}{suffix}", end="", flush=True)
+    if current == total:
+        print()
+
+
+def _grafana_error(source: str, msg: str) -> None:
+    """Error callback for Grafana adapter."""
+    warn(f"  grafana ({source}): {msg[:120]}")
+
+
 def _build_sources(config: StigmergyConfig, live: bool) -> list[tuple[str, object, bool]]:
     """Build source adapters from config. Returns (name, adapter, is_live)."""
     sources: list[tuple[str, object, bool]] = []
@@ -720,6 +737,26 @@ def _build_sources(config: StigmergyConfig, live: bool) -> list[tuple[str, objec
     elif config.sources.slack.channels:
         ch_count = len(config.sources.slack.channels)
         info(f"  Slack: configured ({ch_count} channels) but disabled — set enabled: true and SLACK_BOT_TOKEN to activate")
+
+    if config.sources.grafana.enabled:
+        if live and config.sources.grafana.mode == "live":
+            try:
+                from stigmergy.cli.grafana_live import LiveGrafanaAdapter
+                adapter = LiveGrafanaAdapter(
+                    base_url=config.sources.grafana.base_url,
+                    api_key=config.sources.grafana.api_key or os.environ.get("GRAFANA_API_KEY", ""),
+                    dashboards=config.sources.grafana.dashboards,
+                    tempo_services=config.sources.grafana.tempo_services,
+                    anomaly_stddev_threshold=config.sources.grafana.anomaly_stddev_threshold,
+                    progress_callback=_grafana_progress,
+                    error_callback=_grafana_error,
+                )
+                sources.append(("grafana", adapter, True))
+            except ImportError:
+                warn("Live Grafana adapter unavailable, using mock.")
+                sources.append(("grafana", MockGrafanaAdapter(), False))
+        else:
+            sources.append(("grafana", MockGrafanaAdapter(), False))
 
     return sources
 

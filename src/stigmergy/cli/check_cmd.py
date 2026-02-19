@@ -190,6 +190,38 @@ async def _check_slack(config: StigmergyConfig, verbose: bool = False) -> bool:
     return len(missing) == 0
 
 
+async def _check_grafana(config: StigmergyConfig) -> bool:
+    """Check Grafana connectivity via API."""
+    if not config.sources.grafana.enabled:
+        info("  grafana: disabled in config")
+        return True
+
+    from stigmergy.cli.grafana_live import LiveGrafanaAdapter
+    api_key = config.sources.grafana.api_key or os.environ.get("GRAFANA_API_KEY", "")
+    adapter = LiveGrafanaAdapter(
+        base_url=config.sources.grafana.base_url,
+        api_key=api_key,
+        dashboards=config.sources.grafana.dashboards,
+        tempo_services=config.sources.grafana.tempo_services,
+    )
+    try:
+        await adapter.connect()
+    except ConnectionError as e:
+        error(f"  grafana: {e}")
+        return False
+
+    parts = []
+    if adapter._tempo_uid:
+        parts.append(f"Tempo UID: {adapter._tempo_uid}")
+    if config.sources.grafana.dashboards:
+        parts.append(f"{len(config.sources.grafana.dashboards)} dashboards")
+    if config.sources.grafana.tempo_services:
+        parts.append(f"{len(config.sources.grafana.tempo_services)} Tempo services")
+    detail = ", ".join(parts) if parts else "no dashboards/services configured"
+    success(f"  grafana: authenticated, {detail}")
+    return True
+
+
 async def _run_checks(sources: list[str] | None, config: StigmergyConfig, verbose: bool = False) -> int:
     """Run connectivity checks for specified sources (or all)."""
     heading("stigmergy check")
@@ -210,6 +242,11 @@ async def _run_checks(sources: list[str] | None, config: StigmergyConfig, verbos
 
     if check_all or "slack" in sources:
         if not await _check_slack(config, verbose=verbose):
+            ok = False
+        print()
+
+    if check_all or "grafana" in sources:
+        if not await _check_grafana(config):
             ok = False
         print()
 
@@ -236,6 +273,8 @@ def run_check(args: argparse.Namespace) -> int:
         sources.append("linear")
     if getattr(args, "slack", False):
         sources.append("slack")
+    if getattr(args, "grafana", False):
+        sources.append("grafana")
 
     verbose = getattr(args, "verbose", False)
     return asyncio.run(_run_checks(sources or None, config, verbose=verbose))

@@ -14,6 +14,7 @@ from stigmergy.cli.config_schema import (
     ContextConfig,
     FamiliarityWeightsConfig,
     GitHubSourceConfig,
+    GrafanaSourceConfig,
     LLMConfig,
     LinearSourceConfig,
     LinearTeamConfig,
@@ -212,6 +213,28 @@ def run_init(args: argparse.Namespace) -> int:
         if not api_key:
             warn("  No Linear API key found. Set LINEAR_API_KEY when linear goes live.")
 
+    # ── Grafana ────────────────────────────────────────────────────
+    grafana_enabled = _prompt_bool("Enable Grafana?", default=False)
+    grafana_mode = "mock"
+    grafana_base_url = ""
+    grafana_dashboards: list[str] = []
+    grafana_tempo_services: list[str] = []
+
+    if grafana_enabled:
+        grafana_mode = _prompt("Grafana mode (live/mock)", "live")
+        grafana_base_url = _prompt("Grafana base URL", "https://grafana.example.com")
+        grafana_dashboards = _prompt_list(
+            "Dashboard UIDs for metric queries (comma-separated, or blank)",
+            "",
+        )
+        grafana_tempo_services = _prompt_list(
+            "Tempo service names to query (comma-separated, or blank)",
+            "",
+        )
+        grafana_api_key = os.environ.get("GRAFANA_API_KEY", "")
+        if not grafana_api_key:
+            warn("  No GRAFANA_API_KEY found. Set it when Grafana goes live.")
+
     # ── LLM ────────────────────────────────────────────────────────
     print()
     info("--- LLM ---")
@@ -261,6 +284,13 @@ def run_init(args: argparse.Namespace) -> int:
                 poll_interval=300,
             ),
             slack=SlackSourceConfig(enabled=False),
+            grafana=GrafanaSourceConfig(
+                enabled=grafana_enabled,
+                mode=grafana_mode,
+                base_url=grafana_base_url,
+                dashboards=grafana_dashboards,
+                tempo_services=grafana_tempo_services,
+            ),
         ),
         contexts=default_config().contexts,
         agents=default_config().agents,

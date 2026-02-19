@@ -27,10 +27,12 @@ live sources:
                      stigmergy run --once --live
   Linear           Uses LINEAR_API_KEY env var or config
   Slack            Uses SLACK_BOT_TOKEN env var or config
+  Grafana          Uses GRAFANA_API_KEY env var or config (service account token)
 
 connectivity check:
   stigmergy check              # verify all sources (no tokens spent)
   stigmergy check --slack      # Slack only (shows channel resolution)
+  stigmergy check --grafana    # Grafana only (verifies API key + Tempo)
 
 budget:
   Default caps: $5/day, $1/hour. When exhausted, falls back to heuristic-only.
@@ -126,12 +128,14 @@ def build_parser() -> argparse.ArgumentParser:
         "  stigmergy check                 # check all enabled sources\n"
         "  stigmergy check --slack         # check Slack only\n"
         "  stigmergy check --github        # check GitHub only\n"
-        "  stigmergy check --linear        # check Linear only\n",
+        "  stigmergy check --linear        # check Linear only\n"
+        "  stigmergy check --grafana       # check Grafana only\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     check_parser.add_argument("--github", action="store_true", help="Check GitHub only")
     check_parser.add_argument("--linear", action="store_true", help="Check Linear only")
     check_parser.add_argument("--slack", action="store_true", help="Check Slack only")
+    check_parser.add_argument("--grafana", action="store_true", help="Check Grafana only")
     check_parser.add_argument("--verbose", "-v", action="store_true", help="Show all visible channels (useful for debugging name mismatches)")
 
     # stigmergy status

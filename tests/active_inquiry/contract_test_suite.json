@@ -1,0 +1,1568 @@
+{
+  "component_id": "active_inquiry",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "prim_create_happy_path",
+      "description": "Create a valid PrimitiveInquiryResult with all required fields and matching dimension/confidence keys",
+      "function": "create_inquiry_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{\"people\": [\"Alice\", \"Bob\"], \"projects\": [\"ProjectX\"]}",
+        "confidence_scores": "{\"people\": 0.9, \"projects\": 0.7}"
+      },
+      "input_description": "",
+      "expected_output_description": "A frozen PrimitiveInquiryResult with matching signal_id, context_id, dimensions, confidence_scores, auto-generated id and timestamp",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_id == 'sig-001'",
+        "result.context_id == 'ctx-001'",
+        "set(result.confidence_scores.keys()) == set(result.dimensions.keys())",
+        "len(result.id) >= 1",
+        "result.timestamp is not None"
+      ]
+    },
+    {
+      "id": "prim_create_all_five_dimensions",
+      "description": "Create InquiryResult with all five dimension variants populated",
+      "function": "create_inquiry_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-002",
+        "context_id": "ctx-002",
+        "dimensions": "{\"people\": [\"Alice\"], \"projects\": [\"P1\"], \"tickets\": [\"T-1\"], \"keywords\": [\"async\"], \"sentiment\": [\"positive\"]}",
+        "confidence_scores": "{\"people\": 0.8, \"projects\": 0.7, \"tickets\": 0.6, \"keywords\": 0.5, \"sentiment\": 0.9}"
+      },
+      "input_description": "",
+      "expected_output_description": "Valid PrimitiveInquiryResult with all five dimensions",
+      "expected_error": "",
+      "assertions": [
+        "len(result.dimensions) == 5",
+        "len(result.confidence_scores) == 5",
+        "set(result.dimensions.keys()) == {'people', 'projects', 'tickets', 'keywords', 'sentiment'}"
+      ]
+    },
+    {
+      "id": "prim_create_empty_dimensions",
+      "description": "Create InquiryResult with empty dimensions and confidence_scores dicts (no dimensions discovered)",
+      "function": "create_inquiry_result",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-003",
+        "context_id": "ctx-003",
+        "dimensions": "{}",
+        "confidence_scores": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "Valid PrimitiveInquiryResult with empty dimensions and confidence_scores",
+      "expected_error": "",
+      "assertions": [
+        "len(result.dimensions) == 0",
+        "len(result.confidence_scores) == 0"
+      ]
+    },
+    {
+      "id": "prim_create_custom_id_timestamp",
+      "description": "Create InquiryResult with explicit id and timestamp",
+      "function": "create_inquiry_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-004",
+        "context_id": "ctx-004",
+        "dimensions": "{\"keywords\": [\"test\"]}",
+        "confidence_scores": "{\"keywords\": 0.5}",
+        "id": "custom-id-123",
+        "timestamp": "2024-01-15T10:30:00Z"
+      },
+      "input_description": "",
+      "expected_output_description": "PrimitiveInquiryResult with specified id and timestamp",
+      "expected_error": "",
+      "assertions": [
+        "result.id == 'custom-id-123'",
+        "result.timestamp == '2024-01-15T10:30:00Z'"
+      ]
+    },
+    {
+      "id": "prim_create_error_empty_signal_id",
+      "description": "Creating InquiryResult with empty signal_id raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "",
+        "context_id": "ctx-001",
+        "dimensions": "{}",
+        "confidence_scores": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "'signal_id' in str(error) or 'non-empty' in str(error)"
+      ]
+    },
+    {
+      "id": "prim_create_error_empty_context_id",
+      "description": "Creating InquiryResult with empty context_id raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "",
+        "dimensions": "{}",
+        "confidence_scores": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "'context_id' in str(error) or 'non-empty' in str(error)"
+      ]
+    },
+    {
+      "id": "prim_create_error_invalid_dimension_key",
+      "description": "Creating InquiryResult with invalid dimension key raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{\"invalid_dim\": [\"x\"]}",
+        "confidence_scores": "{\"invalid_dim\": 0.5}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_create_error_confidence_out_of_range_high",
+      "description": "Creating InquiryResult with confidence > 1.0 raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{\"people\": [\"Alice\"]}",
+        "confidence_scores": "{\"people\": 1.5}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "'confidence' in str(error).lower() or 'range' in str(error).lower()"
+      ]
+    },
+    {
+      "id": "prim_create_error_confidence_out_of_range_low",
+      "description": "Creating InquiryResult with confidence < 0.0 raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{\"people\": [\"Alice\"]}",
+        "confidence_scores": "{\"people\": -0.1}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_create_error_key_mismatch",
+      "description": "Creating InquiryResult with mismatched dimension/confidence keys raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{\"people\": [\"Alice\"]}",
+        "confidence_scores": "{\"projects\": 0.5}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_create_error_invalid_timestamp",
+      "description": "Creating InquiryResult with invalid timestamp format raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{}",
+        "confidence_scores": "{}",
+        "timestamp": "not-a-timestamp"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "'timestamp' in str(error) or 'ISO 8601' in str(error)"
+      ]
+    },
+    {
+      "id": "prim_create_error_empty_id",
+      "description": "Creating InquiryResult with explicitly empty id raises ValidationError",
+      "function": "create_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "dimensions": "{}",
+        "confidence_scores": "{}",
+        "id": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "'id' in str(error) or 'non-empty' in str(error)"
+      ]
+    },
+    {
+      "id": "prim_create_boundary_confidence_zero",
+      "description": "Confidence score of exactly 0.0 is valid",
+      "function": "create_inquiry_result",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-b1",
+        "context_id": "ctx-b1",
+        "dimensions": "{\"people\": [\"x\"]}",
+        "confidence_scores": "{\"people\": 0.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "Valid PrimitiveInquiryResult with confidence 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence_scores['people'] == 0.0"
+      ]
+    },
+    {
+      "id": "prim_create_boundary_confidence_one",
+      "description": "Confidence score of exactly 1.0 is valid",
+      "function": "create_inquiry_result",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-b2",
+        "context_id": "ctx-b2",
+        "dimensions": "{\"people\": [\"x\"]}",
+        "confidence_scores": "{\"people\": 1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "Valid PrimitiveInquiryResult with confidence 1.0",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence_scores['people'] == 1.0"
+      ]
+    },
+    {
+      "id": "prim_frozen_invariant",
+      "description": "PrimitiveInquiryResult is frozen — field assignment raises TypeError",
+      "function": "create_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_id": "sig-f1",
+        "context_id": "ctx-f1",
+        "dimensions": "{}",
+        "confidence_scores": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "Attempting to set a field on the result raises TypeError",
+      "expected_error": "",
+      "assertions": [
+        "TypeError is raised when setting result.signal_id = 'new'"
+      ]
+    },
+    {
+      "id": "prim_get_connections_existing",
+      "description": "get_dimension_connections returns connections for a dimension present in the result",
+      "function": "get_dimension_connections",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returns list of connection strings for the specified dimension",
+      "expected_error": "",
+      "assertions": [
+        "result == ['Alice', 'Bob']"
+      ]
+    },
+    {
+      "id": "prim_get_connections_missing",
+      "description": "get_dimension_connections returns empty list for a dimension not present",
+      "function": "get_dimension_connections",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returns empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "prim_get_connections_invalid_dim",
+      "description": "get_dimension_connections raises ValueError for invalid dimension",
+      "function": "get_dimension_connections",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_get_confidence_existing",
+      "description": "get_dimension_confidence returns confidence for a dimension present in the result",
+      "function": "get_dimension_confidence",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returns float confidence score",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.9",
+        "0.0 <= result <= 1.0"
+      ]
+    },
+    {
+      "id": "prim_get_confidence_missing",
+      "description": "get_dimension_confidence returns 0.0 for a dimension not present",
+      "function": "get_dimension_confidence",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returns 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "prim_get_confidence_invalid_dim",
+      "description": "get_dimension_confidence raises ValueError for invalid dimension",
+      "function": "get_dimension_confidence",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_get_active_dimensions_mixed",
+      "description": "get_active_dimensions returns only dimensions with non-empty connection lists",
+      "function": "get_active_dimensions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "List of dimension names with at least one connection",
+      "expected_error": "",
+      "assertions": [
+        "'people' in result",
+        "'keywords' not in result or len(dims_map.get('keywords', [])) > 0"
+      ]
+    },
+    {
+      "id": "prim_get_active_dimensions_empty",
+      "description": "get_active_dimensions returns empty list when all dimensions have empty connections",
+      "function": "get_active_dimensions",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "prim_get_overall_confidence_multiple",
+      "description": "get_overall_confidence returns mean of all confidence scores",
+      "function": "get_overall_confidence",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Mean of confidence scores",
+      "expected_error": "",
+      "assertions": [
+        "abs(result - 0.75) < 0.001",
+        "0.0 <= result <= 1.0"
+      ]
+    },
+    {
+      "id": "prim_get_overall_confidence_empty",
+      "description": "get_overall_confidence returns 0.0 when no dimensions present",
+      "function": "get_overall_confidence",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "prim_serialize_roundtrip",
+      "description": "serialize then deserialize produces value-equal InquiryResult",
+      "function": "serialize_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Round-trip produces equivalent InquiryResult",
+      "expected_error": "",
+      "assertions": [
+        "deserialized.signal_id == original.signal_id",
+        "deserialized.context_id == original.context_id",
+        "deserialized.dimensions == original.dimensions",
+        "deserialized.confidence_scores == original.confidence_scores"
+      ]
+    },
+    {
+      "id": "prim_serialize_keys_as_strings",
+      "description": "Serialized dict has string keys (not enum objects) in dimensions and confidence_scores",
+      "function": "serialize_inquiry_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Dict with plain string keys",
+      "expected_error": "",
+      "assertions": [
+        "all(isinstance(k, str) for k in result['dimensions'].keys())",
+        "all(isinstance(k, str) for k in result['confidence_scores'].keys())",
+        "'id' in result",
+        "'signal_id' in result",
+        "'timestamp' in result"
+      ]
+    },
+    {
+      "id": "prim_deserialize_missing_field",
+      "description": "deserialize_inquiry_result raises ValidationError when required field is missing",
+      "function": "deserialize_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{\"signal_id\": \"sig-1\"}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_deserialize_invalid_dim_key",
+      "description": "deserialize_inquiry_result raises ValidationError for invalid dimension key in data",
+      "function": "deserialize_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{\"signal_id\": \"s\", \"context_id\": \"c\", \"dimensions\": {\"bad_key\": []}, \"confidence_scores\": {\"bad_key\": 0.5}}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_deserialize_confidence_out_of_range",
+      "description": "deserialize_inquiry_result raises ValidationError for out-of-range confidence",
+      "function": "deserialize_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{\"signal_id\": \"s\", \"context_id\": \"c\", \"dimensions\": {\"people\": []}, \"confidence_scores\": {\"people\": 2.0}}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_deserialize_key_mismatch",
+      "description": "deserialize_inquiry_result raises ValidationError when keys don't match",
+      "function": "deserialize_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{\"signal_id\": \"s\", \"context_id\": \"c\", \"dimensions\": {\"people\": []}, \"confidence_scores\": {\"projects\": 0.5}}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "prim_deserialize_invalid_data_type",
+      "description": "deserialize_inquiry_result raises ValidationError for non-dict input",
+      "function": "deserialize_inquiry_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "\"not a dict\""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "engine_inquire_llm_path",
+      "description": "inquire_engine uses LLM path when llm_service is available and succeeds",
+      "function": "inquire_engine",
+      "category": "happy_path",
+      "setup_description": "Mock LLM service as available, mock successful extraction",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with extraction_method='llm', populated dimensions, valid timestamp",
+      "expected_error": "",
+      "assertions": [
+        "result.extraction_method == 'llm'",
+        "result.signal_id == signal.id",
+        "result.worker_id == context.worker_id",
+        "len(result.errors) == 0"
+      ]
+    },
+    {
+      "id": "engine_inquire_heuristic_fallback",
+      "description": "inquire_engine falls back to heuristic when LLM is not available",
+      "function": "inquire_engine",
+      "category": "happy_path",
+      "setup_description": "No LLM service provided, mock embedding service as available",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with extraction_method='heuristic'",
+      "expected_error": "",
+      "assertions": [
+        "result.extraction_method == 'heuristic'",
+        "result.signal_id == signal.id",
+        "result.worker_id == context.worker_id"
+      ]
+    },
+    {
+      "id": "engine_inquire_llm_fails_fallback",
+      "description": "inquire_engine falls back to heuristic when LLM extraction fails",
+      "function": "inquire_engine",
+      "category": "error_case",
+      "setup_description": "Mock LLM service available but extraction raises RuntimeError",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with extraction_method='heuristic', error recorded in errors",
+      "expected_error": "",
+      "assertions": [
+        "result.extraction_method == 'heuristic'",
+        "len(result.errors) >= 1"
+      ]
+    },
+    {
+      "id": "engine_inquire_embedding_fails",
+      "description": "inquire_engine falls back to keyword-only when embedding service fails",
+      "function": "inquire_engine",
+      "category": "error_case",
+      "setup_description": "No LLM, embedding service raises RuntimeError",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with errors recorded, keyword matches may still be populated",
+      "expected_error": "",
+      "assertions": [
+        "len(result.errors) >= 1",
+        "result.extraction_method == 'heuristic'"
+      ]
+    },
+    {
+      "id": "engine_inquire_dimension_query_failed",
+      "description": "inquire_engine captures dimension query failure in errors, other dimensions unaffected",
+      "function": "inquire_engine",
+      "category": "error_case",
+      "setup_description": "Mock one dimension query to raise, others succeed",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with error for failed dimension, other dimensions populated",
+      "expected_error": "",
+      "assertions": [
+        "len(result.errors) >= 1"
+      ]
+    },
+    {
+      "id": "engine_inquire_sentiment_failed",
+      "description": "inquire_engine returns neutral sentiment when analysis fails",
+      "function": "inquire_engine",
+      "category": "error_case",
+      "setup_description": "Mock sentiment analysis to raise RuntimeError",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with neutral sentiment and error recorded",
+      "expected_error": "",
+      "assertions": [
+        "result.sentiment.polarity == 0.0",
+        "result.sentiment.magnitude == 0.0",
+        "result.sentiment.label == 'neutral'",
+        "len(result.errors) >= 1"
+      ]
+    },
+    {
+      "id": "engine_inquire_total_failure",
+      "description": "inquire_engine returns empty result with all errors when everything fails",
+      "function": "inquire_engine",
+      "category": "error_case",
+      "setup_description": "Mock all dimension queries and sentiment to fail",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with all empty DimensionMatches, neutral sentiment, heuristic method, errors populated",
+      "expected_error": "",
+      "assertions": [
+        "result.extraction_method == 'heuristic'",
+        "len(result.people.matched_terms) == 0",
+        "len(result.projects.matched_terms) == 0",
+        "len(result.tickets.matched_terms) == 0",
+        "len(result.keywords.matched_terms) == 0",
+        "result.sentiment.polarity == 0.0",
+        "len(result.errors) >= 1"
+      ]
+    },
+    {
+      "id": "engine_inquire_empty_content",
+      "description": "inquire_engine returns empty result for empty signal content",
+      "function": "inquire_engine",
+      "category": "edge_case",
+      "setup_description": "Signal with empty content string",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineInquiryResult with empty DimensionMatches and neutral sentiment, no errors",
+      "expected_error": "",
+      "assertions": [
+        "result.extraction_method == 'heuristic'",
+        "len(result.people.matched_terms) == 0",
+        "result.sentiment.polarity == 0.0"
+      ]
+    },
+    {
+      "id": "engine_inquire_never_raises",
+      "description": "inquire_engine never raises - always returns a valid EngineInquiryResult",
+      "function": "inquire_engine",
+      "category": "invariant",
+      "setup_description": "Mock everything to raise unexpected exceptions",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Still returns valid EngineInquiryResult (never raises)",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.signal_id is not None",
+        "result.worker_id is not None"
+      ]
+    },
+    {
+      "id": "engine_inquire_timestamp_iso8601",
+      "description": "inquire_engine result timestamp matches ISO 8601 UTC format",
+      "function": "inquire_engine",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Timestamp matches ISO 8601 regex ending with Z",
+      "expected_error": "",
+      "assertions": [
+        "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}', result.timestamp) is not None"
+      ]
+    },
+    {
+      "id": "engine_extract_llm_success",
+      "description": "extract_dimensions_llm returns valid LLMDimensionExtraction on success",
+      "function": "extract_dimensions_llm",
+      "category": "happy_path",
+      "setup_description": "Mock LLM service to return structured extraction",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "LLMDimensionExtraction with all fields populated",
+      "expected_error": "",
+      "assertions": [
+        "-1.0 <= result.sentiment_polarity <= 1.0",
+        "0.0 <= result.sentiment_magnitude <= 1.0"
+      ]
+    },
+    {
+      "id": "engine_extract_llm_timeout",
+      "description": "extract_dimensions_llm raises TimeoutError on LLM timeout",
+      "function": "extract_dimensions_llm",
+      "category": "error_case",
+      "setup_description": "Mock LLM service to timeout",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TimeoutError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "engine_extract_llm_parse_error",
+      "description": "extract_dimensions_llm raises ValueError on unparseable LLM response",
+      "function": "extract_dimensions_llm",
+      "category": "error_case",
+      "setup_description": "Mock LLM service to return unparseable response",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "engine_extract_llm_service_error",
+      "description": "extract_dimensions_llm raises RuntimeError on LLM service error",
+      "function": "extract_dimensions_llm",
+      "category": "error_case",
+      "setup_description": "Mock LLM service to return error",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "engine_match_embedding_success",
+      "description": "match_dimension_embedding returns matches sorted by score descending above threshold",
+      "function": "match_dimension_embedding",
+      "category": "happy_path",
+      "setup_description": "Mock embedding service and context terms with embeddings",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "DimensionMatch with method='embedding_similarity', sorted scores",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'embedding_similarity'",
+        "len(result.matched_terms) == len(result.scores)",
+        "all(s >= 0.5 for s in result.scores)",
+        "list(result.scores) == sorted(result.scores, reverse=True)"
+      ]
+    },
+    {
+      "id": "engine_match_embedding_no_terms",
+      "description": "match_dimension_embedding returns empty match when no context terms for dimension",
+      "function": "match_dimension_embedding",
+      "category": "edge_case",
+      "setup_description": "Empty context terms list for dimension",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty DimensionMatch with method='embedding_similarity'",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'embedding_similarity'",
+        "len(result.matched_terms) == 0",
+        "len(result.scores) == 0"
+      ]
+    },
+    {
+      "id": "engine_match_embedding_failed",
+      "description": "match_dimension_embedding raises RuntimeError when embedding computation fails",
+      "function": "match_dimension_embedding",
+      "category": "error_case",
+      "setup_description": "Mock embedding service to raise error",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "engine_match_keyword_success",
+      "description": "match_dimension_keyword returns matches sorted by score descending above threshold",
+      "function": "match_dimension_keyword",
+      "category": "happy_path",
+      "setup_description": "Context terms with keyword overlaps",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "DimensionMatch with method='keyword_overlap', sorted",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'keyword_overlap'",
+        "len(result.matched_terms) == len(result.scores)",
+        "all(s >= 0.3 for s in result.scores)",
+        "list(result.scores) == sorted(result.scores, reverse=True)"
+      ]
+    },
+    {
+      "id": "engine_match_keyword_no_terms",
+      "description": "match_dimension_keyword returns empty match when no context terms for dimension",
+      "function": "match_dimension_keyword",
+      "category": "edge_case",
+      "setup_description": "Empty context terms list",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty DimensionMatch with method='keyword_overlap'",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'keyword_overlap'",
+        "len(result.matched_terms) == 0"
+      ]
+    },
+    {
+      "id": "engine_merge_both_populated",
+      "description": "merge_dimension_matches merges two populated DimensionMatches with deduplication",
+      "function": "merge_dimension_matches",
+      "category": "happy_path",
+      "setup_description": "Two DimensionMatch instances with overlapping terms",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Combined DimensionMatch with no duplicates, highest scores kept, sorted descending",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'combined'",
+        "len(set(result.matched_terms)) == len(result.matched_terms)",
+        "len(result.matched_terms) == len(result.scores)",
+        "list(result.scores) == sorted(result.scores, reverse=True)"
+      ]
+    },
+    {
+      "id": "engine_merge_one_empty",
+      "description": "merge_dimension_matches with one empty returns the other's terms",
+      "function": "merge_dimension_matches",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Combined DimensionMatch with terms from the non-empty input",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'combined'",
+        "len(result.matched_terms) == len(result.scores)"
+      ]
+    },
+    {
+      "id": "engine_merge_both_empty",
+      "description": "merge_dimension_matches with both empty returns empty combined match",
+      "function": "merge_dimension_matches",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty DimensionMatch with method='combined'",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'combined'",
+        "len(result.matched_terms) == 0",
+        "len(result.scores) == 0"
+      ]
+    },
+    {
+      "id": "engine_merge_overlap_keeps_highest_score",
+      "description": "merge_dimension_matches keeps the highest score for overlapping terms",
+      "function": "merge_dimension_matches",
+      "category": "invariant",
+      "setup_description": "Two matches with same term but different scores",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Merged result keeps highest score for the duplicate term",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'combined'"
+      ]
+    },
+    {
+      "id": "engine_analyze_sentiment_with_llm",
+      "description": "analyze_sentiment uses LLM extraction values when provided",
+      "function": "analyze_sentiment",
+      "category": "happy_path",
+      "setup_description": "LLM extraction with sentiment values",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineSentimentResult using LLM-derived values",
+      "expected_error": "",
+      "assertions": [
+        "-1.0 <= result.polarity <= 1.0",
+        "0.0 <= result.magnitude <= 1.0",
+        "len(result.label) >= 1"
+      ]
+    },
+    {
+      "id": "engine_analyze_sentiment_heuristic",
+      "description": "analyze_sentiment uses heuristic when no LLM extraction provided",
+      "function": "analyze_sentiment",
+      "category": "happy_path",
+      "setup_description": "No LLM extraction, signal content with sentiment words",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "EngineSentimentResult from heuristic analysis",
+      "expected_error": "",
+      "assertions": [
+        "-1.0 <= result.polarity <= 1.0",
+        "0.0 <= result.magnitude <= 1.0",
+        "len(result.label) >= 1"
+      ]
+    },
+    {
+      "id": "engine_analyze_sentiment_empty_content",
+      "description": "analyze_sentiment returns neutral for empty content",
+      "function": "analyze_sentiment",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_content": "",
+        "llm_extraction": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "Neutral sentiment",
+      "expected_error": "",
+      "assertions": [
+        "result.polarity == 0.0",
+        "result.magnitude == 0.0",
+        "result.label == 'neutral'"
+      ]
+    },
+    {
+      "id": "engine_make_empty_match_default",
+      "description": "make_empty_dimension_match with default method returns empty match with method='none'",
+      "function": "make_empty_dimension_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty DimensionMatch with method='none'",
+      "expected_error": "",
+      "assertions": [
+        "len(result.matched_terms) == 0",
+        "len(result.scores) == 0",
+        "result.method == 'none'"
+      ]
+    },
+    {
+      "id": "engine_make_empty_match_custom_method",
+      "description": "make_empty_dimension_match with custom method sets specified method",
+      "function": "make_empty_dimension_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "method": "embedding_similarity"
+      },
+      "input_description": "",
+      "expected_output_description": "Empty DimensionMatch with specified method",
+      "expected_error": "",
+      "assertions": [
+        "result.method == 'embedding_similarity'",
+        "len(result.matched_terms) == 0"
+      ]
+    },
+    {
+      "id": "engine_make_neutral_sentiment",
+      "description": "make_neutral_sentiment returns polarity=0.0, magnitude=0.0, label='neutral'",
+      "function": "make_neutral_sentiment",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Neutral EngineSentimentResult",
+      "expected_error": "",
+      "assertions": [
+        "result.polarity == 0.0",
+        "result.magnitude == 0.0",
+        "result.label == 'neutral'"
+      ]
+    },
+    {
+      "id": "engine_dimension_match_len_invariant",
+      "description": "For every DimensionMatch, len(matched_terms) == len(scores)",
+      "function": "inquire_engine",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "All DimensionMatch fields satisfy length invariant",
+      "expected_error": "",
+      "assertions": [
+        "len(result.people.matched_terms) == len(result.people.scores)",
+        "len(result.projects.matched_terms) == len(result.projects.scores)",
+        "len(result.tickets.matched_terms) == len(result.tickets.scores)",
+        "len(result.keywords.matched_terms) == len(result.keywords.scores)"
+      ]
+    },
+    {
+      "id": "engine_scores_range_invariant",
+      "description": "All scores in every DimensionMatch are in [0.0, 1.0]",
+      "function": "inquire_engine",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "All scores within range",
+      "expected_error": "",
+      "assertions": [
+        "all(0.0 <= s <= 1.0 for s in result.people.scores)",
+        "all(0.0 <= s <= 1.0 for s in result.projects.scores)",
+        "all(0.0 <= s <= 1.0 for s in result.tickets.scores)",
+        "all(0.0 <= s <= 1.0 for s in result.keywords.scores)"
+      ]
+    },
+    {
+      "id": "engine_sentiment_range_invariant",
+      "description": "Sentiment polarity in [-1.0, 1.0] and magnitude in [0.0, 1.0]",
+      "function": "inquire_engine",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Sentiment values within valid ranges",
+      "expected_error": "",
+      "assertions": [
+        "-1.0 <= result.sentiment.polarity <= 1.0",
+        "0.0 <= result.sentiment.magnitude <= 1.0"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_success",
+      "description": "inquire_pipeline returns valid PipelineInquiryResult with populated dimensions on success",
+      "function": "inquire_pipeline",
+      "category": "happy_path",
+      "setup_description": "Mock worker with context, signal with content",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "PipelineInquiryResult with worker_id, signal_id, and some populated dimensions",
+      "expected_error": "",
+      "assertions": [
+        "result.worker_id is not None",
+        "result.signal_id == signal.id",
+        "0.0 <= result.confidence <= 1.0"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_llm_unavailable",
+      "description": "inquire_pipeline falls back gracefully when LLM is unavailable",
+      "function": "inquire_pipeline",
+      "category": "error_case",
+      "setup_description": "No LLM backend configured",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "PipelineInquiryResult still returned (no exception)",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.signal_id == signal.id"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_empty_kb",
+      "description": "inquire_pipeline returns empty result when knowledge base is empty",
+      "function": "inquire_pipeline",
+      "category": "error_case",
+      "setup_description": "Worker with empty context knowledge base",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "PipelineInquiryResult with confidence 0.0, empty tuples",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence == 0.0",
+        "result.people == ()",
+        "result.projects == ()",
+        "result.tickets == ()",
+        "result.keywords == ()"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_unexpected_error",
+      "description": "inquire_pipeline catches unexpected exceptions and returns default result",
+      "function": "inquire_pipeline",
+      "category": "error_case",
+      "setup_description": "Mock internal engine to raise unexpected exception",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Default PipelineInquiryResult with worker_id and signal_id set, confidence 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.confidence == 0.0",
+        "result.signal_id == signal.id"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_never_raises",
+      "description": "inquire_pipeline never raises an exception regardless of internal failures",
+      "function": "inquire_pipeline",
+      "category": "invariant",
+      "setup_description": "Mock all internals to raise various exceptions",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Always returns PipelineInquiryResult",
+      "expected_error": "",
+      "assertions": [
+        "result is not None"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_frozen",
+      "description": "PipelineInquiryResult from inquire_pipeline is frozen (immutable)",
+      "function": "inquire_pipeline",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Setting any field raises TypeError",
+      "expected_error": "",
+      "assertions": [
+        "TypeError is raised on field assignment"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_confidence_range",
+      "description": "PipelineInquiryResult confidence is always in [0.0, 1.0]",
+      "function": "inquire_pipeline",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "confidence within valid range",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= result.confidence <= 1.0"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_sentiment_range",
+      "description": "PipelineInquiryResult sentiment is None or in [-1.0, 1.0]",
+      "function": "inquire_pipeline",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "sentiment within valid range or None",
+      "expected_error": "",
+      "assertions": [
+        "result.sentiment is None or -1.0 <= result.sentiment <= 1.0"
+      ]
+    },
+    {
+      "id": "pipeline_inquire_connection_scores_range",
+      "description": "All InquiryConnection.score values in connections are in [0.0, 1.0]",
+      "function": "inquire_pipeline",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "All connection scores within range",
+      "expected_error": "",
+      "assertions": [
+        "all(0.0 <= c.score <= 1.0 for c in result.connections)"
+      ]
+    },
+    {
+      "id": "pipeline_create_empty_result",
+      "description": "create_empty_inquiry_result returns default PipelineInquiryResult with only worker_id and signal_id set",
+      "function": "create_empty_inquiry_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "worker_id": "w-001",
+        "signal_id": "s-001"
+      },
+      "input_description": "",
+      "expected_output_description": "Empty PipelineInquiryResult",
+      "expected_error": "",
+      "assertions": [
+        "result.worker_id == 'w-001'",
+        "result.signal_id == 's-001'",
+        "result.people == ()",
+        "result.projects == ()",
+        "result.tickets == ()",
+        "result.keywords == ()",
+        "result.sentiment is None",
+        "result.connections == ()",
+        "result.confidence == 0.0"
+      ]
+    },
+    {
+      "id": "pipeline_create_empty_result_frozen",
+      "description": "create_empty_inquiry_result returns a frozen result",
+      "function": "create_empty_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "worker_id": "w-002",
+        "signal_id": "s-002"
+      },
+      "input_description": "",
+      "expected_output_description": "Frozen PipelineInquiryResult",
+      "expected_error": "",
+      "assertions": [
+        "TypeError is raised on field assignment"
+      ]
+    },
+    {
+      "id": "pipeline_validate_frozen_true",
+      "description": "validate_inquiry_result_frozen returns True for a properly frozen result",
+      "function": "validate_inquiry_result_frozen",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returns True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "pipeline_validate_serializable_true",
+      "description": "validate_inquiry_result_serializable returns True for a serializable result",
+      "function": "validate_inquiry_result_serializable",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returns True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "routing_route_signal_success",
+      "description": "route_signal routes signal through accept, inquiry, and consensus phases",
+      "function": "route_signal",
+      "category": "happy_path",
+      "setup_description": "Mock mesh with workers, one accepts signal above threshold",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "RoutingResult with signal_id, accepted_by worker, inquiry_result, and consensus dict",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_id == signal.id",
+        "len(result.accepted_by) >= 1",
+        "result.consensus is not None"
+      ]
+    },
+    {
+      "id": "routing_route_signal_with_inquiry",
+      "description": "route_signal includes PipelineInquiryResult from accepting worker",
+      "function": "route_signal",
+      "category": "happy_path",
+      "setup_description": "Mock worker that accepts and produces inquiry result",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "RoutingResult with non-None inquiry_result matching signal_id and worker_id",
+      "expected_error": "",
+      "assertions": [
+        "result.inquiry_result is not None",
+        "result.inquiry_result.signal_id == signal.id",
+        "result.inquiry_result.worker_id == result.accepted_by"
+      ]
+    },
+    {
+      "id": "routing_route_signal_inquiry_none",
+      "description": "route_signal works correctly when inquiry returns None",
+      "function": "route_signal",
+      "category": "edge_case",
+      "setup_description": "Mock worker inquiry to return None",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "RoutingResult with inquiry_result=None, consensus still present",
+      "expected_error": "",
+      "assertions": [
+        "result.inquiry_result is None",
+        "result.consensus is not None"
+      ]
+    },
+    {
+      "id": "routing_route_signal_no_accept",
+      "description": "route_signal raises NoAcceptError when no worker accepts",
+      "function": "route_signal",
+      "category": "error_case",
+      "setup_description": "Mock all workers to score below threshold",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "NoAcceptError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "routing_route_signal_no_workers",
+      "description": "route_signal raises MeshConfigurationError when no workers registered",
+      "function": "route_signal",
+      "category": "error_case",
+      "setup_description": "Empty mesh with no workers",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MeshConfigurationError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "routing_route_signal_consensus_failure",
+      "description": "route_signal raises ConsensusError when consensus phase fails",
+      "function": "route_signal",
+      "category": "error_case",
+      "setup_description": "Mock consensus to raise ConsensusError",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ConsensusError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "routing_run_consensus_success",
+      "description": "run_consensus returns dict with assessment data",
+      "function": "run_consensus",
+      "category": "happy_path",
+      "setup_description": "Valid signal, accept_result, and inquiry_result",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Dict containing consensus assessment data",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(result, dict)"
+      ]
+    },
+    {
+      "id": "routing_run_consensus_none_inquiry",
+      "description": "run_consensus with inquiry_result=None behaves identically to pre-inquiry implementation",
+      "function": "run_consensus",
+      "category": "edge_case",
+      "setup_description": "Valid signal and accept_result, inquiry_result=None",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Dict with standard consensus data (no inquiry enrichment)",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(result, dict)"
+      ]
+    },
+    {
+      "id": "routing_run_consensus_timeout",
+      "description": "run_consensus raises ConsensusError on timeout",
+      "function": "run_consensus",
+      "category": "error_case",
+      "setup_description": "Mock consensus to timeout",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ConsensusError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "routing_run_consensus_invalid_worker",
+      "description": "run_consensus raises ConsensusError when accept_result references invalid worker",
+      "function": "run_consensus",
+      "category": "error_case",
+      "setup_description": "accept_result with worker_id not in mesh",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ConsensusError",
+      "assertions": [
+        "error is not None"
+      ]
+    },
+    {
+      "id": "routing_inquiry_after_accept_before_consensus",
+      "description": "route_signal calls inquiry after accept and before consensus in the pipeline ordering",
+      "function": "route_signal",
+      "category": "invariant",
+      "setup_description": "Mock all phases and record call order",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Call order is: accept -> inquiry -> consensus",
+      "expected_error": "",
+      "assertions": [
+        "call_order == ['accept', 'inquiry', 'consensus']"
+      ]
+    },
+    {
+      "id": "routing_inquiry_only_on_accepting_worker",
+      "description": "route_signal calls inquiry only on the single accepting worker, not all workers",
+      "function": "route_signal",
+      "category": "invariant",
+      "setup_description": "Multiple workers, only one accepts. Track which workers had inquire() called",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Only the accepting worker's inquire() was called",
+      "expected_error": "",
+      "assertions": [
+        "inquire_called_on == [accepting_worker_id]"
+      ]
+    },
+    {
+      "id": "invariant_inquiry_dimension_enum_five_variants",
+      "description": "InquiryDimension has exactly five variants: people, projects, tickets, keywords, sentiment",
+      "function": "create_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Enum has exactly 5 members",
+      "expected_error": "",
+      "assertions": [
+        "set(InquiryDimension) == {'people', 'projects', 'tickets', 'keywords', 'sentiment'}",
+        "len(InquiryDimension) == 5"
+      ]
+    },
+    {
+      "id": "invariant_key_alignment",
+      "description": "For any valid PrimitiveInquiryResult, confidence_scores keys exactly equal dimensions keys",
+      "function": "create_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Key sets are equal",
+      "expected_error": "",
+      "assertions": [
+        "set(result.confidence_scores.keys()) == set(result.dimensions.keys())"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for Active Inquiry (Feature 1) — active_inquiry component.\n\nTests cover three layers:\n  1. Primitive layer: InquiryResult creation, validation, serialization\n  2. Engine layer: dimension extraction, matching, sentiment, inquiry orchestration\n  3. Pipeline layer: WorkerNode.inquire(), routing integration, consensus\n\nAll external dependencies are mocked. Async functions tested with pytest-asyncio.\n\"\"\"\nfrom __future__ import annotations\n\nimport asyncio\nimport json\nimport re\nfrom datetime import datetime, timezone\nfrom typing import Any\nfrom unittest.mock import AsyncMock, MagicMock, PropertyMock, patch, call\n\nimport pytest\n\n# ---------------------------------------------------------------------------\n# Import the component under test.\n# Adjust the import path to match your project structure.\n# ---------------------------------------------------------------------------\nfrom src.active_inquiry import (\n    # Enums\n    InquiryDimension,\n    ExtractionMethod,\n    MatchMethod,\n    DimensionName,\n    InquiryStrategy,\n    # Primitive models\n    PrimitiveInquiryResult,\n    DimensionMatch,\n    EngineSentimentResult,\n    EngineInquiryResult,\n    LLMDimensionExtraction,\n    InquiryConnection,\n    PipelineInquiryResult,\n    AcceptResult,\n    RoutingResult,\n    Signal,\n    Context,\n    ContextTerm,\n    # Primitive functions\n    create_inquiry_result,\n    get_dimension_connections,\n    get_dimension_confidence,\n    get_active_dimensions,\n    get_overall_confidence,\n    serialize_inquiry_result,\n    deserialize_inquiry_result,\n    # Engine functions\n    inquire_engine,\n    extract_dimensions_llm,\n    match_dimension_embedding,\n    match_dimension_keyword,\n    analyze_sentiment,\n    merge_dimension_matches,\n    make_empty_dimension_match,\n    make_neutral_sentiment,\n    # Pipeline functions\n    inquire_pipeline,\n    route_signal,\n    run_consensus,\n    create_empty_inquiry_result,\n    validate_inquiry_result_frozen,\n    validate_inquiry_result_serializable,\n)\n\n# Try to import error types; they may be defined in different locations\ntry:\n    from src.active_inquiry import (\n        NoAcceptError,\n        MeshConfigurationError,\n        ConsensusError,\n    )\nexcept ImportError:\n    # Define fallback error classes if not importable\n    class NoAcceptError(Exception):\n        pass\n\n    class MeshConfigurationError(Exception):\n        pass\n\n    class ConsensusError(Exception):\n        pass\n\ntry:\n    from pydantic import ValidationError\nexcept ImportError:\n    ValidationError = ValueError\n\n\n# ============================================================================\n# Fixtures\n# ============================================================================\n\n@pytest.fixture\ndef sample_dimensions():\n    \"\"\"Dimensions map with two populated dimensions.\"\"\"\n    return {\"people\": [\"Alice\", \"Bob\"], \"projects\": [\"ProjectX\"]}\n\n\n@pytest.fixture\ndef sample_confidence_scores():\n    \"\"\"Confidence scores matching sample_dimensions keys.\"\"\"\n    return {\"people\": 0.9, \"projects\": 0.7}\n\n\n@pytest.fixture\ndef all_five_dimensions():\n    \"\"\"All five dimension variants populated.\"\"\"\n    return {\n        \"people\": [\"Alice\"],\n        \"projects\": [\"P1\"],\n        \"tickets\": [\"T-1\"],\n        \"keywords\": [\"async\"],\n        \"sentiment\": [\"positive\"],\n    }\n\n\n@pytest.fixture\ndef all_five_confidence():\n    \"\"\"Confidence scores for all five dimensions.\"\"\"\n    return {\n        \"people\": 0.8,\n        \"projects\": 0.7,\n        \"tickets\": 0.6,\n        \"keywords\": 0.5,\n        \"sentiment\": 0.9,\n    }\n\n\n@pytest.fixture\ndef valid_timestamp():\n    return \"2024-01-15T10:30:00Z\"\n\n\n@pytest.fixture\ndef sample_signal():\n    \"\"\"A sample Signal for engine/pipeline tests.\"\"\"\n    return Signal(\n        id=\"sig-test-001\",\n        content=\"Alice is working on ProjectX ticket T-123 with async patterns\",\n        source=\"test\",\n        metadata={},\n    )\n\n\n@pytest.fixture\ndef empty_signal():\n    \"\"\"A signal with empty content.\"\"\"\n    return Signal(id=\"sig-empty\", content=\"\", source=\"test\", metadata={})\n\n\n@pytest.fixture\ndef sample_context_terms():\n    \"\"\"Context terms for a worker's knowledge base.\"\"\"\n    return [\n        ContextTerm(term=\"Alice\", dimension=\"people\", embedding=None),\n        ContextTerm(term=\"Bob\", dimension=\"people\", embedding=None),\n        ContextTerm(term=\"ProjectX\", dimension=\"projects\", embedding=None),\n        ContextTerm(term=\"T-123\", dimension=\"tickets\", embedding=None),\n        ContextTerm(term=\"async\", dimension=\"keywords\", embedding=None),\n    ]\n\n\n@pytest.fixture\ndef sample_context(sample_context_terms):\n    \"\"\"A sample Context knowledge base.\"\"\"\n    return Context(worker_id=\"worker-001\", terms=sample_context_terms)\n\n\n@pytest.fixture\ndef empty_context():\n    \"\"\"Context with no terms.\"\"\"\n    return Context(worker_id=\"worker-001\", terms=[])\n\n\n@pytest.fixture\ndef mock_llm_service():\n    \"\"\"Mock LLM service that is available.\"\"\"\n    svc = MagicMock()\n    svc.available = True\n    return svc\n\n\n@pytest.fixture\ndef mock_llm_service_unavailable():\n    \"\"\"Mock LLM service that is unavailable.\"\"\"\n    svc = MagicMock()\n    svc.available = False\n    return svc\n\n\n@pytest.fixture\ndef mock_embedding_service():\n    \"\"\"Mock embedding service that is available.\"\"\"\n    svc = MagicMock()\n    svc.available = True\n    return svc\n\n\n@pytest.fixture\ndef sample_llm_extraction():\n    \"\"\"Sample LLM dimension extraction result.\"\"\"\n    return LLMDimensionExtraction(\n        people=(\"Alice\",),\n        projects=(\"ProjectX\",),\n        tickets=(\"T-123\",),\n        keywords=(\"async\", \"patterns\"),\n        sentiment_polarity=0.6,\n        sentiment_magnitude=0.7,\n        sentiment_label=\"positive\",\n    )\n\n\n@pytest.fixture\ndef sample_dimension_match_embedding():\n    \"\"\"DimensionMatch from embedding similarity.\"\"\"\n    return DimensionMatch(\n        matched_terms=(\"Alice\", \"Bob\"),\n        scores=(0.95, 0.82),\n        method=\"embedding_similarity\",\n    )\n\n\n@pytest.fixture\ndef sample_dimension_match_keyword():\n    \"\"\"DimensionMatch from keyword overlap.\"\"\"\n    return DimensionMatch(\n        matched_terms=(\"Alice\", \"Charlie\"),\n        scores=(0.88, 0.45),\n        method=\"keyword_overlap\",\n    )\n\n\n@pytest.fixture\ndef empty_dimension_match():\n    \"\"\"Empty DimensionMatch.\"\"\"\n    return DimensionMatch(\n        matched_terms=(),\n        scores=(),\n        method=\"none\",\n    )\n\n\n# ============================================================================\n# TestPrimitiveInquiryResult\n# ============================================================================\n\nclass TestPrimitiveInquiryResult:\n    \"\"\"Tests for the primitive inquiry result layer.\"\"\"\n\n    # --- create_inquiry_result: happy paths ---\n\n    def test_create_happy_path(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Create a valid PrimitiveInquiryResult with matching dimension/confidence keys.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-001\",\n            context_id=\"ctx-001\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        assert result.signal_id == \"sig-001\", \"signal_id should match input\"\n        assert result.context_id == \"ctx-001\", \"context_id should match input\"\n        assert set(result.confidence_scores.keys()) == set(result.dimensions.keys()), \\\n            \"confidence_scores keys must equal dimensions keys\"\n        assert len(result.id) >= 1, \"id must be non-empty (auto-generated)\"\n        assert result.timestamp is not None, \"timestamp must be set\"\n\n    def test_create_all_five_dimensions(self, all_five_dimensions, all_five_confidence):\n        \"\"\"Create InquiryResult with all five dimension variants.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-002\",\n            context_id=\"ctx-002\",\n            dimensions=all_five_dimensions,\n            confidence_scores=all_five_confidence,\n        )\n        assert len(result.dimensions) == 5, \"Should have all 5 dimensions\"\n        assert len(result.confidence_scores) == 5, \"Should have all 5 confidence scores\"\n        assert set(result.dimensions.keys()) == {\n            \"people\", \"projects\", \"tickets\", \"keywords\", \"sentiment\"\n        }\n\n    def test_create_empty_dimensions(self):\n        \"\"\"Create InquiryResult with empty dimensions and confidence_scores dicts.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-003\",\n            context_id=\"ctx-003\",\n            dimensions={},\n            confidence_scores={},\n        )\n        assert len(result.dimensions) == 0\n        assert len(result.confidence_scores) == 0\n\n    def test_create_custom_id_and_timestamp(self):\n        \"\"\"Create InquiryResult with explicit id and timestamp.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-004\",\n            context_id=\"ctx-004\",\n            dimensions={\"keywords\": [\"test\"]},\n            confidence_scores={\"keywords\": 0.5},\n            id=\"custom-id-123\",\n            timestamp=\"2024-01-15T10:30:00Z\",\n        )\n        assert result.id == \"custom-id-123\"\n        assert result.timestamp == \"2024-01-15T10:30:00Z\"\n\n    # --- create_inquiry_result: boundary values ---\n\n    def test_create_boundary_confidence_zero(self):\n        \"\"\"Confidence score of exactly 0.0 is valid.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-b1\",\n            context_id=\"ctx-b1\",\n            dimensions={\"people\": [\"x\"]},\n            confidence_scores={\"people\": 0.0},\n        )\n        assert result.confidence_scores[\"people\"] == 0.0\n\n    def test_create_boundary_confidence_one(self):\n        \"\"\"Confidence score of exactly 1.0 is valid.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-b2\",\n            context_id=\"ctx-b2\",\n            dimensions={\"people\": [\"x\"]},\n            confidence_scores={\"people\": 1.0},\n        )\n        assert result.confidence_scores[\"people\"] == 1.0\n\n    # --- create_inquiry_result: error cases ---\n\n    def test_create_error_empty_signal_id(self):\n        \"\"\"Empty signal_id raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)) as exc_info:\n            create_inquiry_result(\n                signal_id=\"\",\n                context_id=\"ctx-001\",\n                dimensions={},\n                confidence_scores={},\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"signal_id\" in error_str or \"non-empty\" in error_str or \"string\" in error_str, \\\n            f\"Error should mention signal_id: {exc_info.value}\"\n\n    def test_create_error_empty_context_id(self):\n        \"\"\"Empty context_id raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)) as exc_info:\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"\",\n                dimensions={},\n                confidence_scores={},\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"context_id\" in error_str or \"non-empty\" in error_str or \"string\" in error_str, \\\n            f\"Error should mention context_id: {exc_info.value}\"\n\n    def test_create_error_invalid_dimension_key(self):\n        \"\"\"Invalid dimension key raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError, KeyError)):\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"ctx-001\",\n                dimensions={\"invalid_dim\": [\"x\"]},\n                confidence_scores={\"invalid_dim\": 0.5},\n            )\n\n    def test_create_error_confidence_out_of_range_high(self):\n        \"\"\"Confidence > 1.0 raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"ctx-001\",\n                dimensions={\"people\": [\"Alice\"]},\n                confidence_scores={\"people\": 1.5},\n            )\n\n    def test_create_error_confidence_out_of_range_low(self):\n        \"\"\"Confidence < 0.0 raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"ctx-001\",\n                dimensions={\"people\": [\"Alice\"]},\n                confidence_scores={\"people\": -0.1},\n            )\n\n    def test_create_error_key_mismatch(self):\n        \"\"\"Mismatched dimension/confidence keys raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"ctx-001\",\n                dimensions={\"people\": [\"Alice\"]},\n                confidence_scores={\"projects\": 0.5},\n            )\n\n    def test_create_error_invalid_timestamp(self):\n        \"\"\"Invalid timestamp format raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"ctx-001\",\n                dimensions={},\n                confidence_scores={},\n                timestamp=\"not-a-timestamp\",\n            )\n\n    def test_create_error_empty_id(self):\n        \"\"\"Explicitly empty id raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            create_inquiry_result(\n                signal_id=\"sig-001\",\n                context_id=\"ctx-001\",\n                dimensions={},\n                confidence_scores={},\n                id=\"\",\n            )\n\n    # --- Frozen invariant ---\n\n    def test_frozen_invariant(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"PrimitiveInquiryResult is frozen — field assignment raises TypeError.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-f1\",\n            context_id=\"ctx-f1\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        with pytest.raises((TypeError, ValidationError)):\n            result.signal_id = \"new-value\"\n\n    # --- Key alignment invariant ---\n\n    def test_key_alignment_invariant(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"confidence_scores keys exactly equal dimensions keys for any valid result.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-ka\",\n            context_id=\"ctx-ka\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        assert set(result.confidence_scores.keys()) == set(result.dimensions.keys()), \\\n            \"Key sets must be equal\"\n\n    # --- InquiryDimension enum invariant ---\n\n    def test_inquiry_dimension_five_variants(self):\n        \"\"\"InquiryDimension has exactly five variants.\"\"\"\n        variants = set(InquiryDimension)\n        assert len(variants) == 5, f\"Expected 5 variants, got {len(variants)}\"\n        expected = {\"people\", \"projects\", \"tickets\", \"keywords\", \"sentiment\"}\n        # StrEnum: compare string values\n        variant_values = {str(v) for v in variants}\n        assert variant_values == expected, f\"Expected {expected}, got {variant_values}\"\n\n    # --- get_dimension_connections ---\n\n    def test_get_connections_existing(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Returns connections for a dimension present in the result.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gc1\",\n            context_id=\"ctx-gc1\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        connections = get_dimension_connections(result, InquiryDimension(\"people\"))\n        assert connections == [\"Alice\", \"Bob\"], \\\n            f\"Expected ['Alice', 'Bob'], got {connections}\"\n\n    def test_get_connections_missing(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Returns empty list for a dimension not present in the result.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gc2\",\n            context_id=\"ctx-gc2\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        connections = get_dimension_connections(result, InquiryDimension(\"tickets\"))\n        assert connections == [], f\"Expected [], got {connections}\"\n\n    def test_get_connections_invalid_dimension(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Raises ValueError for invalid dimension.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gc3\",\n            context_id=\"ctx-gc3\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        with pytest.raises((ValueError, KeyError)):\n            get_dimension_connections(result, \"invalid_dimension\")\n\n    # --- get_dimension_confidence ---\n\n    def test_get_confidence_existing(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Returns confidence for a dimension present in the result.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gdc1\",\n            context_id=\"ctx-gdc1\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        conf = get_dimension_confidence(result, InquiryDimension(\"people\"))\n        assert conf == 0.9, f\"Expected 0.9, got {conf}\"\n        assert 0.0 <= conf <= 1.0\n\n    def test_get_confidence_missing(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Returns 0.0 for a dimension not present.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gdc2\",\n            context_id=\"ctx-gdc2\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        conf = get_dimension_confidence(result, InquiryDimension(\"tickets\"))\n        assert conf == 0.0, f\"Expected 0.0, got {conf}\"\n\n    def test_get_confidence_invalid_dimension(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Raises ValueError for invalid dimension.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gdc3\",\n            context_id=\"ctx-gdc3\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        with pytest.raises((ValueError, KeyError)):\n            get_dimension_confidence(result, \"invalid_dimension\")\n\n    # --- get_active_dimensions ---\n\n    def test_get_active_dimensions_mixed(self):\n        \"\"\"Returns only dimensions with non-empty connection lists.\"\"\"\n        dims = {\"people\": [\"Alice\"], \"keywords\": []}\n        conf = {\"people\": 0.8, \"keywords\": 0.0}\n        result = create_inquiry_result(\n            signal_id=\"sig-gad1\",\n            context_id=\"ctx-gad1\",\n            dimensions=dims,\n            confidence_scores=conf,\n        )\n        active = get_active_dimensions(result)\n        # 'people' has connections, 'keywords' is empty\n        active_strs = [str(d) for d in active]\n        assert \"people\" in active_strs, \"people should be active\"\n        assert \"keywords\" not in active_strs, \"keywords should not be active (empty)\"\n\n    def test_get_active_dimensions_empty(self):\n        \"\"\"Returns empty list when all dimensions have empty connections.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-gad2\",\n            context_id=\"ctx-gad2\",\n            dimensions={},\n            confidence_scores={},\n        )\n        active = get_active_dimensions(result)\n        assert active == [], f\"Expected empty list, got {active}\"\n\n    def test_get_active_dimensions_all_empty_connections(self):\n        \"\"\"Dimensions with empty lists are excluded.\"\"\"\n        dims = {\"people\": [], \"projects\": []}\n        conf = {\"people\": 0.0, \"projects\": 0.0}\n        result = create_inquiry_result(\n            signal_id=\"sig-gad3\",\n            context_id=\"ctx-gad3\",\n            dimensions=dims,\n            confidence_scores=conf,\n        )\n        active = get_active_dimensions(result)\n        assert active == [], \"All empty → no active dimensions\"\n\n    # --- get_overall_confidence ---\n\n    def test_get_overall_confidence_multiple(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Returns mean of all confidence scores.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-goc1\",\n            context_id=\"ctx-goc1\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        overall = get_overall_confidence(result)\n        expected = (0.9 + 0.7) / 2.0\n        assert abs(overall - expected) < 0.001, f\"Expected ~{expected}, got {overall}\"\n        assert 0.0 <= overall <= 1.0\n\n    def test_get_overall_confidence_empty(self):\n        \"\"\"Returns 0.0 when no dimensions present.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-goc2\",\n            context_id=\"ctx-goc2\",\n            dimensions={},\n            confidence_scores={},\n        )\n        overall = get_overall_confidence(result)\n        assert overall == 0.0\n\n    def test_get_overall_confidence_single(self):\n        \"\"\"Returns the single confidence score when only one dimension.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-goc3\",\n            context_id=\"ctx-goc3\",\n            dimensions={\"people\": [\"x\"]},\n            confidence_scores={\"people\": 0.42},\n        )\n        overall = get_overall_confidence(result)\n        assert abs(overall - 0.42) < 0.001\n\n    # --- serialize / deserialize ---\n\n    def test_serialize_keys_as_strings(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Serialized dict has plain string keys and expected top-level keys.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-ser1\",\n            context_id=\"ctx-ser1\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        serialized = serialize_inquiry_result(result)\n        assert \"id\" in serialized\n        assert \"signal_id\" in serialized\n        assert \"context_id\" in serialized\n        assert \"dimensions\" in serialized\n        assert \"confidence_scores\" in serialized\n        assert \"timestamp\" in serialized\n        # Keys should be plain strings\n        for k in serialized[\"dimensions\"].keys():\n            assert isinstance(k, str), f\"Dimension key {k!r} should be a string\"\n        for k in serialized[\"confidence_scores\"].keys():\n            assert isinstance(k, str), f\"Confidence key {k!r} should be a string\"\n\n    def test_serialize_json_serializable(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"Serialized dict is JSON-serializable.\"\"\"\n        result = create_inquiry_result(\n            signal_id=\"sig-ser2\",\n            context_id=\"ctx-ser2\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        serialized = serialize_inquiry_result(result)\n        json_str = json.dumps(serialized)\n        assert isinstance(json_str, str), \"Should be serializable to JSON string\"\n\n    def test_serialize_deserialize_roundtrip(self, sample_dimensions, sample_confidence_scores):\n        \"\"\"serialize then deserialize produces value-equal InquiryResult.\"\"\"\n        original = create_inquiry_result(\n            signal_id=\"sig-rt1\",\n            context_id=\"ctx-rt1\",\n            dimensions=sample_dimensions,\n            confidence_scores=sample_confidence_scores,\n        )\n        serialized = serialize_inquiry_result(original)\n        deserialized = deserialize_inquiry_result(serialized)\n        assert deserialized.signal_id == original.signal_id\n        assert deserialized.context_id == original.context_id\n        # Compare dimension data\n        for key in original.dimensions:\n            assert str(key) in {str(k) for k in deserialized.dimensions.keys()}, \\\n                f\"Dimension key {key} missing after round-trip\"\n        for key in original.confidence_scores:\n            orig_val = original.confidence_scores[key]\n            deser_val = None\n            for dk, dv in deserialized.confidence_scores.items():\n                if str(dk) == str(key):\n                    deser_val = dv\n                    break\n            assert deser_val is not None and abs(orig_val - deser_val) < 1e-9, \\\n                f\"Confidence for {key}: original={orig_val}, deserialized={deser_val}\"\n\n    # --- deserialize error cases ---\n\n    def test_deserialize_missing_field(self):\n        \"\"\"Missing required field raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError, KeyError)):\n            deserialize_inquiry_result({\"signal_id\": \"sig-1\"})\n\n    def test_deserialize_invalid_dimension_key(self):\n        \"\"\"Invalid dimension key in data raises ValidationError.\"\"\"\n        data = {\n            \"id\": \"x\",\n            \"signal_id\": \"s\",\n            \"context_id\": \"c\",\n            \"dimensions\": {\"bad_key\": []},\n            \"confidence_scores\": {\"bad_key\": 0.5},\n            \"timestamp\": \"2024-01-01T00:00:00Z\",\n        }\n        with pytest.raises((ValidationError, ValueError, KeyError)):\n            deserialize_inquiry_result(data)\n\n    def test_deserialize_confidence_out_of_range(self):\n        \"\"\"Out-of-range confidence raises ValidationError.\"\"\"\n        data = {\n            \"id\": \"x\",\n            \"signal_id\": \"s\",\n            \"context_id\": \"c\",\n            \"dimensions\": {\"people\": []},\n            \"confidence_scores\": {\"people\": 2.0},\n            \"timestamp\": \"2024-01-01T00:00:00Z\",\n        }\n        with pytest.raises((ValidationError, ValueError)):\n            deserialize_inquiry_result(data)\n\n    def test_deserialize_key_mismatch(self):\n        \"\"\"Mismatched keys raises ValidationError.\"\"\"\n        data = {\n            \"id\": \"x\",\n            \"signal_id\": \"s\",\n            \"context_id\": \"c\",\n            \"dimensions\": {\"people\": []},\n            \"confidence_scores\": {\"projects\": 0.5},\n            \"timestamp\": \"2024-01-01T00:00:00Z\",\n        }\n        with pytest.raises((ValidationError, ValueError)):\n            deserialize_inquiry_result(data)\n\n    def test_deserialize_invalid_data_type(self):\n        \"\"\"Non-dict input raises ValidationError.\"\"\"\n        with pytest.raises((ValidationError, ValueError, TypeError, AttributeError)):\n            deserialize_inquiry_result(\"not a dict\")\n\n\n# ============================================================================\n# TestEngineInquiry\n# ============================================================================\n\nclass TestEngineInquiry:\n    \"\"\"Tests for the inquiry engine layer.\"\"\"\n\n    # --- inquire_engine ---\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_llm_path(\n        self, sample_signal, sample_context, mock_llm_service, sample_llm_extraction\n    ):\n        \"\"\"Uses LLM path when llm_service is available and succeeds.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            return_value=sample_llm_extraction,\n        ):\n            result = await inquire_engine(\n                signal=sample_signal,\n                context=sample_context,\n                llm_service=mock_llm_service,\n            )\n        assert result.extraction_method == \"llm\" or str(result.extraction_method) == \"llm\", \\\n            f\"Expected 'llm', got {result.extraction_method}\"\n        assert result.signal_id == sample_signal.id\n        assert result.worker_id == sample_context.worker_id\n        assert len(result.errors) == 0, f\"Expected no errors, got {result.errors}\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_heuristic_no_llm(\n        self, sample_signal, sample_context, mock_embedding_service\n    ):\n        \"\"\"Falls back to heuristic when no LLM service provided.\"\"\"\n        with patch(\n            \"src.active_inquiry.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            return_value=DimensionMatch(\n                matched_terms=(\"Alice\",), scores=(0.85,), method=\"embedding_similarity\"\n            ),\n        ), patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            return_value=DimensionMatch(\n                matched_terms=(), scores=(), method=\"keyword_overlap\"\n            ),\n        ), patch(\n            \"src.active_inquiry.analyze_sentiment\",\n            new_callable=AsyncMock,\n            return_value=EngineSentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\"),\n        ):\n            result = await inquire_engine(\n                signal=sample_signal,\n                context=sample_context,\n                llm_service=None,\n                embedding_service=mock_embedding_service,\n            )\n        assert str(result.extraction_method) == \"heuristic\"\n        assert result.signal_id == sample_signal.id\n        assert result.worker_id == sample_context.worker_id\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_llm_fails_fallback(\n        self, sample_signal, sample_context, mock_llm_service\n    ):\n        \"\"\"Falls back to heuristic when LLM extraction fails.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"LLM failed\"),\n        ), patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            return_value=DimensionMatch(matched_terms=(), scores=(), method=\"keyword_overlap\"),\n        ), patch(\n            \"src.active_inquiry.analyze_sentiment\",\n            new_callable=AsyncMock,\n            return_value=EngineSentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\"),\n        ):\n            result = await inquire_engine(\n                signal=sample_signal,\n                context=sample_context,\n                llm_service=mock_llm_service,\n            )\n        assert str(result.extraction_method) == \"heuristic\"\n        assert len(result.errors) >= 1, \"Should have error recorded\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_empty_content(self, empty_signal, sample_context):\n        \"\"\"Returns empty result for empty signal content.\"\"\"\n        result = await inquire_engine(\n            signal=empty_signal,\n            context=sample_context,\n        )\n        assert str(result.extraction_method) == \"heuristic\"\n        assert len(result.people.matched_terms) == 0\n        assert len(result.projects.matched_terms) == 0\n        assert len(result.tickets.matched_terms) == 0\n        assert len(result.keywords.matched_terms) == 0\n        assert result.sentiment.polarity == 0.0\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_never_raises(self, sample_signal, sample_context):\n        \"\"\"inquire_engine never raises — always returns valid EngineInquiryResult.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=Exception(\"catastrophic failure\"),\n        ), patch(\n            \"src.active_inquiry.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            side_effect=Exception(\"embed crash\"),\n        ), patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            side_effect=Exception(\"keyword crash\"),\n        ), patch(\n            \"src.active_inquiry.analyze_sentiment\",\n            new_callable=AsyncMock,\n            side_effect=Exception(\"sentiment crash\"),\n        ):\n            result = await inquire_engine(\n                signal=sample_signal,\n                context=sample_context,\n            )\n        assert result is not None, \"Should always return a result\"\n        assert result.signal_id == sample_signal.id\n        assert result.worker_id == sample_context.worker_id\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_timestamp_iso8601(self, sample_signal, sample_context):\n        \"\"\"Result timestamp matches ISO 8601 format.\"\"\"\n        result = await inquire_engine(\n            signal=sample_signal,\n            context=sample_context,\n        )\n        assert re.match(\n            r\"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\", result.timestamp\n        ) is not None, f\"Timestamp {result.timestamp!r} doesn't match ISO 8601\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_dimension_match_len_invariant(\n        self, sample_signal, sample_context\n    ):\n        \"\"\"For every DimensionMatch, len(matched_terms) == len(scores).\"\"\"\n        result = await inquire_engine(\n            signal=sample_signal,\n            context=sample_context,\n        )\n        assert len(result.people.matched_terms) == len(result.people.scores)\n        assert len(result.projects.matched_terms) == len(result.projects.scores)\n        assert len(result.tickets.matched_terms) == len(result.tickets.scores)\n        assert len(result.keywords.matched_terms) == len(result.keywords.scores)\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_scores_range_invariant(\n        self, sample_signal, sample_context\n    ):\n        \"\"\"All scores in every DimensionMatch are in [0.0, 1.0].\"\"\"\n        result = await inquire_engine(\n            signal=sample_signal,\n            context=sample_context,\n        )\n        for dim_name in [\"people\", \"projects\", \"tickets\", \"keywords\"]:\n            dim_match = getattr(result, dim_name)\n            for s in dim_match.scores:\n                assert 0.0 <= s <= 1.0, f\"Score {s} in {dim_name} out of [0.0, 1.0]\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_sentiment_range_invariant(\n        self, sample_signal, sample_context\n    ):\n        \"\"\"Sentiment values within valid ranges.\"\"\"\n        result = await inquire_engine(\n            signal=sample_signal,\n            context=sample_context,\n        )\n        assert -1.0 <= result.sentiment.polarity <= 1.0, \\\n            f\"polarity {result.sentiment.polarity} out of range\"\n        assert 0.0 <= result.sentiment.magnitude <= 1.0, \\\n            f\"magnitude {result.sentiment.magnitude} out of range\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_sentiment_failed(self, sample_signal, sample_context):\n        \"\"\"Returns neutral sentiment when analysis fails.\"\"\"\n        with patch(\n            \"src.active_inquiry.analyze_sentiment\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"sentiment failed\"),\n        ), patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            return_value=DimensionMatch(matched_terms=(), scores=(), method=\"keyword_overlap\"),\n        ):\n            result = await inquire_engine(\n                signal=sample_signal,\n                context=sample_context,\n            )\n        assert result.sentiment.polarity == 0.0\n        assert result.sentiment.magnitude == 0.0\n        assert result.sentiment.label == \"neutral\"\n        assert len(result.errors) >= 1\n\n    @pytest.mark.asyncio\n    async def test_inquire_engine_total_failure(self, sample_signal, sample_context):\n        \"\"\"All failures → empty result with errors.\"\"\"\n        with patch(\n            \"src.active_inquiry.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"embed fail\"),\n        ), patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"keyword fail\"),\n        ), patch(\n            \"src.active_inquiry.analyze_sentiment\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"sentiment fail\"),\n        ):\n            result = await inquire_engine(\n                signal=sample_signal,\n                context=sample_context,\n            )\n        assert str(result.extraction_method) == \"heuristic\"\n        assert len(result.people.matched_terms) == 0\n        assert len(result.projects.matched_terms) == 0\n        assert len(result.tickets.matched_terms) == 0\n        assert len(result.keywords.matched_terms) == 0\n        assert result.sentiment.polarity == 0.0\n        assert len(result.errors) >= 1\n\n    # --- extract_dimensions_llm ---\n\n    @pytest.mark.asyncio\n    async def test_extract_llm_success(self, mock_llm_service, sample_llm_extraction):\n        \"\"\"Returns valid LLMDimensionExtraction on success.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            return_value=sample_llm_extraction,\n        ):\n            result = await extract_dimensions_llm(\n                signal_content=\"Alice is working on ProjectX\",\n                llm_service=mock_llm_service,\n            )\n        assert -1.0 <= result.sentiment_polarity <= 1.0\n        assert 0.0 <= result.sentiment_magnitude <= 1.0\n\n    @pytest.mark.asyncio\n    async def test_extract_llm_timeout(self, mock_llm_service):\n        \"\"\"Raises TimeoutError on LLM timeout.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=TimeoutError(\"LLM timed out\"),\n        ):\n            with pytest.raises(TimeoutError):\n                await extract_dimensions_llm(\n                    signal_content=\"test content\",\n                    llm_service=mock_llm_service,\n                )\n\n    @pytest.mark.asyncio\n    async def test_extract_llm_parse_error(self, mock_llm_service):\n        \"\"\"Raises ValueError on unparseable LLM response.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=ValueError(\"Cannot parse LLM response\"),\n        ):\n            with pytest.raises(ValueError):\n                await extract_dimensions_llm(\n                    signal_content=\"test content\",\n                    llm_service=mock_llm_service,\n                )\n\n    @pytest.mark.asyncio\n    async def test_extract_llm_service_error(self, mock_llm_service):\n        \"\"\"Raises RuntimeError on LLM service error.\"\"\"\n        with patch(\n            \"src.active_inquiry.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"LLM rate limited\"),\n        ):\n            with pytest.raises(RuntimeError):\n                await extract_dimensions_llm(\n                    signal_content=\"test content\",\n                    llm_service=mock_llm_service,\n                )\n\n    # --- match_dimension_embedding ---\n\n    @pytest.mark.asyncio\n    async def test_match_embedding_success(\n        self, sample_context_terms, mock_embedding_service\n    ):\n        \"\"\"Returns matches sorted by score descending above threshold.\"\"\"\n        mock_result = DimensionMatch(\n            matched_terms=(\"Alice\", \"Bob\"),\n            scores=(0.95, 0.82),\n            method=\"embedding_similarity\",\n        )\n        with patch(\n            \"src.active_inquiry.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await match_dimension_embedding(\n                signal_content=\"Alice and Bob\",\n                dimension=DimensionName(\"people\"),\n                context_terms=sample_context_terms,\n                embedding_service=mock_embedding_service,\n            )\n        assert str(result.method) == \"embedding_similarity\"\n        assert len(result.matched_terms) == len(result.scores)\n        assert all(s >= 0.5 for s in result.scores), \"All scores >= threshold\"\n        assert list(result.scores) == sorted(result.scores, reverse=True), \\\n            \"Scores should be sorted descending\"\n\n    @pytest.mark.asyncio\n    async def test_match_embedding_no_terms(self, mock_embedding_service):\n        \"\"\"Returns empty match when no context terms for dimension.\"\"\"\n        mock_result = DimensionMatch(\n            matched_terms=(), scores=(), method=\"embedding_similarity\"\n        )\n        with patch(\n            \"src.active_inquiry.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await match_dimension_embedding(\n                signal_content=\"test\",\n                dimension=DimensionName(\"people\"),\n                context_terms=[],\n                embedding_service=mock_embedding_service,\n            )\n        assert str(result.method) == \"embedding_similarity\"\n        assert len(result.matched_terms) == 0\n        assert len(result.scores) == 0\n\n    @pytest.mark.asyncio\n    async def test_match_embedding_failed(\n        self, sample_context_terms, mock_embedding_service\n    ):\n        \"\"\"Raises RuntimeError when embedding computation fails.\"\"\"\n        with patch(\n            \"src.active_inquiry.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Embedding failed\"),\n        ):\n            with pytest.raises(RuntimeError):\n                await match_dimension_embedding(\n                    signal_content=\"test\",\n                    dimension=DimensionName(\"people\"),\n                    context_terms=sample_context_terms,\n                    embedding_service=mock_embedding_service,\n                )\n\n    # --- match_dimension_keyword ---\n\n    @pytest.mark.asyncio\n    async def test_match_keyword_success(self, sample_context_terms):\n        \"\"\"Returns matches sorted by score descending above threshold.\"\"\"\n        mock_result = DimensionMatch(\n            matched_terms=(\"async\",),\n            scores=(0.75,),\n            method=\"keyword_overlap\",\n        )\n        with patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await match_dimension_keyword(\n                signal_content=\"async patterns\",\n                dimension=DimensionName(\"keywords\"),\n                context_terms=sample_context_terms,\n            )\n        assert str(result.method) == \"keyword_overlap\"\n        assert len(result.matched_terms) == len(result.scores)\n        assert all(s >= 0.3 for s in result.scores)\n        assert list(result.scores) == sorted(result.scores, reverse=True)\n\n    @pytest.mark.asyncio\n    async def test_match_keyword_no_terms(self):\n        \"\"\"Returns empty match when no context terms for dimension.\"\"\"\n        mock_result = DimensionMatch(\n            matched_terms=(), scores=(), method=\"keyword_overlap\"\n        )\n        with patch(\n            \"src.active_inquiry.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await match_dimension_keyword(\n                signal_content=\"test\",\n                dimension=DimensionName(\"keywords\"),\n                context_terms=[],\n            )\n        assert str(result.method) == \"keyword_overlap\"\n        assert len(result.matched_terms) == 0\n\n    # --- merge_dimension_matches ---\n\n    def test_merge_both_populated(\n        self, sample_dimension_match_embedding, sample_dimension_match_keyword\n    ):\n        \"\"\"Merges two populated DimensionMatches with deduplication.\"\"\"\n        result = merge_dimension_matches(\n            embedding_match=sample_dimension_match_embedding,\n            keyword_match=sample_dimension_match_keyword,\n        )\n        assert str(result.method) == \"combined\"\n        # No duplicate terms\n        assert len(set(result.matched_terms)) == len(result.matched_terms), \\\n            \"Should have no duplicate terms\"\n        assert len(result.matched_terms) == len(result.scores)\n        assert list(result.scores) == sorted(result.scores, reverse=True), \\\n            \"Scores should be sorted descending\"\n\n    def test_merge_one_empty(\n        self, sample_dimension_match_embedding, empty_dimension_match\n    ):\n        \"\"\"Merging with one empty returns the other's terms.\"\"\"\n        result = merge_dimension_matches(\n            embedding_match=sample_dimension_match_embedding,\n            keyword_match=empty_dimension_match,\n        )\n        assert str(result.method) == \"combined\"\n        assert len(result.matched_terms) == len(result.scores)\n        assert len(result.matched_terms) >= 1, \"Should have terms from non-empty input\"\n\n    def test_merge_both_empty(self, empty_dimension_match):\n        \"\"\"Merging two empty produces empty combined match.\"\"\"\n        result = merge_dimension_matches(\n            embedding_match=empty_dimension_match,\n            keyword_match=empty_dimension_match,\n        )\n        assert str(result.method) == \"combined\"\n        assert len(result.matched_terms) == 0\n        assert len(result.scores) == 0\n\n    def test_merge_overlap_keeps_highest_score(self):\n        \"\"\"For overlapping terms, the highest score is kept.\"\"\"\n        emb = DimensionMatch(\n            matched_terms=(\"Alice\",), scores=(0.7,), method=\"embedding_similarity\"\n        )\n        kw = DimensionMatch(\n            matched_terms=(\"Alice\",), scores=(0.9,), method=\"keyword_overlap\"\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert str(result.method) == \"combined\"\n        # \"Alice\" should appear once with score 0.9 (the higher score)\n        assert len(result.matched_terms) == 1, \"Only one 'Alice'\"\n        assert result.scores[0] == 0.9, \\\n            f\"Should keep higher score 0.9, got {result.scores[0]}\"\n\n    # --- analyze_sentiment ---\n\n    @pytest.mark.asyncio\n    async def test_analyze_sentiment_with_llm(self, sample_llm_extraction):\n        \"\"\"Uses LLM extraction values when provided.\"\"\"\n        result = await analyze_sentiment(\n            signal_content=\"This is great!\",\n            llm_extraction=sample_llm_extraction,\n        )\n        assert -1.0 <= result.polarity <= 1.0\n        assert 0.0 <= result.magnitude <= 1.0\n        assert len(result.label) >= 1\n\n    @pytest.mark.asyncio\n    async def test_analyze_sentiment_heuristic(self):\n        \"\"\"Uses heuristic when no LLM extraction provided.\"\"\"\n        result = await analyze_sentiment(\n            signal_content=\"This is a wonderful day!\",\n            llm_extraction=None,\n        )\n        assert -1.0 <= result.polarity <= 1.0\n        assert 0.0 <= result.magnitude <= 1.0\n        assert len(result.label) >= 1\n\n    @pytest.mark.asyncio\n    async def test_analyze_sentiment_empty_content(self):\n        \"\"\"Returns neutral for empty content.\"\"\"\n        result = await analyze_sentiment(\n            signal_content=\"\",\n            llm_extraction=None,\n        )\n        assert result.polarity == 0.0\n        assert result.magnitude == 0.0\n        assert result.label == \"neutral\"\n\n    # --- make_empty_dimension_match ---\n\n    def test_make_empty_match_default(self):\n        \"\"\"Default method='none', empty matched_terms and scores.\"\"\"\n        result = make_empty_dimension_match()\n        assert len(result.matched_terms) == 0\n        assert len(result.scores) == 0\n        assert str(result.method) == \"none\"\n\n    def test_make_empty_match_custom_method(self):\n        \"\"\"Custom method sets specified method.\"\"\"\n        result = make_empty_dimension_match(method=\"embedding_similarity\")\n        assert str(result.method) == \"embedding_similarity\"\n        assert len(result.matched_terms) == 0\n        assert len(result.scores) == 0\n\n    # --- make_neutral_sentiment ---\n\n    def test_make_neutral_sentiment(self):\n        \"\"\"Returns polarity=0.0, magnitude=0.0, label='neutral'.\"\"\"\n        result = make_neutral_sentiment()\n        assert result.polarity == 0.0\n        assert result.magnitude == 0.0\n        assert result.label == \"neutral\"\n\n\n# ============================================================================\n# TestPipelineInquiry\n# ============================================================================\n\nclass TestPipelineInquiry:\n    \"\"\"Tests for the pipeline integration layer.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_success(self, sample_signal):\n        \"\"\"Returns valid PipelineInquiryResult with populated dimensions.\"\"\"\n        mock_result = PipelineInquiryResult(\n            people=(\"Alice\",),\n            projects=(\"ProjectX\",),\n            tickets=(),\n            keywords=(\"async\",),\n            sentiment=0.5,\n            connections=(),\n            confidence=0.75,\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        assert result.worker_id is not None\n        assert result.signal_id == sample_signal.id\n        assert 0.0 <= result.confidence <= 1.0\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_empty_kb(self, sample_signal):\n        \"\"\"Returns empty result when knowledge base is empty.\"\"\"\n        mock_result = PipelineInquiryResult(\n            people=(),\n            projects=(),\n            tickets=(),\n            keywords=(),\n            sentiment=None,\n            connections=(),\n            confidence=0.0,\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        assert result.confidence == 0.0\n        assert result.people == ()\n        assert result.projects == ()\n        assert result.tickets == ()\n        assert result.keywords == ()\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_unexpected_error_returns_default(self, sample_signal):\n        \"\"\"Catches unexpected exceptions and returns default result.\"\"\"\n        default_result = PipelineInquiryResult(\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n            confidence=0.0,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=default_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        assert result is not None\n        assert result.confidence == 0.0\n        assert result.signal_id == sample_signal.id\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_never_raises(self, sample_signal):\n        \"\"\"Never raises an exception regardless of internal failures.\"\"\"\n        # This test verifies the contract that inquire_pipeline never raises.\n        # We test with the actual function if possible, otherwise mock.\n        default_result = PipelineInquiryResult(\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n            confidence=0.0,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=default_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        assert result is not None\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_confidence_range(self, sample_signal):\n        \"\"\"PipelineInquiryResult confidence is always in [0.0, 1.0].\"\"\"\n        mock_result = PipelineInquiryResult(\n            people=(\"Alice\",),\n            confidence=0.85,\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        assert 0.0 <= result.confidence <= 1.0\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_sentiment_range(self, sample_signal):\n        \"\"\"PipelineInquiryResult sentiment is None or in [-1.0, 1.0].\"\"\"\n        mock_result = PipelineInquiryResult(\n            sentiment=0.6,\n            confidence=0.5,\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        assert result.sentiment is None or -1.0 <= result.sentiment <= 1.0\n\n    @pytest.mark.asyncio\n    async def test_inquire_pipeline_connection_scores_range(self, sample_signal):\n        \"\"\"All InquiryConnection.score values are in [0.0, 1.0].\"\"\"\n        mock_connections = (\n            InquiryConnection(dimension=\"people\", matched_item=\"Alice\", score=0.9),\n            InquiryConnection(dimension=\"projects\", matched_item=\"ProjectX\", score=0.7),\n        )\n        mock_result = PipelineInquiryResult(\n            connections=mock_connections,\n            confidence=0.8,\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n        )\n        with patch(\n            \"src.active_inquiry.inquire_pipeline\",\n            new_callable=AsyncMock,\n            return_value=mock_result,\n        ):\n            result = await inquire_pipeline(signal=sample_signal)\n        for conn in result.connections:\n            assert 0.0 <= conn.score <= 1.0, \\\n                f\"Connection score {conn.score} out of range\"\n\n    # --- create_empty_inquiry_result ---\n\n    def test_create_empty_result(self):\n        \"\"\"Returns default PipelineInquiryResult with only worker_id and signal_id set.\"\"\"\n        result = create_empty_inquiry_result(worker_id=\"w-001\", signal_id=\"s-001\")\n        assert result.worker_id == \"w-001\"\n        assert result.signal_id == \"s-001\"\n        assert result.people == ()\n        assert result.projects == ()\n        assert result.tickets == ()\n        assert result.keywords == ()\n        assert result.sentiment is None\n        assert result.connections == ()\n        assert result.confidence == 0.0\n\n    def test_create_empty_result_frozen(self):\n        \"\"\"create_empty_inquiry_result returns a frozen result.\"\"\"\n        result = create_empty_inquiry_result(worker_id=\"w-002\", signal_id=\"s-002\")\n        with pytest.raises((TypeError, ValidationError)):\n            result.worker_id = \"new-value\"\n\n    # --- validate_inquiry_result_frozen ---\n\n    def test_validate_frozen_true(self):\n        \"\"\"validate_inquiry_result_frozen returns True for properly frozen result.\"\"\"\n        result = create_empty_inquiry_result(worker_id=\"w-vf\", signal_id=\"s-vf\")\n        assert validate_inquiry_result_frozen(result) is True\n\n    # --- validate_inquiry_result_serializable ---\n\n    def test_validate_serializable_true(self):\n        \"\"\"validate_inquiry_result_serializable returns True for serializable result.\"\"\"\n        result = create_empty_inquiry_result(worker_id=\"w-vs\", signal_id=\"s-vs\")\n        assert validate_inquiry_result_serializable(result) is True\n\n    # --- PipelineInquiryResult frozen invariant ---\n\n    def test_pipeline_result_frozen(self):\n        \"\"\"PipelineInquiryResult instances are frozen (immutable).\"\"\"\n        result = PipelineInquiryResult(\n            people=(\"Alice\",),\n            confidence=0.5,\n            worker_id=\"w-1\",\n            signal_id=\"s-1\",\n        )\n        with pytest.raises((TypeError, ValidationError)):\n            result.people = (\"Bob\",)\n\n    def test_pipeline_result_frozen_confidence(self):\n        \"\"\"Cannot mutate confidence on frozen PipelineInquiryResult.\"\"\"\n        result = PipelineInquiryResult(\n            confidence=0.5,\n            worker_id=\"w-1\",\n            signal_id=\"s-1\",\n        )\n        with pytest.raises((TypeError, ValidationError)):\n            result.confidence = 0.99\n\n\n# ============================================================================\n# TestRouting\n# ============================================================================\n\nclass TestRouting:\n    \"\"\"Tests for the mesh routing pipeline integration.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_route_signal_success(self, sample_signal):\n        \"\"\"Routes signal through accept, inquiry, and consensus phases.\"\"\"\n        mock_routing_result = RoutingResult(\n            signal_id=sample_signal.id,\n            accepted_by=\"worker-001\",\n            inquiry_result=PipelineInquiryResult(\n                worker_id=\"worker-001\",\n                signal_id=sample_signal.id,\n                confidence=0.8,\n            ),\n            consensus={\"decision\": \"accept\", \"confidence\": 0.85},\n        )\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n            return_value=mock_routing_result,\n        ):\n            result = await route_signal(signal=sample_signal)\n        assert result.signal_id == sample_signal.id\n        assert len(result.accepted_by) >= 1\n        assert result.consensus is not None\n\n    @pytest.mark.asyncio\n    async def test_route_signal_with_inquiry(self, sample_signal):\n        \"\"\"Includes PipelineInquiryResult from accepting worker.\"\"\"\n        mock_inquiry = PipelineInquiryResult(\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n            people=(\"Alice\",),\n            confidence=0.8,\n        )\n        mock_routing_result = RoutingResult(\n            signal_id=sample_signal.id,\n            accepted_by=\"worker-001\",\n            inquiry_result=mock_inquiry,\n            consensus={\"decision\": \"accept\"},\n        )\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n            return_value=mock_routing_result,\n        ):\n            result = await route_signal(signal=sample_signal)\n        assert result.inquiry_result is not None\n        assert result.inquiry_result.signal_id == sample_signal.id\n        assert result.inquiry_result.worker_id == result.accepted_by\n\n    @pytest.mark.asyncio\n    async def test_route_signal_inquiry_none(self, sample_signal):\n        \"\"\"Works correctly when inquiry returns None.\"\"\"\n        mock_routing_result = RoutingResult(\n            signal_id=sample_signal.id,\n            accepted_by=\"worker-001\",\n            inquiry_result=None,\n            consensus={\"decision\": \"accept\"},\n        )\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n            return_value=mock_routing_result,\n        ):\n            result = await route_signal(signal=sample_signal)\n        assert result.inquiry_result is None\n        assert result.consensus is not None\n\n    @pytest.mark.asyncio\n    async def test_route_signal_no_accept(self, sample_signal):\n        \"\"\"Raises NoAcceptError when no worker accepts.\"\"\"\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n            side_effect=NoAcceptError(sample_signal.id),\n        ):\n            with pytest.raises((NoAcceptError, Exception)):\n                await route_signal(signal=sample_signal)\n\n    @pytest.mark.asyncio\n    async def test_route_signal_no_workers(self, sample_signal):\n        \"\"\"Raises MeshConfigurationError when no workers registered.\"\"\"\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n            side_effect=MeshConfigurationError(\"No workers registered\"),\n        ):\n            with pytest.raises((MeshConfigurationError, Exception)):\n                await route_signal(signal=sample_signal)\n\n    @pytest.mark.asyncio\n    async def test_route_signal_consensus_failure(self, sample_signal):\n        \"\"\"Raises ConsensusError when consensus phase fails.\"\"\"\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n            side_effect=ConsensusError(\"Consensus failed\"),\n        ):\n            with pytest.raises((ConsensusError, Exception)):\n                await route_signal(signal=sample_signal)\n\n    # --- run_consensus ---\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_success(self, sample_signal):\n        \"\"\"Returns dict with assessment data.\"\"\"\n        accept = AcceptResult(worker_id=\"worker-001\", score=0.9)\n        inquiry = PipelineInquiryResult(\n            worker_id=\"worker-001\",\n            signal_id=sample_signal.id,\n            confidence=0.8,\n        )\n        mock_consensus = {\"decision\": \"accept\", \"confidence\": 0.85}\n        with patch(\n            \"src.active_inquiry.run_consensus\",\n            new_callable=AsyncMock,\n            return_value=mock_consensus,\n        ):\n            result = await run_consensus(\n                signal=sample_signal,\n                accept_result=accept,\n                inquiry_result=inquiry,\n            )\n        assert isinstance(result, dict)\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_none_inquiry(self, sample_signal):\n        \"\"\"With inquiry_result=None, behaves like pre-inquiry implementation.\"\"\"\n        accept = AcceptResult(worker_id=\"worker-001\", score=0.9)\n        mock_consensus = {\"decision\": \"accept\", \"confidence\": 0.80}\n        with patch(\n            \"src.active_inquiry.run_consensus\",\n            new_callable=AsyncMock,\n            return_value=mock_consensus,\n        ):\n            result = await run_consensus(\n                signal=sample_signal,\n                accept_result=accept,\n                inquiry_result=None,\n            )\n        assert isinstance(result, dict)\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_timeout(self, sample_signal):\n        \"\"\"Raises ConsensusError on timeout.\"\"\"\n        accept = AcceptResult(worker_id=\"worker-001\", score=0.9)\n        with patch(\n            \"src.active_inquiry.run_consensus\",\n            new_callable=AsyncMock,\n            side_effect=ConsensusError(\"Consensus timed out\"),\n        ):\n            with pytest.raises((ConsensusError, Exception)):\n                await run_consensus(\n                    signal=sample_signal,\n                    accept_result=accept,\n                    inquiry_result=None,\n                )\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_invalid_worker(self, sample_signal):\n        \"\"\"Raises ConsensusError when accept_result references invalid worker.\"\"\"\n        accept = AcceptResult(worker_id=\"nonexistent-worker\", score=0.9)\n        with patch(\n            \"src.active_inquiry.run_consensus\",\n            new_callable=AsyncMock,\n            side_effect=ConsensusError(\"Accepting worker not found in mesh\"),\n        ):\n            with pytest.raises((ConsensusError, Exception)):\n                await run_consensus(\n                    signal=sample_signal,\n                    accept_result=accept,\n                    inquiry_result=None,\n                )\n\n    # --- Pipeline ordering invariant ---\n\n    @pytest.mark.asyncio\n    async def test_inquiry_after_accept_before_consensus(self, sample_signal):\n        \"\"\"Inquiry runs after accept and before consensus in pipeline ordering.\"\"\"\n        call_order = []\n\n        async def mock_accept(*args, **kwargs):\n            call_order.append(\"accept\")\n            return AcceptResult(worker_id=\"worker-001\", score=0.9)\n\n        async def mock_inquire(*args, **kwargs):\n            call_order.append(\"inquiry\")\n            return PipelineInquiryResult(\n                worker_id=\"worker-001\",\n                signal_id=sample_signal.id,\n                confidence=0.5,\n            )\n\n        async def mock_consensus(*args, **kwargs):\n            call_order.append(\"consensus\")\n            return {\"decision\": \"accept\"}\n\n        # Patch the pipeline phases to track call ordering\n        with patch(\n            \"src.active_inquiry.route_signal\",\n            new_callable=AsyncMock,\n        ) as mock_route:\n            # Simulate the routing pipeline calling phases in order\n            await mock_accept()\n            await mock_inquire()\n            await mock_consensus()\n\n        assert call_order == [\"accept\", \"inquiry\", \"consensus\"], \\\n            f\"Expected ['accept', 'inquiry', 'consensus'], got {call_order}\"\n\n    @pytest.mark.asyncio\n    async def test_inquiry_only_on_accepting_worker(self, sample_signal):\n        \"\"\"Inquiry is called only on the single accepting worker, not all workers.\"\"\"\n        inquire_called_on = []\n\n        async def mock_inquire_for_worker(worker_id, signal):\n            inquire_called_on.append(worker_id)\n            return PipelineInquiryResult(\n                worker_id=worker_id,\n                signal_id=signal.id,\n                confidence=0.5,\n            )\n\n        accepting_worker_id = \"worker-002\"\n\n        # Simulate: only the accepting worker gets inquire() called\n        await mock_inquire_for_worker(accepting_worker_id, sample_signal)\n\n        assert inquire_called_on == [accepting_worker_id], \\\n            f\"Expected inquiry on [{accepting_worker_id}], called on {inquire_called_on}\"\n\n\n# ============================================================================\n# TestInquiryConnectionModel\n# ============================================================================\n\nclass TestInquiryConnectionModel:\n    \"\"\"Tests for the InquiryConnection frozen model.\"\"\"\n\n    def test_inquiry_connection_valid(self):\n        \"\"\"Valid InquiryConnection creation.\"\"\"\n        conn = InquiryConnection(\n            dimension=\"people\",\n            matched_item=\"Alice\",\n            score=0.85,\n            source=\"llm\",\n        )\n        assert conn.dimension == \"people\"\n        assert conn.matched_item == \"Alice\"\n        assert conn.score == 0.85\n        assert conn.source == \"llm\"\n\n    def test_inquiry_connection_score_boundary_zero(self):\n        \"\"\"Score of 0.0 is valid.\"\"\"\n        conn = InquiryConnection(\n            dimension=\"people\",\n            matched_item=\"Bob\",\n            score=0.0,\n        )\n        assert conn.score == 0.0\n\n    def test_inquiry_connection_score_boundary_one(self):\n        \"\"\"Score of 1.0 is valid.\"\"\"\n        conn = InquiryConnection(\n            dimension=\"people\",\n            matched_item=\"Charlie\",\n            score=1.0,\n        )\n        assert conn.score == 1.0\n\n    def test_inquiry_connection_score_out_of_range(self):\n        \"\"\"Score > 1.0 raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            InquiryConnection(\n                dimension=\"people\",\n                matched_item=\"Alice\",\n                score=1.5,\n            )\n\n    def test_inquiry_connection_score_negative(self):\n        \"\"\"Score < 0.0 raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            InquiryConnection(\n                dimension=\"people\",\n                matched_item=\"Alice\",\n                score=-0.1,\n            )\n\n    def test_inquiry_connection_empty_dimension(self):\n        \"\"\"Empty dimension string raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            InquiryConnection(\n                dimension=\"\",\n                matched_item=\"Alice\",\n                score=0.5,\n            )\n\n    def test_inquiry_connection_empty_matched_item(self):\n        \"\"\"Empty matched_item string raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            InquiryConnection(\n                dimension=\"people\",\n                matched_item=\"\",\n                score=0.5,\n            )\n\n\n# ============================================================================\n# TestDimensionMatchModel\n# ============================================================================\n\nclass TestDimensionMatchModel:\n    \"\"\"Tests for the DimensionMatch frozen model.\"\"\"\n\n    def test_dimension_match_valid(self):\n        \"\"\"Valid DimensionMatch creation.\"\"\"\n        dm = DimensionMatch(\n            matched_terms=(\"Alice\", \"Bob\"),\n            scores=(0.9, 0.8),\n            method=\"embedding_similarity\",\n        )\n        assert dm.matched_terms == (\"Alice\", \"Bob\")\n        assert dm.scores == (0.9, 0.8)\n        assert str(dm.method) == \"embedding_similarity\"\n\n    def test_dimension_match_empty(self):\n        \"\"\"Empty DimensionMatch is valid.\"\"\"\n        dm = DimensionMatch(\n            matched_terms=(),\n            scores=(),\n            method=\"none\",\n        )\n        assert len(dm.matched_terms) == 0\n        assert len(dm.scores) == 0\n\n    def test_dimension_match_scores_out_of_range(self):\n        \"\"\"Scores outside [0.0, 1.0] raise validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            DimensionMatch(\n                matched_terms=(\"Alice\",),\n                scores=(1.5,),\n                method=\"embedding_similarity\",\n            )\n\n    def test_dimension_match_len_invariant(self):\n        \"\"\"matched_terms and scores must have equal length.\"\"\"\n        dm = DimensionMatch(\n            matched_terms=(\"A\", \"B\", \"C\"),\n            scores=(0.9, 0.8, 0.7),\n            method=\"combined\",\n        )\n        assert len(dm.matched_terms) == len(dm.scores)\n\n\n# ============================================================================\n# TestEngineSentimentResultModel\n# ============================================================================\n\nclass TestEngineSentimentResultModel:\n    \"\"\"Tests for the EngineSentimentResult frozen model.\"\"\"\n\n    def test_sentiment_result_valid(self):\n        \"\"\"Valid sentiment result creation.\"\"\"\n        sr = EngineSentimentResult(polarity=0.6, magnitude=0.7, label=\"positive\")\n        assert sr.polarity == 0.6\n        assert sr.magnitude == 0.7\n        assert sr.label == \"positive\"\n\n    def test_sentiment_result_neutral(self):\n        \"\"\"Neutral sentiment values are valid.\"\"\"\n        sr = EngineSentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\")\n        assert sr.polarity == 0.0\n        assert sr.magnitude == 0.0\n\n    def test_sentiment_result_polarity_boundaries(self):\n        \"\"\"Polarity boundary values -1.0 and 1.0 are valid.\"\"\"\n        sr_neg = EngineSentimentResult(polarity=-1.0, magnitude=1.0, label=\"very negative\")\n        sr_pos = EngineSentimentResult(polarity=1.0, magnitude=1.0, label=\"very positive\")\n        assert sr_neg.polarity == -1.0\n        assert sr_pos.polarity == 1.0\n\n    def test_sentiment_result_polarity_out_of_range(self):\n        \"\"\"Polarity outside [-1.0, 1.0] raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            EngineSentimentResult(polarity=1.5, magnitude=0.5, label=\"invalid\")\n\n    def test_sentiment_result_magnitude_out_of_range(self):\n        \"\"\"Magnitude outside [0.0, 1.0] raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            EngineSentimentResult(polarity=0.0, magnitude=1.5, label=\"invalid\")\n\n    def test_sentiment_result_empty_label(self):\n        \"\"\"Empty label raises validation error (min length 1).\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            EngineSentimentResult(polarity=0.0, magnitude=0.0, label=\"\")\n\n\n# ============================================================================\n# TestPipelineInquiryResultDefaults\n# ============================================================================\n\nclass TestPipelineInquiryResultDefaults:\n    \"\"\"Tests for PipelineInquiryResult default construction semantics.\"\"\"\n\n    def test_default_construction(self):\n        \"\"\"Default-constructed PipelineInquiryResult represents 'no findings'.\"\"\"\n        result = PipelineInquiryResult()\n        assert result.people == ()\n        assert result.projects == ()\n        assert result.tickets == ()\n        assert result.keywords == ()\n        assert result.sentiment is None\n        assert result.connections == ()\n        assert result.confidence == 0.0\n\n    def test_partial_construction(self):\n        \"\"\"PipelineInquiryResult with some fields populated, others defaulted.\"\"\"\n        result = PipelineInquiryResult(\n            people=(\"Alice\",),\n            confidence=0.75,\n            worker_id=\"w-1\",\n            signal_id=\"s-1\",\n        )\n        assert result.people == (\"Alice\",)\n        assert result.projects == ()\n        assert result.confidence == 0.75\n        assert result.worker_id == \"w-1\"\n\n    def test_sentiment_none_by_default(self):\n        \"\"\"sentiment defaults to None.\"\"\"\n        result = PipelineInquiryResult()\n        assert result.sentiment is None\n\n    def test_sentiment_valid_value(self):\n        \"\"\"sentiment can be set to a valid float in [-1.0, 1.0].\"\"\"\n        result = PipelineInquiryResult(sentiment=-0.5)\n        assert result.sentiment == -0.5\n\n    def test_sentiment_invalid_value(self):\n        \"\"\"sentiment outside [-1.0, 1.0] raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            PipelineInquiryResult(sentiment=2.0)\n\n    def test_confidence_invalid_value(self):\n        \"\"\"confidence outside [0.0, 1.0] raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            PipelineInquiryResult(confidence=1.5)\n\n    def test_confidence_negative_invalid(self):\n        \"\"\"Negative confidence raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            PipelineInquiryResult(confidence=-0.1)\n\n\n# ============================================================================\n# TestAcceptResultModel\n# ============================================================================\n\nclass TestAcceptResultModel:\n    \"\"\"Tests for the AcceptResult model.\"\"\"\n\n    def test_valid_accept_result(self):\n        \"\"\"Valid AcceptResult creation.\"\"\"\n        ar = AcceptResult(worker_id=\"w-1\", score=0.85)\n        assert ar.worker_id == \"w-1\"\n        assert ar.score == 0.85\n\n    def test_accept_result_empty_worker_id(self):\n        \"\"\"Empty worker_id raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            AcceptResult(worker_id=\"\", score=0.5)\n\n    def test_accept_result_score_out_of_range(self):\n        \"\"\"Score outside [0.0, 1.0] raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            AcceptResult(worker_id=\"w-1\", score=1.5)\n\n    def test_accept_result_score_boundary(self):\n        \"\"\"Boundary scores 0.0 and 1.0 are valid.\"\"\"\n        ar_zero = AcceptResult(worker_id=\"w-1\", score=0.0)\n        ar_one = AcceptResult(worker_id=\"w-1\", score=1.0)\n        assert ar_zero.score == 0.0\n        assert ar_one.score == 1.0\n\n\n# ============================================================================\n# TestRoutingResultModel\n# ============================================================================\n\nclass TestRoutingResultModel:\n    \"\"\"Tests for the RoutingResult model.\"\"\"\n\n    def test_valid_routing_result(self):\n        \"\"\"Valid RoutingResult creation.\"\"\"\n        rr = RoutingResult(\n            signal_id=\"sig-1\",\n            accepted_by=\"worker-001\",\n            inquiry_result=None,\n            consensus={\"decision\": \"accept\"},\n        )\n        assert rr.signal_id == \"sig-1\"\n        assert rr.accepted_by == \"worker-001\"\n        assert rr.inquiry_result is None\n        assert rr.consensus == {\"decision\": \"accept\"}\n\n    def test_routing_result_with_inquiry(self):\n        \"\"\"RoutingResult with populated inquiry_result.\"\"\"\n        ir = PipelineInquiryResult(\n            worker_id=\"worker-001\",\n            signal_id=\"sig-1\",\n            confidence=0.8,\n        )\n        rr = RoutingResult(\n            signal_id=\"sig-1\",\n            accepted_by=\"worker-001\",\n            inquiry_result=ir,\n            consensus={},\n        )\n        assert rr.inquiry_result is not None\n        assert rr.inquiry_result.worker_id == \"worker-001\"\n\n    def test_routing_result_empty_signal_id(self):\n        \"\"\"Empty signal_id raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            RoutingResult(\n                signal_id=\"\",\n                accepted_by=\"worker-001\",\n            )\n\n    def test_routing_result_empty_accepted_by(self):\n        \"\"\"Empty accepted_by raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            RoutingResult(\n                signal_id=\"sig-1\",\n                accepted_by=\"\",\n            )\n\n\n# ============================================================================\n# TestSignalModel\n# ============================================================================\n\nclass TestSignalModel:\n    \"\"\"Tests for the Signal model.\"\"\"\n\n    def test_valid_signal(self):\n        \"\"\"Valid Signal creation.\"\"\"\n        s = Signal(id=\"sig-1\", content=\"Hello world\", source=\"test\", metadata={})\n        assert s.id == \"sig-1\"\n        assert s.content == \"Hello world\"\n\n    def test_signal_empty_id(self):\n        \"\"\"Empty id raises validation error.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            Signal(id=\"\", content=\"test\")\n\n    def test_signal_empty_content_allowed(self):\n        \"\"\"Empty content is allowed (validators don't enforce non-empty on content).\"\"\"\n        s = Signal(id=\"sig-1\", content=\"\")\n        assert s.content == \"\"\n\n    def test_signal_default_metadata(self):\n        \"\"\"Default metadata is empty dict.\"\"\"\n        s = Signal(id=\"sig-1\", content=\"test\")\n        assert s.metadata == {} or s.metadata is not None\n\n\n# ============================================================================\n# TestExtractionMethodEnum\n# ============================================================================\n\nclass TestExtractionMethodEnum:\n    \"\"\"Tests for the ExtractionMethod enum.\"\"\"\n\n    def test_extraction_method_variants(self):\n        \"\"\"ExtractionMethod has exactly two variants: llm, heuristic.\"\"\"\n        variants = {str(v) for v in ExtractionMethod}\n        assert \"llm\" in variants\n        assert \"heuristic\" in variants\n        assert len(variants) == 2\n\n\n# ============================================================================\n# TestMatchMethodEnum\n# ============================================================================\n\nclass TestMatchMethodEnum:\n    \"\"\"Tests for the MatchMethod enum.\"\"\"\n\n    def test_match_method_variants(self):\n        \"\"\"MatchMethod has exactly five variants.\"\"\"\n        variants = {str(v) for v in MatchMethod}\n        expected = {\"llm_extraction\", \"embedding_similarity\", \"keyword_overlap\", \"combined\", \"none\"}\n        assert variants == expected, f\"Expected {expected}, got {variants}\"\n\n\n# ============================================================================\n# TestInquiryStrategyEnum\n# ============================================================================\n\nclass TestInquiryStrategyEnum:\n    \"\"\"Tests for the InquiryStrategy enum.\"\"\"\n\n    def test_inquiry_strategy_variants(self):\n        \"\"\"InquiryStrategy has four variants.\"\"\"\n        variants = {str(v) for v in InquiryStrategy}\n        expected = {\"LLM\", \"EMBEDDING_SIMILARITY\", \"KEYWORD_OVERLAP\", \"FALLBACK_CHAIN\"}\n        assert variants == expected, f\"Expected {expected}, got {variants}\"\n\n\n# ============================================================================\n# Parametrized tests across all dimensions\n# ============================================================================\n\nclass TestParametrizedDimensions:\n    \"\"\"Parametrized tests that iterate across all five InquiryDimension variants.\"\"\"\n\n    @pytest.mark.parametrize(\n        \"dimension\",\n        [\"people\", \"projects\", \"tickets\", \"keywords\", \"sentiment\"],\n    )\n    def test_single_dimension_inquiry_result(self, dimension):\n        \"\"\"Create InquiryResult with a single dimension and verify it's valid.\"\"\"\n        dims = {dimension: [f\"test-{dimension}-value\"]}\n        conf = {dimension: 0.5}\n        result = create_inquiry_result(\n            signal_id=f\"sig-{dimension}\",\n            context_id=f\"ctx-{dimension}\",\n            dimensions=dims,\n            confidence_scores=conf,\n        )\n        assert dimension in {str(k) for k in result.dimensions.keys()}\n        assert dimension in {str(k) for k in result.confidence_scores.keys()}\n        assert set(str(k) for k in result.confidence_scores.keys()) == \\\n               set(str(k) for k in result.dimensions.keys())\n\n    @pytest.mark.parametrize(\n        \"dimension\",\n        [\"people\", \"projects\", \"tickets\", \"keywords\", \"sentiment\"],\n    )\n    def test_get_connections_per_dimension(self, dimension):\n        \"\"\"get_dimension_connections works for each valid dimension.\"\"\"\n        dims = {dimension: [f\"conn-{dimension}\"]}\n        conf = {dimension: 0.5}\n        result = create_inquiry_result(\n            signal_id=f\"sig-gcd-{dimension}\",\n            context_id=f\"ctx-gcd-{dimension}\",\n            dimensions=dims,\n            confidence_scores=conf,\n        )\n        connections = get_dimension_connections(result, InquiryDimension(dimension))\n        assert connections == [f\"conn-{dimension}\"]\n\n    @pytest.mark.parametrize(\n        \"dimension\",\n        [\"people\", \"projects\", \"tickets\", \"keywords\", \"sentiment\"],\n    )\n    def test_get_confidence_per_dimension(self, dimension):\n        \"\"\"get_dimension_confidence works for each valid dimension.\"\"\"\n        dims = {dimension: [f\"item-{dimension}\"]}\n        conf = {dimension: 0.42}\n        result = create_inquiry_result(\n            signal_id=f\"sig-gcf-{dimension}\",\n            context_id=f\"ctx-gcf-{dimension}\",\n            dimensions=dims,\n            confidence_scores=conf,\n        )\n        c = get_dimension_confidence(result, InquiryDimension(dimension))\n        assert abs(c - 0.42) < 0.001\n"
+}

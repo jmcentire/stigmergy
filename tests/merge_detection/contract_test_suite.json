@@ -1,0 +1,604 @@
+{
+  "component_id": "merge_detection",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "err_invalid_overlap_threshold_negative",
+      "description": "detect_merge_candidates raises ValueError when overlap_threshold is negative",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_windows": "{}",
+        "assessments": "{}",
+        "neighbors": "{}",
+        "overlap_threshold": "-0.1"
+      },
+      "input_description": "overlap_threshold=-0.1 with empty mappings",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError",
+        "error message contains 'overlap_threshold'"
+      ]
+    },
+    {
+      "id": "err_invalid_overlap_threshold_above_one",
+      "description": "detect_merge_candidates raises ValueError when overlap_threshold > 1.0",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_windows": "{}",
+        "assessments": "{}",
+        "neighbors": "{}",
+        "overlap_threshold": "1.5"
+      },
+      "input_description": "overlap_threshold=1.5 with empty mappings",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError",
+        "error message contains 'overlap_threshold'"
+      ]
+    },
+    {
+      "id": "err_invalid_agreement_threshold_negative",
+      "description": "detect_merge_candidates raises ValueError when agreement_threshold is negative",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_windows": "{}",
+        "assessments": "{}",
+        "neighbors": "{}",
+        "agreement_threshold": "-0.5"
+      },
+      "input_description": "agreement_threshold=-0.5 with empty mappings",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError",
+        "error message contains 'agreement_threshold'"
+      ]
+    },
+    {
+      "id": "err_invalid_agreement_threshold_above_one",
+      "description": "detect_merge_candidates raises ValueError when agreement_threshold > 1.0",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_windows": "{}",
+        "assessments": "{}",
+        "neighbors": "{}",
+        "agreement_threshold": "2.0"
+      },
+      "input_description": "agreement_threshold=2.0 with empty mappings",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError",
+        "error message contains 'agreement_threshold'"
+      ]
+    },
+    {
+      "id": "err_invalid_familiarity_score_negative",
+      "description": "detect_merge_candidates raises ValueError when a familiarity_score is negative",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "assessments contain a familiarity_score of -0.1",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError",
+        "error message contains 'familiarity_score'"
+      ]
+    },
+    {
+      "id": "err_invalid_familiarity_score_above_one",
+      "description": "detect_merge_candidates raises ValueError when a familiarity_score is > 1.0",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "assessments contain a familiarity_score of 1.5",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError",
+        "error message contains 'familiarity_score'"
+      ]
+    },
+    {
+      "id": "helper_overlap_both_empty",
+      "description": "_compute_overlap returns 0.0 when both signal sets are empty",
+      "function": "_compute_overlap",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "frozenset()",
+        "signals_b": "frozenset()"
+      },
+      "input_description": "",
+      "expected_output_description": "0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "helper_overlap_identical_sets",
+      "description": "_compute_overlap returns 1.0 when both signal sets are identical and non-empty",
+      "function": "_compute_overlap",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "frozenset({'s1','s2','s3'})",
+        "signals_b": "frozenset({'s1','s2','s3'})"
+      },
+      "input_description": "",
+      "expected_output_description": "1.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "helper_overlap_disjoint_sets",
+      "description": "_compute_overlap returns 0.0 for completely disjoint sets",
+      "function": "_compute_overlap",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "frozenset({'a','b'})",
+        "signals_b": "frozenset({'c','d'})"
+      },
+      "input_description": "",
+      "expected_output_description": "0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "helper_overlap_partial",
+      "description": "_compute_overlap returns correct Jaccard similarity for partially overlapping sets",
+      "function": "_compute_overlap",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "frozenset({'s1','s2','s3'})",
+        "signals_b": "frozenset({'s2','s3','s4'})"
+      },
+      "input_description": "",
+      "expected_output_description": "2/4 = 0.5 (intersection={s2,s3}, union={s1,s2,s3,s4})",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "helper_overlap_one_empty",
+      "description": "_compute_overlap returns 0.0 when one set is empty and the other is not",
+      "function": "_compute_overlap",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "frozenset({'s1'})",
+        "signals_b": "frozenset()"
+      },
+      "input_description": "",
+      "expected_output_description": "0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "helper_overlap_symmetry",
+      "description": "_compute_overlap is symmetric: f(a,b) == f(b,a)",
+      "function": "_compute_overlap",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "frozenset({'s1','s2'})",
+        "signals_b": "frozenset({'s2','s3','s4'})"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "_compute_overlap(a, b) == _compute_overlap(b, a)"
+      ]
+    },
+    {
+      "id": "helper_agreement_no_shared_signals",
+      "description": "_compute_agreement returns 0.0 when contexts have no shared signals",
+      "function": "_compute_agreement",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Context A assessed signal s1, context B assessed signal s2, no overlap",
+      "expected_output_description": "0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "helper_agreement_both_empty",
+      "description": "_compute_agreement returns 0.0 when both assessment maps are empty",
+      "function": "_compute_agreement",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "assessments_a": "{}",
+        "assessments_b": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "helper_agreement_perfect",
+      "description": "_compute_agreement returns 1.0 when all shared signals have identical accept decisions and familiarity scores",
+      "function": "_compute_agreement",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Both contexts agree on accept=True, familiarity=0.8 for shared signals",
+      "expected_output_description": "1.0",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "helper_agreement_accept_mismatch",
+      "description": "_compute_agreement returns 0.0 for a shared signal where accept decisions differ (regardless of familiarity match)",
+      "function": "_compute_agreement",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "One shared signal: A accepts, B rejects, both familiarity=0.5",
+      "expected_output_description": "0.0 because (0.0) * (1.0 - 0.0) = 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.0)"
+      ]
+    },
+    {
+      "id": "helper_agreement_familiarity_diff",
+      "description": "_compute_agreement correctly uses familiarity difference when accept decisions match",
+      "function": "_compute_agreement",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "One shared signal: both accept, familiarity_a=0.9, familiarity_b=0.6",
+      "expected_output_description": "1.0 * (1.0 - 0.3) = 0.7",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.7)"
+      ]
+    },
+    {
+      "id": "helper_agreement_multiple_signals",
+      "description": "_compute_agreement computes mean of per-signal agreement across multiple shared signals",
+      "function": "_compute_agreement",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two shared signals with different agreement values, mean should be computed",
+      "expected_output_description": "Mean of individual agreement scores",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(expected_mean)"
+      ]
+    },
+    {
+      "id": "detect_empty_inputs",
+      "description": "detect_merge_candidates returns empty candidates when all inputs are empty",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_windows": "{}",
+        "assessments": "{}",
+        "neighbors": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "MergeDetectionResult with empty candidates tuple",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_single_context",
+      "description": "detect_merge_candidates returns empty candidates with a single context and no neighbors",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Single context 'ctx1' with signals but no neighbors defined",
+      "expected_output_description": "Empty candidates",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_pair_below_overlap_threshold",
+      "description": "detect_merge_candidates returns no candidates when overlap is below threshold (0.7)",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two neighboring contexts with Jaccard overlap = 0.5 (below 0.7)",
+      "expected_output_description": "Empty candidates",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_pair_below_agreement_threshold",
+      "description": "detect_merge_candidates returns no candidates when agreement is below threshold (0.8)",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two neighboring contexts with high overlap but low agreement",
+      "expected_output_description": "Empty candidates",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_pair_at_exact_thresholds",
+      "description": "detect_merge_candidates returns no candidates when overlap == 0.7 exactly and agreement == 0.8 exactly (strict inequality required)",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two contexts with overlap exactly 0.7 and agreement exactly 0.8",
+      "expected_output_description": "Empty candidates (strict inequality not met)",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_pair_above_thresholds",
+      "description": "detect_merge_candidates returns one candidate when overlap > 0.7 and agreement > 0.8",
+      "function": "detect_merge_candidates",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two neighboring contexts sharing most signals with very similar assessments",
+      "expected_output_description": "One MergeCandidate with correct overlap, agreement, combined_score",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1",
+        "candidate overlap > 0.7",
+        "candidate agreement > 0.8",
+        "combined_score == overlap * agreement"
+      ]
+    },
+    {
+      "id": "detect_canonical_ordering",
+      "description": "MergeCandidate has context_id_a <= context_id_b lexicographically",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Neighbor pair where second context is lexicographically before first",
+      "expected_output_description": "context_id_a <= context_id_b in the candidate",
+      "expected_error": "",
+      "assertions": [
+        "candidate.context_id_a <= candidate.context_id_b"
+      ]
+    },
+    {
+      "id": "detect_sorted_by_combined_score_desc",
+      "description": "Candidates are sorted by combined_score descending",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three neighbor pairs all exceeding thresholds with different combined scores",
+      "expected_output_description": "Candidates ordered from highest to lowest combined_score",
+      "expected_error": "",
+      "assertions": [
+        "candidates[0].combined_score >= candidates[1].combined_score >= candidates[2].combined_score"
+      ]
+    },
+    {
+      "id": "detect_only_neighbors_checked",
+      "description": "Non-neighbor pairs are not returned even if they would exceed thresholds",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Three contexts: A-B are neighbors, A-C are not. Both pairs would exceed thresholds, but only A-B should appear.",
+      "expected_output_description": "Only the A-B pair is returned",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1",
+        "pair is (A, B)"
+      ]
+    },
+    {
+      "id": "detect_symmetric_neighbors",
+      "description": "Neighbor relationship is symmetric: if B in neighbors[A], pair is checked even if A not in neighbors[B]",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "neighbors={'A': {'B'}} with no entry for B. Both have high overlap and agreement.",
+      "expected_output_description": "The (A, B) pair is detected as a candidate",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1"
+      ]
+    },
+    {
+      "id": "detect_pair_checked_once",
+      "description": "Each neighbor pair is evaluated exactly once even if both directions are in neighbors map",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "neighbors={'A': {'B'}, 'B': {'A'}} — both directions specified",
+      "expected_output_description": "Exactly one candidate for the (A, B) pair, not two",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1"
+      ]
+    },
+    {
+      "id": "detect_combined_score_product",
+      "description": "combined_score equals overlap * agreement for every candidate",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Multiple merge candidates",
+      "expected_output_description": "Each candidate's combined_score == overlap * agreement",
+      "expected_error": "",
+      "assertions": [
+        "all(c.combined_score == pytest.approx(c.overlap * c.agreement) for c in result.candidates)"
+      ]
+    },
+    {
+      "id": "detect_result_immutable",
+      "description": "MergeDetectionResult is a frozen/immutable Pydantic model",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Any valid input producing a result",
+      "expected_output_description": "Attempting to set an attribute raises an error",
+      "expected_error": "",
+      "assertions": [
+        "setting result.candidates raises an error"
+      ]
+    },
+    {
+      "id": "detect_custom_thresholds",
+      "description": "detect_merge_candidates respects custom overlap and agreement thresholds",
+      "function": "detect_merge_candidates",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two contexts with overlap=0.5 and agreement=0.6; thresholds set to 0.4 and 0.5",
+      "expected_output_description": "One candidate returned since 0.5>0.4 and 0.6>0.5",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1"
+      ]
+    },
+    {
+      "id": "detect_threshold_zero",
+      "description": "detect_merge_candidates with threshold 0.0 accepts any pair with overlap>0 and agreement>0",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two neighboring contexts with minimal overlap and minimal agreement, thresholds=0.0",
+      "expected_output_description": "Candidate is returned since overlap>0.0 and agreement>0.0",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1"
+      ]
+    },
+    {
+      "id": "detect_threshold_one",
+      "description": "detect_merge_candidates with threshold 1.0 returns no candidates (strict inequality: nothing > 1.0)",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two identical neighboring contexts, thresholds=1.0",
+      "expected_output_description": "No candidates because overlap=1.0 is NOT > 1.0",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_no_neighbors_entry",
+      "description": "detect_merge_candidates handles contexts present in signal_windows but not in neighbors",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Two contexts with signals and assessments but neighbors is empty",
+      "expected_output_description": "Empty candidates",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "detect_multiple_candidates_ordering",
+      "description": "Multiple candidates are correctly sorted by combined_score descending with tie-breaking",
+      "function": "detect_merge_candidates",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Four contexts forming three neighbor pairs, all exceeding thresholds with distinct combined scores",
+      "expected_output_description": "Three candidates sorted by combined_score descending",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 3",
+        "scores are in descending order"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for merge_detection (Merge Trigger Detection).\nTests verify detect_merge_candidates, _compute_overlap, _compute_agreement\nagainst the contract specification v1.\n\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport pytest\nfrom unittest.mock import MagicMock\nfrom dataclasses import dataclass\n\n# Import the component under test\nfrom core.lifecycle import (\n    detect_merge_candidates,\n    _compute_overlap,\n    _compute_agreement,\n    AssessmentSummary,\n    MergeCandidate,\n    MergeDetectionResult,\n)\n\n\n# ---------------------------------------------------------------------------\n# Helpers for constructing test data\n# ---------------------------------------------------------------------------\n\ndef make_assessment(accepted: bool, familiarity_score: float) -> AssessmentSummary:\n    \"\"\"Construct an AssessmentSummary with the given values.\"\"\"\n    return AssessmentSummary(accepted=accepted, familiarity_score=familiarity_score)\n\n\n# ===========================================================================\n# GROUP 1: Input validation / error case tests\n# ===========================================================================\n\nclass TestInputValidation:\n    \"\"\"Verify that invalid inputs raise appropriate ValueErrors.\"\"\"\n\n    # -- overlap_threshold errors --\n\n    def test_invalid_overlap_threshold_negative(self):\n        \"\"\"overlap_threshold < 0.0 raises ValueError mentioning overlap_threshold.\"\"\"\n        with pytest.raises(ValueError, match=\"overlap_threshold\"):\n            detect_merge_candidates(\n                signal_windows={},\n                assessments={},\n                neighbors={},\n                overlap_threshold=-0.1,\n            )\n\n    def test_invalid_overlap_threshold_above_one(self):\n        \"\"\"overlap_threshold > 1.0 raises ValueError mentioning overlap_threshold.\"\"\"\n        with pytest.raises(ValueError, match=\"overlap_threshold\"):\n            detect_merge_candidates(\n                signal_windows={},\n                assessments={},\n                neighbors={},\n                overlap_threshold=1.5,\n            )\n\n    @pytest.mark.parametrize(\"val\", [-100.0, -0.001, 1.0001, 50.0])\n    def test_invalid_overlap_threshold_parametrized(self, val):\n        \"\"\"Various out-of-range overlap_threshold values all raise ValueError.\"\"\"\n        with pytest.raises(ValueError, match=\"overlap_threshold\"):\n            detect_merge_candidates(\n                signal_windows={},\n                assessments={},\n                neighbors={},\n                overlap_threshold=val,\n            )\n\n    # -- agreement_threshold errors --\n\n    def test_invalid_agreement_threshold_negative(self):\n        \"\"\"agreement_threshold < 0.0 raises ValueError mentioning agreement_threshold.\"\"\"\n        with pytest.raises(ValueError, match=\"agreement_threshold\"):\n            detect_merge_candidates(\n                signal_windows={},\n                assessments={},\n                neighbors={},\n                agreement_threshold=-0.5,\n            )\n\n    def test_invalid_agreement_threshold_above_one(self):\n        \"\"\"agreement_threshold > 1.0 raises ValueError mentioning agreement_threshold.\"\"\"\n        with pytest.raises(ValueError, match=\"agreement_threshold\"):\n            detect_merge_candidates(\n                signal_windows={},\n                assessments={},\n                neighbors={},\n                agreement_threshold=2.0,\n            )\n\n    @pytest.mark.parametrize(\"val\", [-0.01, 1.01, 999.0])\n    def test_invalid_agreement_threshold_parametrized(self, val):\n        \"\"\"Various out-of-range agreement_threshold values all raise ValueError.\"\"\"\n        with pytest.raises(ValueError, match=\"agreement_threshold\"):\n            detect_merge_candidates(\n                signal_windows={},\n                assessments={},\n                neighbors={},\n                agreement_threshold=val,\n            )\n\n    # -- familiarity_score errors --\n\n    def test_invalid_familiarity_score_negative(self):\n        \"\"\"A familiarity_score < 0.0 in assessments raises ValueError.\"\"\"\n        signal_windows = {\"ctx1\": frozenset({\"s1\"}), \"ctx2\": frozenset({\"s1\"})}\n        assessments = {\n            \"ctx1\": {\"s1\": make_assessment(True, -0.1)},\n            \"ctx2\": {\"s1\": make_assessment(True, 0.5)},\n        }\n        neighbors = {\"ctx1\": frozenset({\"ctx2\"})}\n        with pytest.raises(ValueError, match=\"familiarity_score\"):\n            detect_merge_candidates(\n                signal_windows=signal_windows,\n                assessments=assessments,\n                neighbors=neighbors,\n            )\n\n    def test_invalid_familiarity_score_above_one(self):\n        \"\"\"A familiarity_score > 1.0 in assessments raises ValueError.\"\"\"\n        signal_windows = {\"ctx1\": frozenset({\"s1\"}), \"ctx2\": frozenset({\"s1\"})}\n        assessments = {\n            \"ctx1\": {\"s1\": make_assessment(True, 1.5)},\n            \"ctx2\": {\"s1\": make_assessment(True, 0.5)},\n        }\n        neighbors = {\"ctx1\": frozenset({\"ctx2\"})}\n        with pytest.raises(ValueError, match=\"familiarity_score\"):\n            detect_merge_candidates(\n                signal_windows=signal_windows,\n                assessments=assessments,\n                neighbors=neighbors,\n            )\n\n\n# ===========================================================================\n# GROUP 2: Helper function unit tests\n# ===========================================================================\n\nclass TestComputeOverlap:\n    \"\"\"Unit tests for _compute_overlap (Jaccard similarity).\"\"\"\n\n    def test_both_empty_returns_zero(self):\n        \"\"\"Two empty frozensets yield 0.0 overlap.\"\"\"\n        result = _compute_overlap(frozenset(), frozenset())\n        assert result == pytest.approx(0.0), \"Both-empty sets should have overlap 0.0\"\n\n    def test_identical_nonempty_returns_one(self):\n        \"\"\"Identical non-empty sets yield 1.0 overlap.\"\"\"\n        s = frozenset({\"s1\", \"s2\", \"s3\"})\n        result = _compute_overlap(s, s)\n        assert result == pytest.approx(1.0), \"Identical sets should have overlap 1.0\"\n\n    def test_disjoint_sets_return_zero(self):\n        \"\"\"Completely disjoint non-empty sets yield 0.0 overlap.\"\"\"\n        result = _compute_overlap(frozenset({\"a\", \"b\"}), frozenset({\"c\", \"d\"}))\n        assert result == pytest.approx(0.0), \"Disjoint sets should have overlap 0.0\"\n\n    def test_partial_overlap(self):\n        \"\"\"Partially overlapping sets: intersection=2, union=4 => 0.5.\"\"\"\n        a = frozenset({\"s1\", \"s2\", \"s3\"})\n        b = frozenset({\"s2\", \"s3\", \"s4\"})\n        result = _compute_overlap(a, b)\n        assert result == pytest.approx(0.5), (\n            f\"Expected 0.5 (2/4 Jaccard), got {result}\"\n        )\n\n    def test_one_empty_returns_zero(self):\n        \"\"\"One empty set and one non-empty set yield 0.0 overlap.\"\"\"\n        result = _compute_overlap(frozenset({\"s1\"}), frozenset())\n        assert result == pytest.approx(0.0), \"One-empty pair should have overlap 0.0\"\n\n    def test_subset_relationship(self):\n        \"\"\"When A is a subset of B: |A∩B|/|A∪B| = |A|/|B|.\"\"\"\n        a = frozenset({\"s1\", \"s2\"})\n        b = frozenset({\"s1\", \"s2\", \"s3\", \"s4\"})\n        result = _compute_overlap(a, b)\n        assert result == pytest.approx(2.0 / 4.0), (\n            f\"Subset overlap should be 2/4=0.5, got {result}\"\n        )\n\n    def test_symmetry(self):\n        \"\"\"Jaccard similarity is symmetric: overlap(a,b) == overlap(b,a).\"\"\"\n        a = frozenset({\"s1\", \"s2\"})\n        b = frozenset({\"s2\", \"s3\", \"s4\"})\n        assert _compute_overlap(a, b) == pytest.approx(_compute_overlap(b, a)), (\n            \"Jaccard similarity must be symmetric\"\n        )\n\n    def test_result_in_range(self):\n        \"\"\"Result is always in [0.0, 1.0].\"\"\"\n        a = frozenset({\"x\", \"y\", \"z\"})\n        b = frozenset({\"y\", \"z\", \"w\", \"v\"})\n        result = _compute_overlap(a, b)\n        assert 0.0 <= result <= 1.0, f\"Overlap {result} out of [0,1] range\"\n\n    @pytest.mark.parametrize(\n        \"a,b,expected\",\n        [\n            (frozenset({\"a\"}), frozenset({\"a\"}), 1.0),\n            (frozenset({\"a\"}), frozenset({\"b\"}), 0.0),\n            (frozenset({\"a\", \"b\"}), frozenset({\"a\", \"b\", \"c\"}), 2.0 / 3.0),\n            (frozenset({\"a\", \"b\", \"c\"}), frozenset({\"b\", \"c\", \"d\", \"e\"}), 2.0 / 5.0),\n        ],\n    )\n    def test_known_values_parametrized(self, a, b, expected):\n        \"\"\"Parameterized known-value tests for Jaccard similarity.\"\"\"\n        result = _compute_overlap(a, b)\n        assert result == pytest.approx(expected), (\n            f\"Expected {expected}, got {result} for sets {a}, {b}\"\n        )\n\n\nclass TestComputeAgreement:\n    \"\"\"Unit tests for _compute_agreement.\"\"\"\n\n    def test_both_empty_returns_zero(self):\n        \"\"\"Two empty assessment maps yield 0.0 agreement.\"\"\"\n        result = _compute_agreement({}, {})\n        assert result == pytest.approx(0.0), \"Both-empty assessments should yield 0.0\"\n\n    def test_no_shared_signals_returns_zero(self):\n        \"\"\"Non-overlapping signal keys yield 0.0 agreement.\"\"\"\n        a = {\"s1\": make_assessment(True, 0.5)}\n        b = {\"s2\": make_assessment(True, 0.5)}\n        result = _compute_agreement(a, b)\n        assert result == pytest.approx(0.0), (\n            \"No shared signals should yield 0.0 agreement\"\n        )\n\n    def test_perfect_agreement(self):\n        \"\"\"Identical accept decisions and familiarity on all shared signals => 1.0.\"\"\"\n        a = {\n            \"s1\": make_assessment(True, 0.8),\n            \"s2\": make_assessment(False, 0.3),\n        }\n        b = {\n            \"s1\": make_assessment(True, 0.8),\n            \"s2\": make_assessment(False, 0.3),\n        }\n        result = _compute_agreement(a, b)\n        assert result == pytest.approx(1.0), f\"Perfect match should be 1.0, got {result}\"\n\n    def test_accept_mismatch_yields_zero(self):\n        \"\"\"When accept decisions differ, that signal contributes 0.0.\"\"\"\n        a = {\"s1\": make_assessment(True, 0.5)}\n        b = {\"s1\": make_assessment(False, 0.5)}\n        result = _compute_agreement(a, b)\n        assert result == pytest.approx(0.0), (\n            f\"Accept mismatch should yield 0.0, got {result}\"\n        )\n\n    def test_familiarity_difference(self):\n        \"\"\"Same accept, different familiarity: agreement = 1.0 * (1.0 - |0.9-0.6|) = 0.7.\"\"\"\n        a = {\"s1\": make_assessment(True, 0.9)}\n        b = {\"s1\": make_assessment(True, 0.6)}\n        result = _compute_agreement(a, b)\n        assert result == pytest.approx(0.7), (\n            f\"Expected 0.7, got {result}\"\n        )\n\n    def test_multiple_shared_signals_mean(self):\n        \"\"\"Agreement is the arithmetic mean over shared signals.\n\n        Signal s1: accept match (True/True), fam diff = |0.8-0.8| = 0.0 => 1.0 * 1.0 = 1.0\n        Signal s2: accept mismatch (True/False) => 0.0 * anything = 0.0\n        Mean = (1.0 + 0.0) / 2 = 0.5\n        \"\"\"\n        a = {\n            \"s1\": make_assessment(True, 0.8),\n            \"s2\": make_assessment(True, 0.5),\n        }\n        b = {\n            \"s1\": make_assessment(True, 0.8),\n            \"s2\": make_assessment(False, 0.5),\n        }\n        result = _compute_agreement(a, b)\n        assert result == pytest.approx(0.5), f\"Expected mean 0.5, got {result}\"\n\n    def test_multiple_shared_signals_partial_familiarity(self):\n        \"\"\"Agreement across three shared signals with mixed familiarity diffs.\n\n        s1: accept match, fam diff = 0.1 => 1.0 * 0.9 = 0.9\n        s2: accept match, fam diff = 0.0 => 1.0 * 1.0 = 1.0\n        s3: accept match, fam diff = 0.5 => 1.0 * 0.5 = 0.5\n        Mean = (0.9 + 1.0 + 0.5) / 3 = 0.8\n        \"\"\"\n        a = {\n            \"s1\": make_assessment(True, 0.5),\n            \"s2\": make_assessment(False, 0.2),\n            \"s3\": make_assessment(True, 1.0),\n        }\n        b = {\n            \"s1\": make_assessment(True, 0.6),\n            \"s2\": make_assessment(False, 0.2),\n            \"s3\": make_assessment(True, 0.5),\n        }\n        result = _compute_agreement(a, b)\n        assert result == pytest.approx(0.8), f\"Expected 0.8, got {result}\"\n\n    def test_only_shared_signals_counted(self):\n        \"\"\"Non-shared signals are ignored in the agreement computation.\"\"\"\n        a = {\n            \"s1\": make_assessment(True, 0.5),\n            \"s_only_a\": make_assessment(False, 0.0),\n        }\n        b = {\n            \"s1\": make_assessment(True, 0.5),\n            \"s_only_b\": make_assessment(True, 1.0),\n        }\n        result = _compute_agreement(a, b)\n        # Only s1 is shared: agreement = 1.0 * (1.0 - 0.0) = 1.0\n        assert result == pytest.approx(1.0), (\n            f\"Only shared signal s1 should matter, expected 1.0, got {result}\"\n        )\n\n    def test_symmetry(self):\n        \"\"\"Agreement is symmetric: f(a,b) == f(b,a).\"\"\"\n        a = {\n            \"s1\": make_assessment(True, 0.3),\n            \"s2\": make_assessment(False, 0.7),\n        }\n        b = {\n            \"s1\": make_assessment(True, 0.9),\n            \"s2\": make_assessment(False, 0.1),\n        }\n        assert _compute_agreement(a, b) == pytest.approx(\n            _compute_agreement(b, a)\n        ), \"Agreement must be symmetric\"\n\n\n# ===========================================================================\n# GROUP 3: Integration tests for detect_merge_candidates\n# ===========================================================================\n\nclass TestDetectMergeCandidatesHappyPath:\n    \"\"\"Happy-path integration tests with hand-calculated expected outputs.\"\"\"\n\n    def test_two_contexts_above_thresholds(self):\n        \"\"\"Two neighboring contexts with high overlap and agreement produce one candidate.\n\n        Signals: ctx1={s1,s2,s3,s4,s5}, ctx2={s1,s2,s3,s4,s6}\n        Jaccard = 4/6 ≈ 0.667  -- need > 0.7 so let's use bigger overlap.\n\n        Revised: ctx1={s1,s2,s3,s4,s5,s6,s7,s8}, ctx2={s1,s2,s3,s4,s5,s6,s7,s9}\n        Intersection = 7, union = 9 => Jaccard = 7/9 ≈ 0.778 > 0.7 ✓\n\n        Assessments on shared signals (s1-s7): all accept=True, familiarity=0.9\n        Agreement = 1.0 > 0.8 ✓\n        \"\"\"\n        shared = {f\"s{i}\" for i in range(1, 8)}\n        ctx1_signals = frozenset(shared | {\"s8\"})\n        ctx2_signals = frozenset(shared | {\"s9\"})\n\n        assessment_a = {\n            sid: make_assessment(True, 0.9) for sid in ctx1_signals\n        }\n        assessment_b = {\n            sid: make_assessment(True, 0.9) for sid in ctx2_signals\n        }\n\n        signal_windows = {\"ctx1\": ctx1_signals, \"ctx2\": ctx2_signals}\n        assessments = {\"ctx1\": assessment_a, \"ctx2\": assessment_b}\n        neighbors = {\"ctx1\": frozenset({\"ctx2\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n\n        assert len(result.candidates) == 1, (\n            f\"Expected 1 candidate, got {len(result.candidates)}\"\n        )\n        c = result.candidates[0]\n        assert c.context_id_a == \"ctx1\", f\"Expected ctx1, got {c.context_id_a}\"\n        assert c.context_id_b == \"ctx2\", f\"Expected ctx2, got {c.context_id_b}\"\n        assert c.overlap == pytest.approx(7.0 / 9.0), (\n            f\"Expected overlap 7/9, got {c.overlap}\"\n        )\n        assert c.overlap > 0.7, \"Overlap should exceed 0.7\"\n        assert c.agreement == pytest.approx(1.0), (\n            f\"Expected agreement 1.0, got {c.agreement}\"\n        )\n        assert c.agreement > 0.8, \"Agreement should exceed 0.8\"\n        assert c.combined_score == pytest.approx(c.overlap * c.agreement), (\n            \"combined_score must equal overlap * agreement\"\n        )\n\n    def test_custom_lower_thresholds(self):\n        \"\"\"Custom lower thresholds allow pairs with moderate overlap/agreement.\n\n        ctx1={s1,s2}, ctx2={s1,s3}\n        Jaccard = 1/3 ≈ 0.333\n        Agreement on s1: both accept=True, fam=0.5 => 1.0 * 1.0 = 1.0\n        With thresholds overlap=0.3, agreement=0.5: 0.333 > 0.3 ✓, 1.0 > 0.5 ✓\n        \"\"\"\n        signal_windows = {\n            \"a\": frozenset({\"s1\", \"s2\"}),\n            \"b\": frozenset({\"s1\", \"s3\"}),\n        }\n        assessments = {\n            \"a\": {\n                \"s1\": make_assessment(True, 0.5),\n                \"s2\": make_assessment(True, 0.5),\n            },\n            \"b\": {\n                \"s1\": make_assessment(True, 0.5),\n                \"s3\": make_assessment(True, 0.5),\n            },\n        }\n        neighbors = {\"a\": frozenset({\"b\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n            overlap_threshold=0.3,\n            agreement_threshold=0.5,\n        )\n\n        assert len(result.candidates) == 1, (\n            f\"Expected 1 candidate with lowered thresholds, got {len(result.candidates)}\"\n        )\n        c = result.candidates[0]\n        assert c.overlap == pytest.approx(1.0 / 3.0)\n        assert c.agreement == pytest.approx(1.0)\n\n    def test_multiple_candidates_sorted_descending(self):\n        \"\"\"Three qualifying neighbor pairs sorted by combined_score descending.\n\n        We create four contexts A, B, C, D with pairwise neighbors:\n        A-B, B-C, C-D\n\n        A-B: overlap=1.0 (identical signals), agreement=1.0 => combined=1.0\n        B-C: overlap=0.8, agreement=0.9 => combined=0.72\n        C-D: overlap=0.75, agreement=0.85 => combined ≈ 0.6375\n\n        Expected order: A-B (1.0), B-C (0.72), C-D (0.6375)\n        \"\"\"\n        # All 10 signals for identity between A and B\n        all_sigs = frozenset({f\"s{i}\" for i in range(10)})\n        # B-C: share 8/10 signals (Jaccard = 8/12 = 0.667) -- need 0.8\n        # Let me recalculate: for Jaccard 0.8 => |I|/|U| = 0.8 => |I|=8, |U|=10 => each has 9 signals, sharing 8\n        bc_shared = frozenset({f\"s{i}\" for i in range(8)})\n        b_extra = frozenset({\"sb1\"})\n        c_extra = frozenset({\"sc1\"})\n        b_sigs = bc_shared | b_extra  # 9 signals\n        c_sigs = bc_shared | c_extra  # 9 signals\n        # Jaccard B-C = 8 / 10 = 0.8 -- need > 0.7 ✓\n\n        # C-D: share 6/8 => Jaccard = 6/10 ... let me just use exact sets\n        cd_shared = frozenset({f\"s{i}\" for i in range(6)})\n        d_extra = frozenset({\"sd1\", \"sd2\"})\n        d_sigs = cd_shared | d_extra | c_extra  # 9 signals (6 + 2 + 1)\n        # C has bc_shared | c_extra = 9 signals\n        # D has cd_shared | d_extra | c_extra = 9 signals\n        # C ∩ D = cd_shared | c_extra = 7 signals\n        # C ∪ D = bc_shared | c_extra | d_extra = 8 + 1 + 2 = 11 signals\n        # Jaccard C-D = 7/11 ≈ 0.636 -- need > 0.7 ... let me redesign\n\n        # Simpler approach: control overlap precisely\n        # A and B: identical 10 signals => overlap = 1.0\n        a_sigs = frozenset({f\"x{i}\" for i in range(10)})\n        b_sigs_v2 = frozenset({f\"x{i}\" for i in range(10)})\n\n        # B and C: 9 shared out of 10 each, 1 unique each => union=11, intersection=9 => J=9/11≈0.818 > 0.7 ✓\n        bc_shared_v2 = frozenset({f\"x{i}\" for i in range(9)})\n        c_sigs_v2 = bc_shared_v2 | frozenset({\"yc1\"})  # 10 signals\n\n        # C and D: 8 shared, 2 unique each => union=12, intersection=8 => J=8/12≈0.667... still < 0.7\n        # 8 shared, 1 unique each => union=10, intersection=8 => J=0.8 > 0.7 ✓\n        cd_shared_v2 = frozenset({f\"x{i}\" for i in range(8)})\n        d_sigs_v2 = cd_shared_v2 | frozenset({\"yd1\"})  # 9 signals\n        # But c_sigs_v2 has 10 signals, d has 9\n        # C ∩ D = {x0..x7, yc1} ∩ {x0..x7, yd1} = {x0..x7} = 8\n        # C ∪ D = {x0..x8, yc1, yd1} = 11\n        # J = 8/11 ≈ 0.727 > 0.7 ✓\n\n        signal_windows = {\n            \"A\": a_sigs,\n            \"B\": b_sigs_v2,\n            \"C\": c_sigs_v2,\n            \"D\": d_sigs_v2,\n        }\n\n        # All assessments: accept=True, fam=0.9 for high agreement\n        def make_assessments_for(sigs):\n            return {sid: make_assessment(True, 0.9) for sid in sigs}\n\n        assessments = {\n            \"A\": make_assessments_for(a_sigs),\n            \"B\": make_assessments_for(b_sigs_v2),\n            \"C\": make_assessments_for(c_sigs_v2),\n            \"D\": make_assessments_for(d_sigs_v2),\n        }\n\n        neighbors = {\n            \"A\": frozenset({\"B\"}),\n            \"B\": frozenset({\"A\", \"C\"}),\n            \"C\": frozenset({\"B\", \"D\"}),\n            \"D\": frozenset({\"C\"}),\n        }\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n\n        assert len(result.candidates) == 3, (\n            f\"Expected 3 candidates, got {len(result.candidates)}\"\n        )\n        # Verify descending order\n        scores = [c.combined_score for c in result.candidates]\n        assert scores == sorted(scores, reverse=True), (\n            f\"Candidates not sorted by combined_score descending: {scores}\"\n        )\n        # Verify combined_score = overlap * agreement for all\n        for c in result.candidates:\n            assert c.combined_score == pytest.approx(c.overlap * c.agreement), (\n                f\"combined_score {c.combined_score} != overlap*agreement \"\n                f\"({c.overlap}*{c.agreement}={c.overlap*c.agreement})\"\n            )\n\n\n# ===========================================================================\n# GROUP 4: Edge cases and boundary tests\n# ===========================================================================\n\nclass TestDetectMergeCandidatesEdgeCases:\n    \"\"\"Edge cases, boundary conditions, and invariant verification.\"\"\"\n\n    def test_empty_inputs_returns_empty(self):\n        \"\"\"All empty mappings produce empty candidates.\"\"\"\n        result = detect_merge_candidates(\n            signal_windows={},\n            assessments={},\n            neighbors={},\n        )\n        assert len(result.candidates) == 0, \"Empty inputs should yield no candidates\"\n\n    def test_single_context_no_neighbors(self):\n        \"\"\"A single context with no neighbors produces no candidates.\"\"\"\n        result = detect_merge_candidates(\n            signal_windows={\"ctx1\": frozenset({\"s1\", \"s2\"})},\n            assessments={\"ctx1\": {\"s1\": make_assessment(True, 0.9)}},\n            neighbors={},\n        )\n        assert len(result.candidates) == 0, (\n            \"Single context with no neighbors should yield no candidates\"\n        )\n\n    def test_pair_below_overlap_threshold_no_candidates(self):\n        \"\"\"Two neighbors with low Jaccard overlap produce no candidates.\n\n        ctx1={s1,s2}, ctx2={s3,s4} => Jaccard=0/4=0.0\n        \"\"\"\n        signal_windows = {\n            \"ctx1\": frozenset({\"s1\", \"s2\"}),\n            \"ctx2\": frozenset({\"s3\", \"s4\"}),\n        }\n        assessments = {\n            \"ctx1\": {\"s1\": make_assessment(True, 0.9), \"s2\": make_assessment(True, 0.9)},\n            \"ctx2\": {\"s3\": make_assessment(True, 0.9), \"s4\": make_assessment(True, 0.9)},\n        }\n        neighbors = {\"ctx1\": frozenset({\"ctx2\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 0, \"Low overlap should yield no candidates\"\n\n    def test_pair_below_agreement_threshold_no_candidates(self):\n        \"\"\"High overlap but low agreement produces no candidates.\n\n        Same signals but completely opposite accept decisions.\n        \"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"ctx1\": sigs, \"ctx2\": sigs}\n        assessments = {\n            \"ctx1\": {s: make_assessment(True, 0.9) for s in sigs},\n            \"ctx2\": {s: make_assessment(False, 0.1) for s in sigs},  # all reject, very different fam\n        }\n        neighbors = {\"ctx1\": frozenset({\"ctx2\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        # Overlap = 1.0 > 0.7 ✓\n        # Agreement: accept mismatch => 0.0 for each signal, mean=0.0\n        assert len(result.candidates) == 0, (\n            \"High overlap but zero agreement should yield no candidates\"\n        )\n\n    def test_exact_threshold_overlap_not_triggered(self):\n        \"\"\"Overlap exactly at threshold (strict inequality) does NOT trigger merge.\n\n        Need Jaccard = exactly 0.7 = 7/10 => intersection=7, union=10\n        A has 8 signals, B has 9 signals, |A∩B|=7, |A∪B|=10 => Jaccard=0.7\n        \"\"\"\n        shared = frozenset({f\"s{i}\" for i in range(7)})\n        a_sigs = shared | frozenset({\"a1\"})           # 8 signals\n        b_sigs = shared | frozenset({\"b1\", \"b2\"})     # 9 signals\n        # union = 7 + 1 + 2 = 10, intersection = 7, Jaccard = 7/10 = 0.7\n\n        signal_windows = {\"A\": a_sigs, \"B\": b_sigs}\n        assessments = {\n            \"A\": {s: make_assessment(True, 0.9) for s in a_sigs},\n            \"B\": {s: make_assessment(True, 0.9) for s in b_sigs},\n        }\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 0, (\n            \"Overlap exactly 0.7 (not strictly greater) should NOT trigger merge\"\n        )\n\n    def test_exact_threshold_agreement_not_triggered(self):\n        \"\"\"Agreement exactly at threshold (0.8) does NOT trigger merge.\n\n        5 shared signals, 4 perfect agreement (1.0 each), 1 zero agreement (0.0).\n        Mean = 4/5 = 0.8 exactly.\n        Need overlap > 0.7 for the pair to be evaluated.\n        \"\"\"\n        sigs = frozenset({f\"s{i}\" for i in range(5)})\n        signal_windows = {\"A\": sigs, \"B\": sigs}  # Jaccard = 1.0 > 0.7 ✓\n        assessments_a = {f\"s{i}\": make_assessment(True, 0.5) for i in range(5)}\n        assessments_b = {f\"s{i}\": make_assessment(True, 0.5) for i in range(4)}\n        assessments_b[\"s4\"] = make_assessment(False, 0.5)  # accept mismatch => 0.0\n\n        assessments = {\"A\": assessments_a, \"B\": assessments_b}\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 0, (\n            \"Agreement exactly 0.8 (not strictly greater) should NOT trigger merge\"\n        )\n\n    def test_threshold_zero_accepts_any_positive(self):\n        \"\"\"With thresholds at 0.0, any positive overlap and agreement triggers merge.\n\n        A={s1,s2}, B={s1,s3}: Jaccard=1/3≈0.333 > 0.0 ✓\n        Shared signal s1: same accept and familiarity => agreement 1.0 > 0.0 ✓\n        \"\"\"\n        signal_windows = {\n            \"A\": frozenset({\"s1\", \"s2\"}),\n            \"B\": frozenset({\"s1\", \"s3\"}),\n        }\n        assessments = {\n            \"A\": {\"s1\": make_assessment(True, 0.5), \"s2\": make_assessment(True, 0.5)},\n            \"B\": {\"s1\": make_assessment(True, 0.5), \"s3\": make_assessment(True, 0.5)},\n        }\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n            overlap_threshold=0.0,\n            agreement_threshold=0.0,\n        )\n        assert len(result.candidates) == 1, (\n            \"With zero thresholds, any positive overlap/agreement should produce a candidate\"\n        )\n\n    def test_threshold_one_rejects_even_perfect(self):\n        \"\"\"With thresholds at 1.0, even perfect overlap/agreement won't pass (strict >).\"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\"})\n        signal_windows = {\"A\": sigs, \"B\": sigs}\n        assessments = {\n            \"A\": {s: make_assessment(True, 0.5) for s in sigs},\n            \"B\": {s: make_assessment(True, 0.5) for s in sigs},\n        }\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n            overlap_threshold=1.0,\n            agreement_threshold=1.0,\n        )\n        assert len(result.candidates) == 0, (\n            \"Threshold=1.0 means need >1.0 which is impossible, so no candidates\"\n        )\n\n    def test_non_neighbors_not_included(self):\n        \"\"\"Pairs that aren't neighbors don't appear in results even if they'd qualify.\n\n        A-B are neighbors, A-C are not. Both pairs would exceed thresholds.\n        \"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"A\": sigs, \"B\": sigs, \"C\": sigs}\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\"A\": assessment, \"B\": assessment, \"C\": assessment}\n        neighbors = {\"A\": frozenset({\"B\"})}  # A-C not neighbors\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 1, \"Only A-B pair (neighbors) should appear\"\n        c = result.candidates[0]\n        pair = (c.context_id_a, c.context_id_b)\n        assert pair == (\"A\", \"B\"), f\"Expected (A, B), got {pair}\"\n\n    def test_asymmetric_neighbor_still_detected(self):\n        \"\"\"If B in neighbors[A] but A not in neighbors[B], pair still checked.\n\n        neighbors = {'A': {'B'}} with no entry for 'B'.\n        \"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"A\": sigs, \"B\": sigs}\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\"A\": assessment, \"B\": assessment}\n        neighbors = {\"A\": frozenset({\"B\"})}  # Only one direction\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 1, (\n            \"Asymmetric neighbor should still be detected\"\n        )\n\n    def test_pair_checked_once_even_if_both_directions(self):\n        \"\"\"Each pair evaluated exactly once even if neighbors map has both directions.\"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"A\": sigs, \"B\": sigs}\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\"A\": assessment, \"B\": assessment}\n        neighbors = {\n            \"A\": frozenset({\"B\"}),\n            \"B\": frozenset({\"A\"}),\n        }\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 1, (\n            \"Bidirectional neighbors should produce exactly one candidate, not two\"\n        )\n\n    def test_canonical_ordering_context_ids(self):\n        \"\"\"context_id_a <= context_id_b lexicographically in every candidate.\n\n        Use neighbors where the 'greater' ID lists the 'lesser' one.\n        \"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"zebra\": sigs, \"alpha\": sigs}\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\"zebra\": assessment, \"alpha\": assessment}\n        neighbors = {\"zebra\": frozenset({\"alpha\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 1\n        c = result.candidates[0]\n        assert c.context_id_a <= c.context_id_b, (\n            f\"Canonical ordering violated: {c.context_id_a} > {c.context_id_b}\"\n        )\n        assert c.context_id_a == \"alpha\", f\"Expected 'alpha' first, got {c.context_id_a}\"\n        assert c.context_id_b == \"zebra\", f\"Expected 'zebra' second, got {c.context_id_b}\"\n\n    def test_combined_score_is_product(self):\n        \"\"\"combined_score == overlap * agreement for every returned candidate.\"\"\"\n        # Create a scenario with multiple candidates\n        sigs_ab = frozenset({f\"s{i}\" for i in range(10)})\n        sigs_c = frozenset({f\"s{i}\" for i in range(8)}) | frozenset({\"c1\", \"c2\"})\n        # A-B: identical, overlap=1.0, agreement=1.0\n        # A-C: intersection={s0..s7}=8, union=10+10-8=12, Jaccard=8/12≈0.667 -- < 0.7\n        # Need A-C overlap > 0.7. Adjust:\n        sigs_c_v2 = frozenset({f\"s{i}\" for i in range(9)}) | frozenset({\"c1\"})\n        # A-C: intersection=9, union=11, Jaccard=9/11≈0.818 > 0.7 ✓\n\n        signal_windows = {\"A\": sigs_ab, \"B\": sigs_ab, \"C\": sigs_c_v2}\n        assessment_ab = {s: make_assessment(True, 0.9) for s in sigs_ab}\n        assessment_c = {s: make_assessment(True, 0.85) for s in sigs_c_v2}  # slight fam diff\n        assessments = {\"A\": assessment_ab, \"B\": assessment_ab, \"C\": assessment_c}\n        neighbors = {\n            \"A\": frozenset({\"B\", \"C\"}),\n        }\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        for c in result.candidates:\n            expected_combined = c.overlap * c.agreement\n            assert c.combined_score == pytest.approx(expected_combined), (\n                f\"combined_score {c.combined_score} != overlap({c.overlap}) * \"\n                f\"agreement({c.agreement}) = {expected_combined}\"\n            )\n\n    def test_result_is_immutable(self):\n        \"\"\"MergeDetectionResult should be frozen/immutable.\"\"\"\n        result = detect_merge_candidates(\n            signal_windows={},\n            assessments={},\n            neighbors={},\n        )\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.candidates = ()\n\n    def test_no_signals_for_neighboring_contexts(self):\n        \"\"\"Neighboring contexts with no signal data yield empty candidates.\n\n        If a context has no entry in signal_windows, treated as empty set.\n        Empty ∩ Empty / Empty ∪ Empty = 0/0 = 0.0 overlap.\n        \"\"\"\n        neighbors = {\"A\": frozenset({\"B\"})}\n        result = detect_merge_candidates(\n            signal_windows={},\n            assessments={},\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 0, (\n            \"Contexts with no signals should have 0 overlap and no candidates\"\n        )\n\n    def test_context_missing_from_signal_windows_treated_as_empty(self):\n        \"\"\"A context in neighbors but not in signal_windows is treated as having empty signal set.\"\"\"\n        signal_windows = {\"A\": frozenset({\"s1\", \"s2\", \"s3\"})}\n        # B not in signal_windows => empty set\n        # Jaccard(A, empty) = 0/3 = 0.0\n        assessments = {\"A\": {s: make_assessment(True, 0.9) for s in [\"s1\", \"s2\", \"s3\"]}}\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 0\n\n    def test_context_missing_from_assessments_treated_as_empty(self):\n        \"\"\"A context in neighbors but not in assessments has no assessments.\n\n        With identical signals: overlap=1.0 > 0.7 ✓\n        But no shared assessments => agreement=0.0, not > 0.8\n        \"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\"})\n        signal_windows = {\"A\": sigs, \"B\": sigs}\n        assessments = {\"A\": {s: make_assessment(True, 0.9) for s in sigs}}\n        # B has no assessments entry\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result.candidates) == 0, (\n            \"Missing assessments means 0 agreement, should not trigger merge\"\n        )\n\n    def test_overlap_values_in_candidate_range(self):\n        \"\"\"All candidate overlap values must be in [0.0, 1.0] and > threshold.\"\"\"\n        sigs = frozenset({f\"s{i}\" for i in range(10)})\n        signal_windows = {\"A\": sigs, \"B\": sigs}\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\"A\": assessment, \"B\": assessment}\n        neighbors = {\"A\": frozenset({\"B\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        for c in result.candidates:\n            assert 0.0 <= c.overlap <= 1.0, f\"Overlap {c.overlap} out of range\"\n            assert c.overlap > 0.7, f\"Overlap {c.overlap} not > default threshold 0.7\"\n            assert 0.0 <= c.agreement <= 1.0, f\"Agreement {c.agreement} out of range\"\n            assert c.agreement > 0.8, f\"Agreement {c.agreement} not > default threshold 0.8\"\n            assert 0.0 <= c.combined_score <= 1.0, (\n                f\"combined_score {c.combined_score} out of range\"\n            )\n\n    def test_deterministic_tie_breaking(self):\n        \"\"\"When combined scores are equal, ordering is deterministic (e.g., by context IDs).\n\n        Create two pairs with identical overlap and agreement.\n        \"\"\"\n        sigs = frozenset({f\"s{i}\" for i in range(5)})\n        signal_windows = {\n            \"A\": sigs, \"B\": sigs,\n            \"C\": sigs, \"D\": sigs,\n        }\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\n            \"A\": assessment, \"B\": assessment,\n            \"C\": assessment, \"D\": assessment,\n        }\n        neighbors = {\n            \"A\": frozenset({\"B\"}),\n            \"C\": frozenset({\"D\"}),\n        }\n\n        result1 = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        result2 = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(result1.candidates) == 2\n        assert len(result2.candidates) == 2\n        # Deterministic: same order on repeated calls\n        for c1, c2 in zip(result1.candidates, result2.candidates):\n            assert c1.context_id_a == c2.context_id_a\n            assert c1.context_id_b == c2.context_id_b\n\n    def test_idempotent_pure_function(self):\n        \"\"\"Calling detect_merge_candidates twice with same inputs yields identical results.\"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"X\": sigs, \"Y\": sigs}\n        assessment = {s: make_assessment(True, 0.8) for s in sigs}\n        assessments = {\"X\": assessment, \"Y\": assessment}\n        neighbors = {\"X\": frozenset({\"Y\"})}\n\n        r1 = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        r2 = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        assert len(r1.candidates) == len(r2.candidates), \"Idempotency: same number of candidates\"\n        for c1, c2 in zip(r1.candidates, r2.candidates):\n            assert c1.context_id_a == c2.context_id_a\n            assert c1.context_id_b == c2.context_id_b\n            assert c1.overlap == pytest.approx(c2.overlap)\n            assert c1.agreement == pytest.approx(c2.agreement)\n            assert c1.combined_score == pytest.approx(c2.combined_score)\n\n    def test_large_number_of_contexts(self):\n        \"\"\"Stress test: 20 contexts in a chain, all exceeding thresholds.\n\n        Each context shares 9/10 signals with its neighbor (Jaccard=9/11≈0.818).\n        All assessments agree. Should produce 19 candidates.\n        \"\"\"\n        n = 20\n        base_sigs = [f\"s{i}\" for i in range(9)]\n        contexts = [f\"ctx{i}\" for i in range(n)]\n\n        signal_windows = {}\n        assessments = {}\n        for i, ctx in enumerate(contexts):\n            sigs = frozenset(base_sigs + [f\"unique_{i}\"])\n            signal_windows[ctx] = sigs\n            assessments[ctx] = {s: make_assessment(True, 0.9) for s in sigs}\n\n        # Chain topology\n        neighbors = {}\n        for i in range(n - 1):\n            neighbors.setdefault(contexts[i], frozenset()).union(frozenset())\n            neighbors[contexts[i]] = frozenset({contexts[i + 1]})\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n\n        assert len(result.candidates) == n - 1, (\n            f\"Expected {n-1} candidates in chain of {n}, got {len(result.candidates)}\"\n        )\n        # All should be sorted descending\n        scores = [c.combined_score for c in result.candidates]\n        assert scores == sorted(scores, reverse=True), \"Not sorted descending\"\n\n    def test_merge_candidate_context_ids_non_empty(self):\n        \"\"\"MergeCandidate context IDs must be non-empty strings.\"\"\"\n        sigs = frozenset({\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"})\n        signal_windows = {\"a\": sigs, \"b\": sigs}\n        assessment = {s: make_assessment(True, 0.9) for s in sigs}\n        assessments = {\"a\": assessment, \"b\": assessment}\n        neighbors = {\"a\": frozenset({\"b\"})}\n\n        result = detect_merge_candidates(\n            signal_windows=signal_windows,\n            assessments=assessments,\n            neighbors=neighbors,\n        )\n        for c in result.candidates:\n            assert len(c.context_id_a) >= 1, \"context_id_a must be non-empty\"\n            assert len(c.context_id_b) >= 1, \"context_id_b must be non-empty\"\n\n    def test_valid_thresholds_at_boundaries(self):\n        \"\"\"Thresholds exactly at 0.0 and 1.0 are valid (no ValueError).\"\"\"\n        # Should not raise\n        result_0 = detect_merge_candidates(\n            signal_windows={},\n            assessments={},\n            neighbors={},\n            overlap_threshold=0.0,\n            agreement_threshold=0.0,\n        )\n        assert len(result_0.candidates) == 0\n\n        result_1 = detect_merge_candidates(\n            signal_windows={},\n            assessments={},\n            neighbors={},\n            overlap_threshold=1.0,\n            agreement_threshold=1.0,\n        )\n        assert len(result_1.candidates) == 0\n"
+}

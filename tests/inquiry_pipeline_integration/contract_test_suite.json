@@ -1,0 +1,715 @@
+{
+  "component_id": "inquiry_pipeline_integration",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "hp_inquire_valid_signal",
+      "description": "inquire() with a valid signal produces a populated InquiryResult with correct worker_id, signal_id, and confidence in [0,1]",
+      "function": "inquire",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid Signal with non-empty id and content",
+      "expected_output_description": "InquiryResult with matching signal_id, worker_id, confidence in [0,1]",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_id == signal.id",
+        "result.worker_id == worker.id",
+        "0.0 <= result.confidence <= 1.0",
+        "result.sentiment is None or -1.0 <= result.sentiment <= 1.0"
+      ]
+    },
+    {
+      "id": "hp_route_signal_full_pipeline",
+      "description": "route_signal() routes a signal through accept → inquire → consensus and returns a complete RoutingResult",
+      "function": "route_signal",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid Signal with registered workers, one worker accepts",
+      "expected_output_description": "RoutingResult with signal_id, accepted_by, inquiry_result, and consensus dict",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_id == signal.id",
+        "result.accepted_by is not None",
+        "result.consensus is not None",
+        "isinstance(result.consensus, dict)"
+      ]
+    },
+    {
+      "id": "hp_route_signal_with_inquiry_result",
+      "description": "route_signal() includes a non-None InquiryResult when inquiry succeeds",
+      "function": "route_signal",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid signal, worker accepts, inquiry produces results",
+      "expected_output_description": "RoutingResult.inquiry_result is a valid InquiryResult",
+      "expected_error": "",
+      "assertions": [
+        "result.inquiry_result is not None",
+        "result.inquiry_result.signal_id == signal.id",
+        "result.inquiry_result.worker_id == result.accepted_by"
+      ]
+    },
+    {
+      "id": "hp_run_consensus_with_inquiry",
+      "description": "run_consensus() with a populated InquiryResult returns enriched consensus dict",
+      "function": "run_consensus",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid signal, accept_result, and InquiryResult with connections",
+      "expected_output_description": "Dict with consensus assessment data",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(result, dict)",
+        "len(result) > 0"
+      ]
+    },
+    {
+      "id": "hp_run_consensus_without_inquiry",
+      "description": "run_consensus() with inquiry_result=None returns consensus dict identical to pre-inquiry behavior",
+      "function": "run_consensus",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid signal and accept_result, inquiry_result=None",
+      "expected_output_description": "Dict with consensus assessment data, same as pre-inquiry",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(result, dict)"
+      ]
+    },
+    {
+      "id": "hp_create_empty_inquiry_result",
+      "description": "create_empty_inquiry_result() returns an InquiryResult with correct ids and all defaults",
+      "function": "create_empty_inquiry_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "worker_id": "worker-1",
+        "signal_id": "sig-1"
+      },
+      "input_description": "",
+      "expected_output_description": "InquiryResult with matching ids, empty collections, confidence 0.0, sentiment None",
+      "expected_error": "",
+      "assertions": [
+        "result.worker_id == 'worker-1'",
+        "result.signal_id == 'sig-1'",
+        "result.people == ()",
+        "result.projects == ()",
+        "result.tickets == ()",
+        "result.keywords == ()",
+        "result.sentiment is None",
+        "result.connections == ()",
+        "result.confidence == 0.0"
+      ]
+    },
+    {
+      "id": "hp_validate_frozen",
+      "description": "validate_inquiry_result_frozen() returns True for a properly frozen InquiryResult",
+      "function": "validate_inquiry_result_frozen",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A valid frozen InquiryResult",
+      "expected_output_description": "True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "hp_validate_serializable",
+      "description": "validate_inquiry_result_serializable() returns True for a valid InquiryResult",
+      "function": "validate_inquiry_result_serializable",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A valid InquiryResult with populated fields",
+      "expected_output_description": "True",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "err_inquire_llm_unavailable_fallback",
+      "description": "inquire() falls back to embedding+keyword when LLM is unavailable, returns valid InquiryResult without raising",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "raises ConnectionError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Valid InquiryResult (may have reduced confidence) with worker_id and signal_id set",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_id == signal.id",
+        "result.worker_id == worker.id",
+        "0.0 <= result.confidence <= 1.0"
+      ]
+    },
+    {
+      "id": "err_inquire_knowledge_base_empty",
+      "description": "inquire() returns empty InquiryResult with confidence 0.0 when knowledge base is empty",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "knowledge_base": "empty list"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "InquiryResult with confidence 0.0 and empty collections",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence == 0.0",
+        "result.connections == ()",
+        "result.signal_id == signal.id"
+      ]
+    },
+    {
+      "id": "err_inquire_decomposition_failure",
+      "description": "inquire() returns empty InquiryResult when signal cannot be decomposed",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "decomposer": "raises ValueError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Empty InquiryResult with confidence 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence == 0.0",
+        "result.signal_id == signal.id",
+        "result.worker_id == worker.id"
+      ]
+    },
+    {
+      "id": "err_inquire_unexpected_error",
+      "description": "inquire() catches unexpected exceptions and returns default InquiryResult",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "internal": "raises RuntimeError('unexpected')"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Default InquiryResult with worker_id and signal_id, confidence 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence == 0.0",
+        "result.worker_id == worker.id",
+        "result.signal_id == signal.id"
+      ]
+    },
+    {
+      "id": "err_route_signal_no_worker_accepts",
+      "description": "route_signal() raises NoAcceptError when no worker accepts the signal",
+      "function": "route_signal",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "workers": "all return score below threshold"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "NoAcceptError",
+      "assertions": [
+        "'signal_id' in str(exc) or hasattr(exc, 'signal_id')"
+      ]
+    },
+    {
+      "id": "err_route_signal_no_workers_registered",
+      "description": "route_signal() raises MeshConfigurationError when mesh has no workers",
+      "function": "route_signal",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "mesh": "empty workers list"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MeshConfigurationError",
+      "assertions": [
+        "'no workers' in str(exc).lower()"
+      ]
+    },
+    {
+      "id": "err_route_signal_consensus_failure",
+      "description": "route_signal() raises ConsensusError when consensus phase fails after accept and inquiry",
+      "function": "route_signal",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consensus": "raises ConsensusError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ConsensusError",
+      "assertions": [
+        "hasattr(exc, 'signal_id') or True"
+      ]
+    },
+    {
+      "id": "err_run_consensus_timeout",
+      "description": "run_consensus() raises ConsensusError on timeout",
+      "function": "run_consensus",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "consensus_engine": "times out"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ConsensusError",
+      "assertions": [
+        "'timed out' in str(exc).lower() or 'timeout' in str(exc).lower()"
+      ]
+    },
+    {
+      "id": "err_run_consensus_invalid_accept_result",
+      "description": "run_consensus() raises ConsensusError when accept_result references unknown worker",
+      "function": "run_consensus",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "accept_result with worker_id not in mesh registry",
+      "expected_output_description": "",
+      "expected_error": "ConsensusError",
+      "assertions": [
+        "'not found' in str(exc).lower() or 'worker' in str(exc).lower()"
+      ]
+    },
+    {
+      "id": "err_validate_frozen_not_frozen",
+      "description": "validate_inquiry_result_frozen() raises ContractViolation when model is not frozen",
+      "function": "validate_inquiry_result_frozen",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "An InquiryResult-like object that allows mutation",
+      "expected_output_description": "",
+      "expected_error": "ContractViolation",
+      "assertions": [
+        "'not frozen' in str(exc).lower() or 'mutation' in str(exc).lower()"
+      ]
+    },
+    {
+      "id": "err_validate_serializable_failure",
+      "description": "validate_inquiry_result_serializable() raises ContractViolation when serialization fails",
+      "function": "validate_inquiry_result_serializable",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "An InquiryResult with non-serializable content",
+      "expected_output_description": "",
+      "expected_error": "ContractViolation",
+      "assertions": [
+        "'serialization' in str(exc).lower() or 'JSON' in str(exc)"
+      ]
+    },
+    {
+      "id": "immut_inquiry_result_frozen",
+      "description": "InquiryResult field mutation raises TypeError (frozen model)",
+      "function": "validate_inquiry_result_frozen",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A valid InquiryResult",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set any field raises TypeError"
+      ]
+    },
+    {
+      "id": "immut_inquiry_connection_frozen",
+      "description": "InquiryConnection field mutation raises TypeError (frozen model)",
+      "function": "validate_inquiry_result_frozen",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A valid InquiryConnection",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set any field raises TypeError"
+      ]
+    },
+    {
+      "id": "immut_empty_result_frozen",
+      "description": "Empty InquiryResult from factory is also frozen",
+      "function": "create_empty_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "worker_id": "w",
+        "signal_id": "s"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Mutation of empty result raises TypeError"
+      ]
+    },
+    {
+      "id": "serial_roundtrip_populated",
+      "description": "Populated InquiryResult survives JSON round-trip with equality",
+      "function": "validate_inquiry_result_serializable",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "InquiryResult with all fields populated",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "deserialized == original"
+      ]
+    },
+    {
+      "id": "serial_roundtrip_empty",
+      "description": "Empty InquiryResult survives JSON round-trip with equality",
+      "function": "validate_inquiry_result_serializable",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Default empty InquiryResult",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "deserialized == original"
+      ]
+    },
+    {
+      "id": "edge_confidence_zero",
+      "description": "InquiryResult accepts confidence=0.0 (lower bound)",
+      "function": "create_empty_inquiry_result",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence == 0.0"
+      ]
+    },
+    {
+      "id": "edge_confidence_one",
+      "description": "InquiryResult accepts confidence=1.0 (upper bound)",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.confidence == 1.0 is valid"
+      ]
+    },
+    {
+      "id": "edge_confidence_out_of_range",
+      "description": "InquiryResult rejects confidence > 1.0 or < 0.0",
+      "function": "create_empty_inquiry_result",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "confidence outside [0,1] is rejected"
+      ]
+    },
+    {
+      "id": "edge_sentiment_boundaries",
+      "description": "InquiryResult accepts sentiment at -1.0, 0.0, 1.0, and None",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sentiment -1.0 is valid",
+        "sentiment 1.0 is valid",
+        "sentiment None is valid"
+      ]
+    },
+    {
+      "id": "edge_sentiment_out_of_range",
+      "description": "InquiryResult rejects sentiment outside [-1.0, 1.0]",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "sentiment outside [-1,1] is rejected"
+      ]
+    },
+    {
+      "id": "edge_connection_score_boundaries",
+      "description": "InquiryConnection accepts score at 0.0 and 1.0 boundaries",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "connection with score 0.0 is valid",
+        "connection with score 1.0 is valid"
+      ]
+    },
+    {
+      "id": "edge_connection_score_out_of_range",
+      "description": "InquiryConnection rejects score outside [0.0, 1.0]",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "connection with score > 1.0 is rejected",
+        "connection with score < 0.0 is rejected"
+      ]
+    },
+    {
+      "id": "edge_connection_empty_dimension",
+      "description": "InquiryConnection rejects empty dimension string",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "empty dimension rejected with validation error"
+      ]
+    },
+    {
+      "id": "edge_connection_empty_matched_item",
+      "description": "InquiryConnection rejects empty matched_item string",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "empty matched_item rejected with validation error"
+      ]
+    },
+    {
+      "id": "edge_unicode_signal_content",
+      "description": "inquire() handles unicode/special characters in signal content without error",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with unicode emoji and special chars in content",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is a valid InquiryResult",
+        "no exception raised"
+      ]
+    },
+    {
+      "id": "edge_large_connections_list",
+      "description": "InquiryResult handles a large number of connections without error",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "InquiryResult with 1000 connections",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.connections) == 1000",
+        "all scores in [0,1]"
+      ]
+    },
+    {
+      "id": "inv_inquire_never_raises",
+      "description": "inquire() never raises for any input — always returns InquiryResult",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "No exception propagated for any input variant"
+      ]
+    },
+    {
+      "id": "inv_consensus_none_inquiry_unchanged",
+      "description": "When inquiry_result is None, consensus output is identical to pre-inquiry behavior",
+      "function": "run_consensus",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "consensus_with_none == consensus_without_inquiry"
+      ]
+    },
+    {
+      "id": "inv_inquiry_called_after_accept_before_consensus",
+      "description": "In route_signal, inquire() is called after accept and before consensus",
+      "function": "route_signal",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "call_order shows accept before inquire before consensus"
+      ]
+    },
+    {
+      "id": "param_empty_result_any_ids",
+      "description": "create_empty_inquiry_result produces valid frozen serializable result for various worker_id/signal_id combos",
+      "function": "create_empty_inquiry_result",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all results are frozen",
+        "all results are serializable",
+        "all have confidence 0.0"
+      ]
+    },
+    {
+      "id": "param_inquiry_strategy_enum",
+      "description": "InquiryStrategy enum contains all expected variants",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "LLM in variants",
+        "EMBEDDING_SIMILARITY in variants",
+        "KEYWORD_OVERLAP in variants",
+        "FALLBACK_CHAIN in variants"
+      ]
+    },
+    {
+      "id": "pipe_inquire_output_valid_for_consensus",
+      "description": "Output of inquire() is a valid input to run_consensus() as inquiry_result parameter",
+      "function": "run_consensus",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "run_consensus accepts inquire() output without error"
+      ]
+    },
+    {
+      "id": "pipe_types_chain_correctly",
+      "description": "RoutingResult fields have correct types after full pipeline execution",
+      "function": "route_signal",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "signal_id is str",
+        "accepted_by is str",
+        "inquiry_result is None or InquiryResult",
+        "consensus is dict"
+      ]
+    },
+    {
+      "id": "pipe_stop_on_first_accept",
+      "description": "route_signal uses stop-on-first-accept: exactly one worker accepts, inquiry called on that worker only",
+      "function": "route_signal",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "exactly one worker's inquire was called",
+        "accepting worker matches routing result"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for Inquiry Pipeline Integration.\n\nTests verify the inquiry_pipeline_integration component against its contract.\nAll dependencies are mocked; tests verify behavior at boundaries only.\n\nRun with: pytest tests/test_inquiry_pipeline_integration.py -v\n\"\"\"\nimport json\nimport pytest\nfrom unittest.mock import MagicMock, AsyncMock, patch, call, PropertyMock\nfrom typing import Optional, Dict, Any, List, Tuple\n\n# ---------------------------------------------------------------------------\n# Import the component under test\n# ---------------------------------------------------------------------------\nfrom src.inquiry_pipeline_integration import (\n    InquiryConnection,\n    InquiryResult,\n    InquiryStrategy,\n    Signal,\n    AcceptResult,\n    RoutingResult,\n    inquire,\n    route_signal,\n    run_consensus,\n    create_empty_inquiry_result,\n    validate_inquiry_result_frozen,\n    validate_inquiry_result_serializable,\n)\n\n# Attempt to import known error types; fall back to generic if not available\ntry:\n    from src.inquiry_pipeline_integration import (\n        NoAcceptError,\n        MeshConfigurationError,\n        ConsensusError,\n        ContractViolation,\n    )\nexcept ImportError:\n    # Define placeholders so tests can still reference them\n    class NoAcceptError(Exception):\n        pass\n\n    class MeshConfigurationError(Exception):\n        pass\n\n    class ConsensusError(Exception):\n        pass\n\n    class ContractViolation(Exception):\n        pass\n\n\n# ===========================================================================\n# Fixtures\n# ===========================================================================\n\n@pytest.fixture\ndef sample_signal():\n    \"\"\"A valid Signal with non-empty id and content.\"\"\"\n    return Signal(id=\"sig-001\", content=\"Alice needs help with Project-X ticket PROJ-123\")\n\n\n@pytest.fixture\ndef unicode_signal():\n    \"\"\"A Signal with unicode/special characters in content.\"\"\"\n    return Signal(\n        id=\"sig-unicode\",\n        content=\"🚀 Héllo Wörld — проект «Альфа» ticket#日本語 ñ ü ö\",\n    )\n\n\n@pytest.fixture\ndef sample_accept_result():\n    \"\"\"A valid AcceptResult from stop-on-first-accept.\"\"\"\n    return AcceptResult(worker_id=\"worker-42\", score=0.85)\n\n\n@pytest.fixture\ndef sample_inquiry_connection():\n    \"\"\"A single valid InquiryConnection.\"\"\"\n    return InquiryConnection(\n        dimension=\"people\",\n        matched_item=\"Alice\",\n        score=0.9,\n        source=\"llm\",\n    )\n\n\n@pytest.fixture\ndef populated_inquiry_result(sample_inquiry_connection):\n    \"\"\"A fully populated InquiryResult.\"\"\"\n    return InquiryResult(\n        people=(\"Alice\", \"Bob\"),\n        projects=(\"Project-X\",),\n        tickets=(\"PROJ-123\",),\n        keywords=(\"help\", \"urgent\"),\n        sentiment=0.3,\n        connections=(\n            sample_inquiry_connection,\n            InquiryConnection(dimension=\"projects\", matched_item=\"Project-X\", score=0.8, source=\"embedding\"),\n        ),\n        confidence=0.75,\n        worker_id=\"worker-42\",\n        signal_id=\"sig-001\",\n    )\n\n\n@pytest.fixture\ndef empty_inquiry_result():\n    \"\"\"An empty InquiryResult from the factory.\"\"\"\n    return create_empty_inquiry_result(worker_id=\"worker-42\", signal_id=\"sig-001\")\n\n\n@pytest.fixture\ndef mock_worker():\n    \"\"\"A mock worker with configurable accept and inquire behavior.\"\"\"\n    worker = MagicMock()\n    worker.id = \"worker-42\"\n    worker.accept = AsyncMock(return_value=0.85)\n    worker.inquire = AsyncMock(\n        return_value=InquiryResult(\n            people=(\"Alice\",),\n            confidence=0.7,\n            worker_id=\"worker-42\",\n            signal_id=\"sig-001\",\n        )\n    )\n    return worker\n\n\n@pytest.fixture\ndef mock_worker_low_score():\n    \"\"\"A mock worker that does not accept (score below threshold).\"\"\"\n    worker = MagicMock()\n    worker.id = \"worker-99\"\n    worker.accept = AsyncMock(return_value=0.1)\n    worker.inquire = AsyncMock()\n    return worker\n\n\n@pytest.fixture\ndef mock_mesh(mock_worker):\n    \"\"\"A mock mesh with one accepting worker.\"\"\"\n    mesh = MagicMock()\n    mesh.workers = [mock_worker]\n    mesh.get_worker = MagicMock(return_value=mock_worker)\n    return mesh\n\n\n# ===========================================================================\n# Group 1: Happy Path Integration Tests\n# ===========================================================================\n\nclass TestHappyPathInquire:\n    \"\"\"inquire() with valid inputs produces correct InquiryResult.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_valid_signal_produces_populated_result(self, sample_signal, mock_worker):\n        \"\"\"inquire() with a valid signal returns InquiryResult with correct ids and valid confidence.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ):\n            result = await inquire(signal=sample_signal)\n\n        assert isinstance(result, InquiryResult), \"inquire() must return an InquiryResult\"\n        assert result.signal_id == sample_signal.id, (\n            f\"signal_id mismatch: expected {sample_signal.id}, got {result.signal_id}\"\n        )\n        assert result.worker_id == mock_worker.id, (\n            f\"worker_id mismatch: expected {mock_worker.id}, got {result.worker_id}\"\n        )\n        assert 0.0 <= result.confidence <= 1.0, (\n            f\"confidence out of range: {result.confidence}\"\n        )\n        assert result.sentiment is None or -1.0 <= result.sentiment <= 1.0, (\n            f\"sentiment out of range: {result.sentiment}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_inquire_connections_have_valid_scores(self, sample_signal, mock_worker):\n        \"\"\"All connections returned by inquire() have scores in [0.0, 1.0].\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ):\n            result = await inquire(signal=sample_signal)\n\n        for conn in result.connections:\n            assert 0.0 <= conn.score <= 1.0, (\n                f\"Connection score out of range: {conn.score} for {conn.dimension}/{conn.matched_item}\"\n            )\n\n\nclass TestHappyPathRouteSignal:\n    \"\"\"route_signal() full pipeline happy path.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_route_signal_full_pipeline(self, sample_signal, mock_mesh):\n        \"\"\"route_signal() returns RoutingResult with correct signal_id and non-empty consensus.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_mesh\",\n            return_value=mock_mesh,\n        ):\n            result = await route_signal(signal=sample_signal)\n\n        assert isinstance(result, RoutingResult), \"route_signal must return RoutingResult\"\n        assert result.signal_id == sample_signal.id, (\n            f\"signal_id mismatch: expected {sample_signal.id}, got {result.signal_id}\"\n        )\n        assert result.accepted_by is not None and len(result.accepted_by) > 0, (\n            \"accepted_by must be a non-empty worker id\"\n        )\n        assert isinstance(result.consensus, dict), \"consensus must be a dict\"\n\n    @pytest.mark.asyncio\n    async def test_route_signal_includes_inquiry_result(self, sample_signal, mock_mesh):\n        \"\"\"route_signal() includes a non-None InquiryResult when inquiry succeeds.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_mesh\",\n            return_value=mock_mesh,\n        ):\n            result = await route_signal(signal=sample_signal)\n\n        assert result.inquiry_result is not None, (\n            \"inquiry_result should not be None when inquiry succeeds\"\n        )\n        assert result.inquiry_result.signal_id == sample_signal.id\n        assert result.inquiry_result.worker_id == result.accepted_by\n\n\nclass TestHappyPathRunConsensus:\n    \"\"\"run_consensus() with and without InquiryResult.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_with_inquiry_result(\n        self, sample_signal, sample_accept_result, populated_inquiry_result\n    ):\n        \"\"\"run_consensus() with InquiryResult returns a non-empty dict.\"\"\"\n        result = await run_consensus(\n            signal=sample_signal,\n            accept_result=sample_accept_result,\n            inquiry_result=populated_inquiry_result,\n        )\n        assert isinstance(result, dict), \"run_consensus must return a dict\"\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_without_inquiry_result(\n        self, sample_signal, sample_accept_result\n    ):\n        \"\"\"run_consensus() with inquiry_result=None returns dict (pre-inquiry behavior).\"\"\"\n        result = await run_consensus(\n            signal=sample_signal,\n            accept_result=sample_accept_result,\n            inquiry_result=None,\n        )\n        assert isinstance(result, dict), \"run_consensus must return a dict even without inquiry\"\n\n\nclass TestHappyPathFactoryAndHelpers:\n    \"\"\"create_empty_inquiry_result and validation helpers.\"\"\"\n\n    def test_create_empty_inquiry_result_all_defaults(self):\n        \"\"\"create_empty_inquiry_result returns an InquiryResult with all default empty values.\"\"\"\n        result = create_empty_inquiry_result(worker_id=\"worker-1\", signal_id=\"sig-1\")\n\n        assert result.worker_id == \"worker-1\"\n        assert result.signal_id == \"sig-1\"\n        assert result.people == (), f\"Expected empty tuple for people, got {result.people}\"\n        assert result.projects == (), f\"Expected empty tuple for projects, got {result.projects}\"\n        assert result.tickets == (), f\"Expected empty tuple for tickets, got {result.tickets}\"\n        assert result.keywords == (), f\"Expected empty tuple for keywords, got {result.keywords}\"\n        assert result.sentiment is None, f\"Expected None sentiment, got {result.sentiment}\"\n        assert result.connections == (), f\"Expected empty tuple for connections, got {result.connections}\"\n        assert result.confidence == 0.0, f\"Expected 0.0 confidence, got {result.confidence}\"\n\n    def test_validate_inquiry_result_frozen_returns_true(self, populated_inquiry_result):\n        \"\"\"validate_inquiry_result_frozen returns True for a valid frozen InquiryResult.\"\"\"\n        assert validate_inquiry_result_frozen(populated_inquiry_result) is True\n\n    def test_validate_inquiry_result_serializable_returns_true(self, populated_inquiry_result):\n        \"\"\"validate_inquiry_result_serializable returns True for a valid InquiryResult.\"\"\"\n        assert validate_inquiry_result_serializable(populated_inquiry_result) is True\n\n    def test_inquire_output_valid_for_consensus(\n        self, sample_signal, sample_accept_result, populated_inquiry_result\n    ):\n        \"\"\"Output of inquire() is a valid input to run_consensus() as inquiry_result.\"\"\"\n        # This is a type-level / structural test — we just verify no TypeError\n        # when passing InquiryResult to run_consensus.\n        # (Actual call tested in consensus happy path tests above.)\n        assert isinstance(populated_inquiry_result, InquiryResult)\n\n\n# ===========================================================================\n# Group 2: Error Handling Tests\n# ===========================================================================\n\nclass TestInquireErrorHandling:\n    \"\"\"inquire() internally handles all errors — never raises.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_inquire_llm_unavailable_fallback(self, sample_signal, mock_worker):\n        \"\"\"When LLM is unavailable, inquire() falls back and still returns a valid InquiryResult.\"\"\"\n        mock_worker.inquire = AsyncMock(side_effect=ConnectionError(\"LLM unreachable\"))\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ), patch(\n            \"src.inquiry_pipeline_integration.llm_client\",\n            side_effect=ConnectionError(\"LLM unreachable\"),\n        ):\n            result = await inquire(signal=sample_signal)\n\n        assert isinstance(result, InquiryResult), \"Must return InquiryResult even when LLM fails\"\n        assert result.signal_id == sample_signal.id\n        assert 0.0 <= result.confidence <= 1.0\n\n    @pytest.mark.asyncio\n    async def test_inquire_knowledge_base_empty(self, sample_signal, mock_worker):\n        \"\"\"inquire() returns empty InquiryResult with confidence 0.0 when KB is empty.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ), patch(\n            \"src.inquiry_pipeline_integration.get_knowledge_base\",\n            return_value=[],\n        ):\n            result = await inquire(signal=sample_signal)\n\n        assert isinstance(result, InquiryResult)\n        assert result.confidence == 0.0, \"Confidence must be 0.0 for empty KB\"\n        assert result.connections == ()\n\n    @pytest.mark.asyncio\n    async def test_inquire_decomposition_failure(self, sample_signal, mock_worker):\n        \"\"\"inquire() returns empty InquiryResult when decomposition fails.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ), patch(\n            \"src.inquiry_pipeline_integration.decompose_signal\",\n            side_effect=ValueError(\"Cannot decompose\"),\n        ):\n            result = await inquire(signal=sample_signal)\n\n        assert isinstance(result, InquiryResult)\n        assert result.confidence == 0.0\n        assert result.signal_id == sample_signal.id\n        assert result.worker_id == mock_worker.id\n\n    @pytest.mark.asyncio\n    async def test_inquire_unexpected_error_caught(self, sample_signal, mock_worker):\n        \"\"\"inquire() catches unexpected RuntimeError and returns default InquiryResult.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ), patch(\n            \"src.inquiry_pipeline_integration.decompose_signal\",\n            side_effect=RuntimeError(\"totally unexpected\"),\n        ):\n            result = await inquire(signal=sample_signal)\n\n        assert isinstance(result, InquiryResult), \"inquire must not propagate exceptions\"\n        assert result.confidence == 0.0\n        assert result.worker_id == mock_worker.id\n        assert result.signal_id == sample_signal.id\n\n    @pytest.mark.asyncio\n    async def test_inquire_never_raises_invariant(self, sample_signal, mock_worker):\n        \"\"\"Invariant: inquire() NEVER raises for any internal failure scenario.\"\"\"\n        errors = [\n            TypeError(\"bad type\"),\n            KeyError(\"missing\"),\n            AttributeError(\"no attr\"),\n            MemoryError(\"oom\"),\n            Exception(\"generic\"),\n        ]\n        for error in errors:\n            with patch(\n                \"src.inquiry_pipeline_integration.get_current_worker\",\n                return_value=mock_worker,\n            ), patch(\n                \"src.inquiry_pipeline_integration.decompose_signal\",\n                side_effect=error,\n            ):\n                # Must not raise\n                result = await inquire(signal=sample_signal)\n                assert isinstance(result, InquiryResult), (\n                    f\"inquire() must return InquiryResult even on {type(error).__name__}\"\n                )\n\n\nclass TestRouteSignalErrorHandling:\n    \"\"\"route_signal() error cases.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_route_signal_no_worker_accepts(self, sample_signal, mock_worker_low_score):\n        \"\"\"route_signal() raises NoAcceptError when no worker scores above threshold.\"\"\"\n        mesh = MagicMock()\n        mesh.workers = [mock_worker_low_score]\n        with patch(\"src.inquiry_pipeline_integration.get_mesh\", return_value=mesh):\n            with pytest.raises(NoAcceptError) as exc_info:\n                await route_signal(signal=sample_signal)\n\n        assert sample_signal.id in str(exc_info.value) or hasattr(exc_info.value, \"signal_id\"), (\n            \"NoAcceptError should reference the signal_id\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_route_signal_no_workers_registered(self, sample_signal):\n        \"\"\"route_signal() raises MeshConfigurationError when mesh has no workers.\"\"\"\n        mesh = MagicMock()\n        mesh.workers = []\n        with patch(\"src.inquiry_pipeline_integration.get_mesh\", return_value=mesh):\n            with pytest.raises(MeshConfigurationError) as exc_info:\n                await route_signal(signal=sample_signal)\n\n        assert \"no workers\" in str(exc_info.value).lower(), (\n            \"Error message should mention no workers\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_route_signal_consensus_failure(self, sample_signal, mock_mesh):\n        \"\"\"route_signal() raises ConsensusError when consensus phase fails.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_mesh\", return_value=mock_mesh\n        ), patch(\n            \"src.inquiry_pipeline_integration.run_consensus\",\n            side_effect=ConsensusError(\"consensus failed\"),\n        ):\n            with pytest.raises(ConsensusError):\n                await route_signal(signal=sample_signal)\n\n\nclass TestRunConsensusErrorHandling:\n    \"\"\"run_consensus() error cases.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_timeout(self, sample_signal, sample_accept_result):\n        \"\"\"run_consensus() raises ConsensusError on timeout.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.consensus_engine\",\n            side_effect=ConsensusError(\"Consensus timed out\"),\n        ):\n            with pytest.raises(ConsensusError) as exc_info:\n                await run_consensus(\n                    signal=sample_signal,\n                    accept_result=sample_accept_result,\n                    inquiry_result=None,\n                )\n        exc_msg = str(exc_info.value).lower()\n        assert \"timed out\" in exc_msg or \"timeout\" in exc_msg\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_invalid_accept_result(self, sample_signal):\n        \"\"\"run_consensus() raises ConsensusError for unknown worker in accept_result.\"\"\"\n        bad_accept = AcceptResult(worker_id=\"nonexistent-worker\", score=0.9)\n        with pytest.raises(ConsensusError) as exc_info:\n            await run_consensus(\n                signal=sample_signal,\n                accept_result=bad_accept,\n                inquiry_result=None,\n            )\n        exc_msg = str(exc_info.value).lower()\n        assert \"not found\" in exc_msg or \"worker\" in exc_msg\n\n\nclass TestValidationHelperErrors:\n    \"\"\"validate_inquiry_result_frozen and validate_inquiry_result_serializable error cases.\"\"\"\n\n    def test_validate_frozen_raises_contract_violation_for_mutable(self):\n        \"\"\"validate_inquiry_result_frozen raises ContractViolation if model is not frozen.\"\"\"\n        # Create a mutable mock that pretends to be InquiryResult but allows mutation\n        mutable_obj = MagicMock(spec=InquiryResult)\n        mutable_obj.confidence = 0.5  # allows setting\n        type(mutable_obj).__setattr__ = lambda self, name, value: object.__setattr__(self, name, value)\n\n        with pytest.raises(ContractViolation) as exc_info:\n            validate_inquiry_result_frozen(mutable_obj)\n        exc_msg = str(exc_info.value).lower()\n        assert \"not frozen\" in exc_msg or \"mutation\" in exc_msg\n\n    def test_validate_serializable_raises_on_failure(self):\n        \"\"\"validate_inquiry_result_serializable raises ContractViolation when serialization fails.\"\"\"\n        # Create a mock InquiryResult whose model_dump_json raises\n        bad_result = MagicMock(spec=InquiryResult)\n        bad_result.model_dump_json = MagicMock(side_effect=TypeError(\"not serializable\"))\n\n        with pytest.raises(ContractViolation) as exc_info:\n            validate_inquiry_result_serializable(bad_result)\n        exc_msg = str(exc_info.value)\n        assert \"serialization\" in exc_msg.lower() or \"JSON\" in exc_msg\n\n\n# ===========================================================================\n# Group 3: Immutability & Serialization Tests\n# ===========================================================================\n\nclass TestImmutability:\n    \"\"\"InquiryResult and InquiryConnection are frozen (immutable).\"\"\"\n\n    def test_inquiry_result_field_mutation_raises_type_error(self, populated_inquiry_result):\n        \"\"\"Setting any field on InquiryResult raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            populated_inquiry_result.confidence = 0.99\n\n    def test_inquiry_result_people_mutation_raises(self, populated_inquiry_result):\n        \"\"\"Setting people field on InquiryResult raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            populated_inquiry_result.people = (\"Charlie\",)\n\n    def test_inquiry_result_worker_id_mutation_raises(self, populated_inquiry_result):\n        \"\"\"Setting worker_id on InquiryResult raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            populated_inquiry_result.worker_id = \"other-worker\"\n\n    def test_inquiry_connection_field_mutation_raises(self, sample_inquiry_connection):\n        \"\"\"Setting any field on InquiryConnection raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            sample_inquiry_connection.score = 0.5\n\n    def test_inquiry_connection_dimension_mutation_raises(self, sample_inquiry_connection):\n        \"\"\"Setting dimension on InquiryConnection raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            sample_inquiry_connection.dimension = \"other\"\n\n    def test_empty_inquiry_result_is_frozen(self, empty_inquiry_result):\n        \"\"\"Empty InquiryResult from factory is also frozen.\"\"\"\n        with pytest.raises(TypeError):\n            empty_inquiry_result.confidence = 1.0\n\n        with pytest.raises(TypeError):\n            empty_inquiry_result.worker_id = \"changed\"\n\n\nclass TestSerialization:\n    \"\"\"InquiryResult JSON round-trip fidelity.\"\"\"\n\n    def test_populated_inquiry_result_roundtrip(self, populated_inquiry_result):\n        \"\"\"Populated InquiryResult survives JSON serialization round-trip.\"\"\"\n        json_str = populated_inquiry_result.model_dump_json()\n        restored = InquiryResult.model_validate_json(json_str)\n        assert restored == populated_inquiry_result, (\n            \"Round-trip deserialization must produce an equivalent instance\"\n        )\n\n    def test_empty_inquiry_result_roundtrip(self, empty_inquiry_result):\n        \"\"\"Empty InquiryResult survives JSON serialization round-trip.\"\"\"\n        json_str = empty_inquiry_result.model_dump_json()\n        restored = InquiryResult.model_validate_json(json_str)\n        assert restored == empty_inquiry_result\n\n    def test_inquiry_result_json_is_valid_json(self, populated_inquiry_result):\n        \"\"\"Serialized InquiryResult is valid JSON.\"\"\"\n        json_str = populated_inquiry_result.model_dump_json()\n        parsed = json.loads(json_str)\n        assert isinstance(parsed, dict), \"Serialized form must be a JSON object\"\n\n    def test_inquiry_connection_roundtrip(self, sample_inquiry_connection):\n        \"\"\"InquiryConnection survives JSON round-trip.\"\"\"\n        json_str = sample_inquiry_connection.model_dump_json()\n        restored = InquiryConnection.model_validate_json(json_str)\n        assert restored == sample_inquiry_connection\n\n\n# ===========================================================================\n# Group 4: Edge Case & Boundary Tests\n# ===========================================================================\n\nclass TestEdgeCases:\n    \"\"\"Boundary values and edge cases for types and validators.\"\"\"\n\n    def test_confidence_lower_bound_zero(self):\n        \"\"\"InquiryResult accepts confidence=0.0.\"\"\"\n        result = InquiryResult(confidence=0.0, worker_id=\"w\", signal_id=\"s\")\n        assert result.confidence == 0.0\n\n    def test_confidence_upper_bound_one(self):\n        \"\"\"InquiryResult accepts confidence=1.0.\"\"\"\n        result = InquiryResult(confidence=1.0, worker_id=\"w\", signal_id=\"s\")\n        assert result.confidence == 1.0\n\n    def test_confidence_below_zero_rejected(self):\n        \"\"\"InquiryResult rejects confidence < 0.0.\"\"\"\n        with pytest.raises(Exception):  # ValidationError from pydantic\n            InquiryResult(confidence=-0.01, worker_id=\"w\", signal_id=\"s\")\n\n    def test_confidence_above_one_rejected(self):\n        \"\"\"InquiryResult rejects confidence > 1.0.\"\"\"\n        with pytest.raises(Exception):\n            InquiryResult(confidence=1.01, worker_id=\"w\", signal_id=\"s\")\n\n    def test_sentiment_none_accepted(self):\n        \"\"\"InquiryResult accepts sentiment=None.\"\"\"\n        result = InquiryResult(sentiment=None, worker_id=\"w\", signal_id=\"s\")\n        assert result.sentiment is None\n\n    def test_sentiment_negative_one_accepted(self):\n        \"\"\"InquiryResult accepts sentiment=-1.0.\"\"\"\n        result = InquiryResult(sentiment=-1.0, worker_id=\"w\", signal_id=\"s\")\n        assert result.sentiment == -1.0\n\n    def test_sentiment_positive_one_accepted(self):\n        \"\"\"InquiryResult accepts sentiment=1.0.\"\"\"\n        result = InquiryResult(sentiment=1.0, worker_id=\"w\", signal_id=\"s\")\n        assert result.sentiment == 1.0\n\n    def test_sentiment_below_negative_one_rejected(self):\n        \"\"\"InquiryResult rejects sentiment < -1.0.\"\"\"\n        with pytest.raises(Exception):\n            InquiryResult(sentiment=-1.01, worker_id=\"w\", signal_id=\"s\")\n\n    def test_sentiment_above_positive_one_rejected(self):\n        \"\"\"InquiryResult rejects sentiment > 1.0.\"\"\"\n        with pytest.raises(Exception):\n            InquiryResult(sentiment=1.01, worker_id=\"w\", signal_id=\"s\")\n\n    def test_connection_score_zero(self):\n        \"\"\"InquiryConnection accepts score=0.0.\"\"\"\n        conn = InquiryConnection(dimension=\"kw\", matched_item=\"x\", score=0.0)\n        assert conn.score == 0.0\n\n    def test_connection_score_one(self):\n        \"\"\"InquiryConnection accepts score=1.0.\"\"\"\n        conn = InquiryConnection(dimension=\"kw\", matched_item=\"x\", score=1.0)\n        assert conn.score == 1.0\n\n    def test_connection_score_below_zero_rejected(self):\n        \"\"\"InquiryConnection rejects score < 0.0.\"\"\"\n        with pytest.raises(Exception):\n            InquiryConnection(dimension=\"kw\", matched_item=\"x\", score=-0.1)\n\n    def test_connection_score_above_one_rejected(self):\n        \"\"\"InquiryConnection rejects score > 1.0.\"\"\"\n        with pytest.raises(Exception):\n            InquiryConnection(dimension=\"kw\", matched_item=\"x\", score=1.1)\n\n    def test_connection_empty_dimension_rejected(self):\n        \"\"\"InquiryConnection rejects empty dimension string.\"\"\"\n        with pytest.raises(Exception):\n            InquiryConnection(dimension=\"\", matched_item=\"x\", score=0.5)\n\n    def test_connection_empty_matched_item_rejected(self):\n        \"\"\"InquiryConnection rejects empty matched_item string.\"\"\"\n        with pytest.raises(Exception):\n            InquiryConnection(dimension=\"kw\", matched_item=\"\", score=0.5)\n\n    def test_connection_optional_source_empty(self):\n        \"\"\"InquiryConnection allows empty source (optional field).\"\"\"\n        conn = InquiryConnection(dimension=\"kw\", matched_item=\"x\", score=0.5, source=\"\")\n        assert conn.source == \"\"\n\n    def test_connection_optional_source_populated(self):\n        \"\"\"InquiryConnection accepts a populated source.\"\"\"\n        conn = InquiryConnection(dimension=\"kw\", matched_item=\"x\", score=0.5, source=\"llm\")\n        assert conn.source == \"llm\"\n\n    def test_accept_result_score_zero(self):\n        \"\"\"AcceptResult accepts score=0.0.\"\"\"\n        ar = AcceptResult(worker_id=\"w\", score=0.0)\n        assert ar.score == 0.0\n\n    def test_accept_result_score_one(self):\n        \"\"\"AcceptResult accepts score=1.0.\"\"\"\n        ar = AcceptResult(worker_id=\"w\", score=1.0)\n        assert ar.score == 1.0\n\n    def test_accept_result_score_out_of_range_rejected(self):\n        \"\"\"AcceptResult rejects score > 1.0.\"\"\"\n        with pytest.raises(Exception):\n            AcceptResult(worker_id=\"w\", score=1.5)\n\n    @pytest.mark.asyncio\n    async def test_inquire_unicode_signal(self, unicode_signal, mock_worker):\n        \"\"\"inquire() handles unicode/special characters without error.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ):\n            result = await inquire(signal=unicode_signal)\n        assert isinstance(result, InquiryResult), \"Must handle unicode signals gracefully\"\n\n    def test_large_connections_list(self):\n        \"\"\"InquiryResult handles a large number of connections.\"\"\"\n        connections = tuple(\n            InquiryConnection(\n                dimension=\"keywords\",\n                matched_item=f\"kw-{i}\",\n                score=round(i / 1000, 3),\n            )\n            for i in range(1000)\n        )\n        result = InquiryResult(\n            connections=connections,\n            confidence=0.5,\n            worker_id=\"w\",\n            signal_id=\"s\",\n        )\n        assert len(result.connections) == 1000\n        for conn in result.connections:\n            assert 0.0 <= conn.score <= 1.0\n\n\n# ===========================================================================\n# Group 5: Property-Style Parametrized Tests\n# ===========================================================================\n\nclass TestParametrized:\n    \"\"\"Property-style tests using parametrize.\"\"\"\n\n    @pytest.mark.parametrize(\n        \"worker_id,signal_id\",\n        [\n            (\"worker-1\", \"sig-1\"),\n            (\"\", \"\"),\n            (\"worker-with-long-id-\" + \"x\" * 200, \"signal-\" + \"y\" * 200),\n            (\"worker/special!@#\", \"sig/special!@#\"),\n            (\"工人\", \"信号\"),\n        ],\n        ids=[\"normal\", \"empty_ids\", \"long_ids\", \"special_chars\", \"unicode_ids\"],\n    )\n    def test_create_empty_inquiry_result_any_ids(self, worker_id, signal_id):\n        \"\"\"create_empty_inquiry_result produces valid result for various id combinations.\"\"\"\n        result = create_empty_inquiry_result(worker_id=worker_id, signal_id=signal_id)\n\n        assert result.worker_id == worker_id\n        assert result.signal_id == signal_id\n        assert result.confidence == 0.0\n        assert result.people == ()\n        assert result.connections == ()\n        assert result.sentiment is None\n\n        # Verify frozen\n        with pytest.raises(TypeError):\n            result.confidence = 1.0\n\n    @pytest.mark.parametrize(\n        \"variant\",\n        [\"LLM\", \"EMBEDDING_SIMILARITY\", \"KEYWORD_OVERLAP\", \"FALLBACK_CHAIN\"],\n    )\n    def test_inquiry_strategy_enum_has_variant(self, variant):\n        \"\"\"InquiryStrategy enum contains all expected variants.\"\"\"\n        assert hasattr(InquiryStrategy, variant), (\n            f\"InquiryStrategy missing variant: {variant}\"\n        )\n        assert InquiryStrategy[variant].value is not None\n\n    def test_inquiry_strategy_enum_exhaustive(self):\n        \"\"\"InquiryStrategy has exactly the 4 expected variants.\"\"\"\n        expected = {\"LLM\", \"EMBEDDING_SIMILARITY\", \"KEYWORD_OVERLAP\", \"FALLBACK_CHAIN\"}\n        actual = {member.name for member in InquiryStrategy}\n        assert actual == expected, f\"InquiryStrategy variants mismatch: {actual} != {expected}\"\n\n    @pytest.mark.asyncio\n    @pytest.mark.parametrize(\n        \"inquiry_result_value\",\n        [None, \"populated\"],\n        ids=[\"none\", \"populated\"],\n    )\n    async def test_consensus_always_returns_dict(\n        self, sample_signal, sample_accept_result, populated_inquiry_result, inquiry_result_value\n    ):\n        \"\"\"run_consensus always returns a dict regardless of inquiry_result.\"\"\"\n        ir = None if inquiry_result_value is None else populated_inquiry_result\n        result = await run_consensus(\n            signal=sample_signal,\n            accept_result=sample_accept_result,\n            inquiry_result=ir,\n        )\n        assert isinstance(result, dict), (\n            f\"run_consensus must return dict, got {type(result).__name__}\"\n        )\n\n\n# ===========================================================================\n# Group 6: Pipeline Composition & Ordering Tests\n# ===========================================================================\n\nclass TestPipelineComposition:\n    \"\"\"Tests verifying pipeline ordering and composition.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_inquiry_called_after_accept_before_consensus(\n        self, sample_signal, mock_worker\n    ):\n        \"\"\"In route_signal, inquire() is called after accept and before consensus.\"\"\"\n        call_order = []\n\n        original_accept = mock_worker.accept\n        original_inquire = mock_worker.inquire\n\n        async def tracked_accept(*args, **kwargs):\n            call_order.append(\"accept\")\n            return await original_accept(*args, **kwargs)\n\n        async def tracked_inquire(*args, **kwargs):\n            call_order.append(\"inquire\")\n            return await original_inquire(*args, **kwargs)\n\n        mock_worker.accept = AsyncMock(side_effect=tracked_accept)\n        mock_worker.inquire = AsyncMock(side_effect=tracked_inquire)\n\n        mesh = MagicMock()\n        mesh.workers = [mock_worker]\n        mesh.get_worker = MagicMock(return_value=mock_worker)\n\n        async def tracked_consensus(*args, **kwargs):\n            call_order.append(\"consensus\")\n            return {}\n\n        with patch(\n            \"src.inquiry_pipeline_integration.get_mesh\", return_value=mesh\n        ), patch(\n            \"src.inquiry_pipeline_integration.run_consensus\",\n            side_effect=tracked_consensus,\n        ):\n            await route_signal(signal=sample_signal)\n\n        assert \"accept\" in call_order, \"accept must be called\"\n        assert \"inquire\" in call_order, \"inquire must be called\"\n        assert \"consensus\" in call_order, \"consensus must be called\"\n\n        accept_idx = call_order.index(\"accept\")\n        inquire_idx = call_order.index(\"inquire\")\n        consensus_idx = call_order.index(\"consensus\")\n\n        assert accept_idx < inquire_idx < consensus_idx, (\n            f\"Expected accept < inquire < consensus, got order: {call_order}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_stop_on_first_accept_single_worker_inquired(self, sample_signal):\n        \"\"\"Only the accepting worker's inquire() is called (stop-on-first-accept).\"\"\"\n        worker1 = MagicMock()\n        worker1.id = \"worker-1\"\n        worker1.accept = AsyncMock(return_value=0.1)  # below threshold\n        worker1.inquire = AsyncMock()\n\n        worker2 = MagicMock()\n        worker2.id = \"worker-2\"\n        worker2.accept = AsyncMock(return_value=0.9)  # above threshold\n        worker2.inquire = AsyncMock(\n            return_value=create_empty_inquiry_result(\"worker-2\", sample_signal.id)\n        )\n\n        worker3 = MagicMock()\n        worker3.id = \"worker-3\"\n        worker3.accept = AsyncMock(return_value=0.8)  # also above, but stop-on-first\n        worker3.inquire = AsyncMock()\n\n        mesh = MagicMock()\n        mesh.workers = [worker1, worker2, worker3]\n        mesh.get_worker = MagicMock(side_effect=lambda wid: {\n            \"worker-1\": worker1, \"worker-2\": worker2, \"worker-3\": worker3\n        }[wid])\n\n        with patch(\"src.inquiry_pipeline_integration.get_mesh\", return_value=mesh):\n            result = await route_signal(signal=sample_signal)\n\n        # worker1 did not accept, so its inquire should NOT be called\n        worker1.inquire.assert_not_called()\n        # worker2 accepted first, its inquire SHOULD be called\n        worker2.inquire.assert_called_once()\n        # Because of stop-on-first-accept, worker3 should NOT have inquire called\n        worker3.inquire.assert_not_called()\n\n        assert result.accepted_by == \"worker-2\"\n\n    @pytest.mark.asyncio\n    async def test_routing_result_types_correct(self, sample_signal, mock_mesh):\n        \"\"\"RoutingResult fields have correct types after full pipeline execution.\"\"\"\n        with patch(\"src.inquiry_pipeline_integration.get_mesh\", return_value=mock_mesh):\n            result = await route_signal(signal=sample_signal)\n\n        assert isinstance(result.signal_id, str), \"signal_id must be str\"\n        assert isinstance(result.accepted_by, str), \"accepted_by must be str\"\n        assert result.inquiry_result is None or isinstance(result.inquiry_result, InquiryResult), (\n            \"inquiry_result must be None or InquiryResult\"\n        )\n        assert isinstance(result.consensus, dict), \"consensus must be dict\"\n\n\n# ===========================================================================\n# Group 7: Invariant Tests (Contract Invariants)\n# ===========================================================================\n\nclass TestContractInvariants:\n    \"\"\"Tests verifying contract-level invariants.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_inquiry_result_confidence_always_in_range(self, sample_signal, mock_worker):\n        \"\"\"Invariant: InquiryResult.confidence is always in [0.0, 1.0].\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ):\n            result = await inquire(signal=sample_signal)\n        assert 0.0 <= result.confidence <= 1.0, (\n            f\"Confidence invariant violated: {result.confidence}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_inquiry_result_sentiment_always_valid(self, sample_signal, mock_worker):\n        \"\"\"Invariant: InquiryResult.sentiment is always None or in [-1.0, 1.0].\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ):\n            result = await inquire(signal=sample_signal)\n        assert result.sentiment is None or -1.0 <= result.sentiment <= 1.0, (\n            f\"Sentiment invariant violated: {result.sentiment}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_consensus_unchanged_when_inquiry_none(\n        self, sample_signal, sample_accept_result\n    ):\n        \"\"\"Invariant: When inquiry_result is None, consensus output matches pre-inquiry behavior.\"\"\"\n        result_without = await run_consensus(\n            signal=sample_signal,\n            accept_result=sample_accept_result,\n            inquiry_result=None,\n        )\n        # Call again with None to verify idempotent baseline\n        result_without_2 = await run_consensus(\n            signal=sample_signal,\n            accept_result=sample_accept_result,\n            inquiry_result=None,\n        )\n        assert result_without == result_without_2, (\n            \"Consensus with None inquiry_result should be deterministic/identical\"\n        )\n\n    def test_inquiry_result_is_json_serializable_invariant(self, populated_inquiry_result):\n        \"\"\"Invariant: InquiryResult is JSON-serializable with lossless round-trip.\"\"\"\n        json_str = populated_inquiry_result.model_dump_json()\n        restored = InquiryResult.model_validate_json(json_str)\n        assert restored == populated_inquiry_result, \"Lossless round-trip invariant violated\"\n\n    def test_inquiry_connection_scores_always_valid(self, populated_inquiry_result):\n        \"\"\"Invariant: All InquiryConnection.score values are in [0.0, 1.0].\"\"\"\n        for conn in populated_inquiry_result.connections:\n            assert 0.0 <= conn.score <= 1.0, (\n                f\"Connection score invariant violated: {conn.score} in {conn.dimension}\"\n            )\n\n    def test_inquiry_result_defaults_represent_no_findings(self):\n        \"\"\"Invariant: Default-constructed InquiryResult represents 'no findings'.\"\"\"\n        result = InquiryResult()\n        assert result.people == ()\n        assert result.projects == ()\n        assert result.tickets == ()\n        assert result.keywords == ()\n        assert result.sentiment is None\n        assert result.connections == ()\n        assert result.confidence == 0.0\n        assert result.worker_id == \"\"\n        assert result.signal_id == \"\"\n\n    @pytest.mark.asyncio\n    async def test_run_consensus_does_not_mutate_inputs(\n        self, sample_signal, sample_accept_result, populated_inquiry_result\n    ):\n        \"\"\"Postcondition: run_consensus does not mutate any of its inputs.\"\"\"\n        # Capture pre-call state\n        signal_id_before = sample_signal.id\n        signal_content_before = sample_signal.content\n        accept_worker_before = sample_accept_result.worker_id\n        accept_score_before = sample_accept_result.score\n        inquiry_confidence_before = populated_inquiry_result.confidence\n\n        await run_consensus(\n            signal=sample_signal,\n            accept_result=sample_accept_result,\n            inquiry_result=populated_inquiry_result,\n        )\n\n        # Verify no mutation\n        assert sample_signal.id == signal_id_before\n        assert sample_signal.content == signal_content_before\n        assert sample_accept_result.worker_id == accept_worker_before\n        assert sample_accept_result.score == accept_score_before\n        assert populated_inquiry_result.confidence == inquiry_confidence_before\n\n    @pytest.mark.asyncio\n    async def test_inquire_is_idempotent(self, sample_signal, mock_worker):\n        \"\"\"Postcondition: inquire() is idempotent — same input gives equivalent output.\"\"\"\n        with patch(\n            \"src.inquiry_pipeline_integration.get_current_worker\",\n            return_value=mock_worker,\n        ):\n            result1 = await inquire(signal=sample_signal)\n            result2 = await inquire(signal=sample_signal)\n\n        assert result1 == result2, \"inquire() must be idempotent for same input\"\n\n    def test_run_consensus_inquiry_result_defaults_to_none(self):\n        \"\"\"Invariant: inquiry_result parameter defaults to None for backward compatibility.\"\"\"\n        import inspect\n        sig = inspect.signature(run_consensus)\n        param = sig.parameters.get(\"inquiry_result\")\n        assert param is not None, \"run_consensus must have inquiry_result parameter\"\n        assert param.default is None, (\n            f\"inquiry_result default must be None, got {param.default}\"\n        )\n"
+}

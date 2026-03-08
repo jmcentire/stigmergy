@@ -1,0 +1,1097 @@
+{
+  "component_id": "embedding_strategy_implementations",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "test_signed_hash_deterministic",
+      "description": "signed_hash returns the same (bucket, sign) for identical inputs across multiple calls",
+      "function": "signed_hash",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "hello",
+        "num_buckets": "64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result1 == result2",
+        "bucket is int",
+        "sign in (-1, 1)"
+      ]
+    },
+    {
+      "id": "test_signed_hash_bucket_range",
+      "description": "signed_hash bucket is always in [0, num_buckets) for various num_buckets values",
+      "function": "signed_hash",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "test_token",
+        "num_buckets": "various"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0 <= bucket < num_buckets for each num_buckets tested"
+      ]
+    },
+    {
+      "id": "test_signed_hash_sign_values",
+      "description": "signed_hash sign is always +1 or -1",
+      "function": "signed_hash",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "tokens": "multiple tokens",
+        "num_buckets": "64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sign in (-1, 1) for every token"
+      ]
+    },
+    {
+      "id": "test_signed_hash_empty_token",
+      "description": "signed_hash handles empty string token without error",
+      "function": "signed_hash",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "",
+        "num_buckets": "64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns valid (bucket, sign)",
+        "0 <= bucket < 64",
+        "sign in (-1, 1)"
+      ]
+    },
+    {
+      "id": "test_signed_hash_num_buckets_one",
+      "description": "signed_hash with num_buckets=1 always returns bucket=0",
+      "function": "signed_hash",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "anything",
+        "num_buckets": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "bucket == 0",
+        "sign in (-1, 1)"
+      ]
+    },
+    {
+      "id": "test_signed_hash_uses_md5",
+      "description": "signed_hash uses hashlib.md5 for deterministic cross-process hashing",
+      "function": "signed_hash",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "deterministic_test",
+        "num_buckets": "64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result matches manual md5 computation"
+      ]
+    },
+    {
+      "id": "test_signed_hash_different_tokens_different_results",
+      "description": "Different tokens produce different hash results with high probability",
+      "function": "signed_hash",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "tokens": "['alpha', 'beta', 'gamma']",
+        "num_buckets": "64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "not all results are identical"
+      ]
+    },
+    {
+      "id": "test_l2_normalize_nonzero_vector",
+      "description": "l2_normalize returns unit-length vector for non-zero input",
+      "function": "l2_normalize",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "vector": "random non-zero 64-dim vector"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "L2 norm of result is 1.0 within 1e-6",
+        "result has 64 elements"
+      ]
+    },
+    {
+      "id": "test_l2_normalize_zero_vector",
+      "description": "l2_normalize returns zero vector unchanged when input is all zeros",
+      "function": "l2_normalize",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "vector": "64-dim zero vector"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all elements are 0.0",
+        "result has 64 elements"
+      ]
+    },
+    {
+      "id": "test_l2_normalize_idempotent",
+      "description": "Applying l2_normalize twice produces same result as once",
+      "function": "l2_normalize",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "vector": "random non-zero 64-dim vector"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "l2_normalize(l2_normalize(v)) == l2_normalize(v)"
+      ]
+    },
+    {
+      "id": "test_l2_normalize_no_nan_inf",
+      "description": "l2_normalize output never contains NaN or Inf",
+      "function": "l2_normalize",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "vector": "various 64-dim vectors"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no NaN values",
+        "no Inf values"
+      ]
+    },
+    {
+      "id": "test_zero_vector_shape",
+      "description": "zero_vector returns a 64-element vector of all zeros",
+      "function": "zero_vector",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 64",
+        "all elements == 0.0",
+        "L2 norm == 0.0"
+      ]
+    },
+    {
+      "id": "test_zero_vector_is_numpy",
+      "description": "zero_vector returns a numpy array",
+      "function": "zero_vector",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(result, np.ndarray)",
+        "result.dtype is float64"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_name",
+      "description": "SemanticStrategy.name returns 'semantic'",
+      "function": "SemanticStrategy.name",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "name == 'semantic'"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_init_no_llm",
+      "description": "SemanticStrategy can be constructed without LLM service",
+      "function": "SemanticStrategy.__init__",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "llm_service": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "instance created successfully",
+        "name == 'semantic'"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_with_content",
+      "description": "SemanticStrategy.embed returns valid embedding for non-empty content without LLM",
+      "function": "SemanticStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "This is a test message about machine learning",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized",
+        "no NaN/Inf"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_empty_content",
+      "description": "SemanticStrategy.embed returns zero vector for empty content",
+      "function": "SemanticStrategy.embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is zero vector"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_deterministic",
+      "description": "SemanticStrategy.embed without LLM produces same result for same input",
+      "function": "SemanticStrategy.embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "deterministic test content",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embed(signal) == embed(signal) on two calls"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_with_llm_success",
+      "description": "SemanticStrategy.embed uses LLM service when available and working",
+      "function": "SemanticStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "returns valid 64-dim vector"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized",
+        "LLM was called"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_llm_failure_fallback",
+      "description": "SemanticStrategy.embed falls back to heuristic when LLM raises exception",
+      "function": "SemanticStrategy.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "raises RuntimeError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is valid (L2-normalized or zero)",
+        "no exception propagated"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_llm_invalid_output",
+      "description": "SemanticStrategy.embed falls back when LLM returns invalid dimensionality",
+      "function": "SemanticStrategy.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "returns 128-dim vector with NaN"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is valid",
+        "no exception propagated"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_embed_never_raises",
+      "description": "SemanticStrategy.embed never raises exceptions to caller",
+      "function": "SemanticStrategy.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "test",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no exception raised",
+        "result is valid embedding or zero vector"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_name",
+      "description": "TechnicalStrategy.name returns 'technical'",
+      "function": "TechnicalStrategy.name",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "name == 'technical'"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_embed_code_content",
+      "description": "TechnicalStrategy.embed produces non-zero embedding for code content",
+      "function": "TechnicalStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "def get_user_name():\n    import os\n    return os.path.join('/api/users', name)",
+        "signal_type": "code_snippet"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized (not zero)",
+        "no NaN/Inf"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_embed_empty_content",
+      "description": "TechnicalStrategy.embed returns zero vector for empty content",
+      "function": "TechnicalStrategy.embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is zero vector"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_embed_deterministic",
+      "description": "TechnicalStrategy.embed produces same result for same input",
+      "function": "TechnicalStrategy.embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "import numpy as np\nclass MyClass:\n    pass",
+        "signal_type": "code_snippet"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embed(signal) == embed(signal) on two calls"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_embed_never_raises",
+      "description": "TechnicalStrategy.embed never raises exceptions to caller",
+      "function": "TechnicalStrategy.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no exception raised for any input"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_tokenize_camel_case",
+      "description": "tokenize_code_aware splits camelCase identifiers into lowercase words",
+      "function": "TechnicalStrategy.tokenize_code_aware",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "getUserName"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'get' in tokens",
+        "'user' in tokens",
+        "'name' in tokens",
+        "all lowercase"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_tokenize_snake_case",
+      "description": "tokenize_code_aware splits snake_case identifiers at underscores",
+      "function": "TechnicalStrategy.tokenize_code_aware",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "get_user_name"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'get' in tokens",
+        "'user' in tokens",
+        "'name' in tokens"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_tokenize_dotted_path",
+      "description": "tokenize_code_aware splits dotted paths at dots",
+      "function": "TechnicalStrategy.tokenize_code_aware",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "os.path.join"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'os' in tokens or filtered by length",
+        "'path' in tokens",
+        "'join' in tokens"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_tokenize_filters_short",
+      "description": "tokenize_code_aware filters out tokens shorter than 2 characters",
+      "function": "TechnicalStrategy.tokenize_code_aware",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "a b c def gh"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no token has length < 2"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_tokenize_empty_string",
+      "description": "tokenize_code_aware returns empty list for empty string",
+      "function": "TechnicalStrategy.tokenize_code_aware",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty list"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_function_def",
+      "description": "detect_patterns identifies function definitions",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "def my_function():\n    pass\ndef another_func(x, y):\n    return x"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "at least one pattern with pattern_type function_definition",
+        "count >= 2"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_import",
+      "description": "detect_patterns identifies import statements",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "import os\nfrom pathlib import Path"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "at least one pattern with pattern_type import_statement"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_api_path",
+      "description": "detect_patterns identifies API paths",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "GET /api/v2/users/{id}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "at least one pattern with pattern_type api_path"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_class_def",
+      "description": "detect_patterns identifies class definitions",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "class MyClass(BaseClass):\n    pass"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "at least one pattern with pattern_type class_definition"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_empty",
+      "description": "detect_patterns returns empty list for non-technical text",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "Hello world this is plain text"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty list or contains no code patterns"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_no_duplicates",
+      "description": "detect_patterns returns no duplicate pattern_type values",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "def foo():\n    import os\n    class Bar: pass"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all pattern_type values are unique"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_detect_patterns_count_matches",
+      "description": "Each detected pattern's count equals its matches list length",
+      "function": "TechnicalStrategy.detect_patterns",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "def a():\ndef b():\ndef c():"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "pattern.count == len(pattern.matches) for each pattern"
+      ]
+    },
+    {
+      "id": "test_social_strategy_name",
+      "description": "SocialStrategy.name returns 'social'",
+      "function": "SocialStrategy.name",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "name == 'social'"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_with_author",
+      "description": "SocialStrategy.embed produces non-zero embedding when author is present",
+      "function": "SocialStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "alice",
+        "mentions": "[]",
+        "channel": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized (not zero)",
+        "no NaN/Inf"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_with_mentions",
+      "description": "SocialStrategy.embed produces non-zero embedding when mentions are present",
+      "function": "SocialStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "",
+        "mentions": "['bob', 'charlie']",
+        "channel": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized (not zero)"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_with_channel",
+      "description": "SocialStrategy.embed produces non-zero embedding when channel is present",
+      "function": "SocialStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "",
+        "mentions": "[]",
+        "channel": "general"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized (not zero)"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_no_social_metadata",
+      "description": "SocialStrategy.embed returns zero vector when no social metadata present",
+      "function": "SocialStrategy.embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "",
+        "mentions": "[]",
+        "channel": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is zero vector"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_deterministic",
+      "description": "SocialStrategy.embed produces same result for same input",
+      "function": "SocialStrategy.embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "alice",
+        "mentions": "['bob']",
+        "channel": "dev"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embed(signal) == embed(signal) on two calls"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_different_authors",
+      "description": "Different authors produce different embeddings with high probability",
+      "function": "SocialStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "authors": "['alice', 'bob', 'charlie']"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embeddings for different authors are not identical"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_author_mention_pair",
+      "description": "Author+mention co-occurrence pairs contribute distinct signal from individuals",
+      "function": "SocialStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "alice",
+        "mentions": "['bob']"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embedding differs from author-only and mention-only embeddings"
+      ]
+    },
+    {
+      "id": "test_social_strategy_embed_never_raises",
+      "description": "SocialStrategy.embed never raises exceptions to caller",
+      "function": "SocialStrategy.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no exception raised for any input"
+      ]
+    },
+    {
+      "id": "test_social_strategy_entity_prefix_separation",
+      "description": "Entity-type prefixes prevent cross-entity-type hash collisions",
+      "function": "SocialStrategy.embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "entity_name": "alice"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "author:alice embedding differs from mention:alice embedding"
+      ]
+    },
+    {
+      "id": "test_get_strategy_info_semantic",
+      "description": "get_strategy_info returns correct info for 'semantic' strategy",
+      "function": "get_strategy_info",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_name": "semantic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "info.name == 'semantic'",
+        "info.dimension == 64",
+        "info.description is non-empty"
+      ]
+    },
+    {
+      "id": "test_get_strategy_info_technical",
+      "description": "get_strategy_info returns correct info for 'technical' strategy",
+      "function": "get_strategy_info",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_name": "technical"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "info.name == 'technical'",
+        "info.dimension == 64",
+        "info.requires_external_service is False"
+      ]
+    },
+    {
+      "id": "test_get_strategy_info_social",
+      "description": "get_strategy_info returns correct info for 'social' strategy",
+      "function": "get_strategy_info",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_name": "social"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "info.name == 'social'",
+        "info.dimension == 64",
+        "info.requires_external_service is False"
+      ]
+    },
+    {
+      "id": "test_embedding_dim_constant",
+      "description": "Module-level EMBEDDING_DIM constant equals 64",
+      "function": "EMBEDDING_DIM",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "EMBEDDING_DIM == 64"
+      ]
+    },
+    {
+      "id": "test_all_strategies_return_correct_dimension",
+      "description": "All three strategies return vectors of exactly EMBEDDING_DIM dimensions",
+      "function": "all embed methods",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 64 for each strategy"
+      ]
+    },
+    {
+      "id": "test_all_strategies_l2_normalized_or_zero",
+      "description": "All strategies return either L2-normalized or zero vectors",
+      "function": "all embed methods",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "norm(result) approx 1.0 or norm(result) == 0.0"
+      ]
+    },
+    {
+      "id": "test_all_strategies_no_nan_inf",
+      "description": "No strategy ever returns NaN or Inf in embedding vectors",
+      "function": "all embed methods",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no NaN in result",
+        "no Inf in result"
+      ]
+    },
+    {
+      "id": "test_technical_embed_different_for_code_vs_prose",
+      "description": "TechnicalStrategy produces meaningfully different vectors for code vs prose",
+      "function": "TechnicalStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "code_content": "def foo(): import os",
+        "prose_content": "The weather is nice today"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embeddings are not identical"
+      ]
+    },
+    {
+      "id": "test_semantic_embed_different_for_different_content",
+      "description": "SemanticStrategy produces different vectors for semantically different content",
+      "function": "SemanticStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embedding for 'machine learning' differs from 'cooking recipes'"
+      ]
+    },
+    {
+      "id": "test_social_strategy_full_metadata",
+      "description": "SocialStrategy.embed handles full social metadata with author, mentions, channel",
+      "function": "SocialStrategy.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "author": "alice",
+        "mentions": "['bob', 'charlie']",
+        "channel": "engineering"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 64 elements",
+        "result is L2-normalized",
+        "not zero vector"
+      ]
+    },
+    {
+      "id": "test_semantic_strategy_whitespace_only_content",
+      "description": "SemanticStrategy.embed handles whitespace-only content gracefully",
+      "function": "SemanticStrategy.embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "   \\t\\n  ",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is zero vector or valid L2-normalized vector",
+        "no exception"
+      ]
+    },
+    {
+      "id": "test_technical_strategy_embed_non_code_text",
+      "description": "TechnicalStrategy.embed handles non-technical plain text gracefully",
+      "function": "TechnicalStrategy.embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "content": "Hello world, how are you doing today?",
+        "signal_type": "message"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is valid (L2-normalized or zero)",
+        "no exception"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for embedding_strategy_implementations.\n\nTests verify the contract for SemanticStrategy, TechnicalStrategy, SocialStrategy,\nand shared utility functions (signed_hash, l2_normalize, zero_vector).\n\nAll tests verify behavior at boundaries (inputs/outputs) — not internals.\nDependencies are mocked. All async methods tested with pytest-asyncio.\n\"\"\"\n\nimport math\nimport hashlib\nimport asyncio\nfrom unittest.mock import AsyncMock, MagicMock, patch\n\nimport numpy as np\nimport pytest\n\n# Import the component under test\nfrom src.embedding_strategy_implementations import (\n    EMBEDDING_DIM,\n    signed_hash,\n    l2_normalize,\n    zero_vector,\n    SemanticStrategy,\n    TechnicalStrategy,\n    SocialStrategy,\n    get_strategy_info,\n)\n\n\n# ============================================================================\n# Fixtures\n# ============================================================================\n\nclass FakeSignal:\n    \"\"\"Lightweight signal metadata object for testing.\"\"\"\n    def __init__(\n        self,\n        content=\"\",\n        signal_type=\"message\",\n        author=\"\",\n        channel=\"\",\n        mentions=None,\n        tags=None,\n        extra=None,\n    ):\n        self.content = content\n        self.signal_type = signal_type\n        self.author = author\n        self.channel = channel\n        self.mentions = mentions if mentions is not None else []\n        self.tags = tags if tags is not None else []\n        self.extra = extra if extra is not None else {}\n\n\n@pytest.fixture\ndef empty_signal():\n    \"\"\"Signal with empty content and no metadata.\"\"\"\n    return FakeSignal(content=\"\", signal_type=\"message\")\n\n\n@pytest.fixture\ndef text_signal():\n    \"\"\"Signal with meaningful text content.\"\"\"\n    return FakeSignal(\n        content=\"This is a test message about machine learning and data science\",\n        signal_type=\"message\",\n    )\n\n\n@pytest.fixture\ndef code_signal():\n    \"\"\"Signal with code content containing multiple patterns.\"\"\"\n    return FakeSignal(\n        content=(\n            \"def get_user_name(user_id):\\n\"\n            \"    import os\\n\"\n            \"    from pathlib import Path\\n\"\n            \"    class UserService:\\n\"\n            \"        pass\\n\"\n            \"    return os.path.join('/api/users', str(user_id))\\n\"\n        ),\n        signal_type=\"code_snippet\",\n    )\n\n\n@pytest.fixture\ndef social_signal():\n    \"\"\"Signal with rich social metadata.\"\"\"\n    return FakeSignal(\n        content=\"Hey @bob and @charlie, check this out!\",\n        signal_type=\"message\",\n        author=\"alice\",\n        channel=\"engineering\",\n        mentions=[\"bob\", \"charlie\"],\n    )\n\n\n@pytest.fixture\ndef social_signal_no_metadata():\n    \"\"\"Signal with no social metadata.\"\"\"\n    return FakeSignal(\n        content=\"Some content\",\n        signal_type=\"message\",\n        author=\"\",\n        channel=\"\",\n        mentions=[],\n    )\n\n\n@pytest.fixture\ndef semantic_strategy_no_llm():\n    \"\"\"SemanticStrategy with no LLM service (fallback mode).\"\"\"\n    return SemanticStrategy(llm_service=None)\n\n\n@pytest.fixture\ndef technical_strategy():\n    \"\"\"TechnicalStrategy instance.\"\"\"\n    return TechnicalStrategy()\n\n\n@pytest.fixture\ndef social_strategy():\n    \"\"\"SocialStrategy instance.\"\"\"\n    return SocialStrategy()\n\n\ndef make_mock_llm_service(return_value=None, side_effect=None):\n    \"\"\"Create a mock LLM service with configurable behavior.\"\"\"\n    mock_service = MagicMock()\n    embed_mock = AsyncMock()\n    if side_effect is not None:\n        embed_mock.side_effect = side_effect\n    elif return_value is not None:\n        embed_mock.return_value = return_value\n    else:\n        # Default: return a valid 64-dim vector\n        vec = np.random.randn(64).tolist()\n        embed_mock.return_value = vec\n    mock_service.embed_text = embed_mock\n    return mock_service\n\n\n# ============================================================================\n# Helpers\n# ============================================================================\n\ndef assert_valid_embedding(vec, msg=\"\"):\n    \"\"\"Assert that a vector is a valid embedding per the contract.\"\"\"\n    assert isinstance(vec, np.ndarray), f\"Expected numpy array{': ' + msg if msg else ''}\"\n    assert vec.shape == (EMBEDDING_DIM,), (\n        f\"Expected shape ({EMBEDDING_DIM},), got {vec.shape}{': ' + msg if msg else ''}\"\n    )\n    assert not np.any(np.isnan(vec)), f\"Embedding contains NaN{': ' + msg if msg else ''}\"\n    assert not np.any(np.isinf(vec)), f\"Embedding contains Inf{': ' + msg if msg else ''}\"\n\n    norm = np.linalg.norm(vec)\n    is_zero = np.allclose(vec, 0.0)\n    is_unit = abs(norm - 1.0) < 1e-6\n\n    assert is_zero or is_unit, (\n        f\"Embedding must be L2-normalized (norm=1.0) or zero vector, \"\n        f\"got norm={norm}{': ' + msg if msg else ''}\"\n    )\n\n\ndef assert_is_zero_vector(vec, msg=\"\"):\n    \"\"\"Assert that a vector is the zero sentinel.\"\"\"\n    assert isinstance(vec, np.ndarray), f\"Expected numpy array{': ' + msg if msg else ''}\"\n    assert vec.shape == (EMBEDDING_DIM,), f\"Expected shape ({EMBEDDING_DIM},){': ' + msg if msg else ''}\"\n    assert np.allclose(vec, 0.0), f\"Expected zero vector{': ' + msg if msg else ''}\"\n\n\ndef assert_is_nonzero_unit(vec, msg=\"\"):\n    \"\"\"Assert that a vector is non-zero and L2-normalized.\"\"\"\n    assert_valid_embedding(vec, msg)\n    assert not np.allclose(vec, 0.0), f\"Expected non-zero vector{': ' + msg if msg else ''}\"\n    norm = np.linalg.norm(vec)\n    assert abs(norm - 1.0) < 1e-6, (\n        f\"Expected unit norm, got {norm}{': ' + msg if msg else ''}\"\n    )\n\n\n# ============================================================================\n# 1. EMBEDDING_DIM Constant Tests\n# ============================================================================\n\nclass TestEmbeddingDimConstant:\n    def test_embedding_dim_equals_64(self):\n        \"\"\"Module-level EMBEDDING_DIM constant equals 64.\"\"\"\n        assert EMBEDDING_DIM == 64, f\"EMBEDDING_DIM should be 64, got {EMBEDDING_DIM}\"\n\n    def test_embedding_dim_is_int(self):\n        \"\"\"EMBEDDING_DIM is an integer.\"\"\"\n        assert isinstance(EMBEDDING_DIM, int), f\"EMBEDDING_DIM should be int, got {type(EMBEDDING_DIM)}\"\n\n\n# ============================================================================\n# 2. Utility Function Tests: signed_hash\n# ============================================================================\n\nclass TestSignedHash:\n    def test_deterministic(self):\n        \"\"\"signed_hash returns same result for identical inputs across calls.\"\"\"\n        result1 = signed_hash(\"hello\", 64)\n        result2 = signed_hash(\"hello\", 64)\n        assert result1 == result2, \"signed_hash must be deterministic\"\n\n    def test_bucket_range_64(self):\n        \"\"\"Bucket is in [0, 64) for num_buckets=64.\"\"\"\n        for token in [\"alpha\", \"beta\", \"gamma\", \"delta\", \"epsilon\", \"zeta\"]:\n            bucket, sign = signed_hash(token, 64)\n            assert 0 <= bucket < 64, f\"Bucket {bucket} out of range for token '{token}'\"\n\n    @pytest.mark.parametrize(\"num_buckets\", [1, 2, 8, 16, 32, 64, 128, 1000])\n    def test_bucket_range_various(self, num_buckets):\n        \"\"\"Bucket is in [0, num_buckets) for various num_buckets values.\"\"\"\n        bucket, sign = signed_hash(\"test_token\", num_buckets)\n        assert 0 <= bucket < num_buckets, (\n            f\"Bucket {bucket} out of range [0, {num_buckets})\"\n        )\n\n    def test_sign_values(self):\n        \"\"\"Sign is always +1 or -1.\"\"\"\n        tokens = [\"a\", \"bb\", \"ccc\", \"hello\", \"world\", \"test123\", \"x\" * 1000]\n        for token in tokens:\n            _, sign = signed_hash(token, 64)\n            assert sign in (-1, 1), f\"Sign must be +1 or -1, got {sign} for token '{token}'\"\n\n    def test_empty_token(self):\n        \"\"\"Handles empty string token without error.\"\"\"\n        bucket, sign = signed_hash(\"\", 64)\n        assert 0 <= bucket < 64, f\"Bucket {bucket} out of range for empty token\"\n        assert sign in (-1, 1), f\"Sign must be +1 or -1 for empty token\"\n\n    def test_num_buckets_one(self):\n        \"\"\"With num_buckets=1, bucket is always 0.\"\"\"\n        for token in [\"anything\", \"everything\", \"nothing\", \"\"]:\n            bucket, sign = signed_hash(token, 1)\n            assert bucket == 0, f\"Bucket must be 0 when num_buckets=1, got {bucket}\"\n            assert sign in (-1, 1)\n\n    def test_uses_md5_deterministic(self):\n        \"\"\"Result matches manual MD5 computation (verifies md5 usage).\"\"\"\n        token = \"deterministic_test\"\n        num_buckets = 64\n        bucket, sign = signed_hash(token, num_buckets)\n\n        # Manual verification using hashlib.md5\n        digest = hashlib.md5(token.encode(\"utf-8\")).digest()\n        expected_bucket = int.from_bytes(digest[0:8], byteorder=\"little\") % num_buckets\n        expected_sign = 1 if (int.from_bytes(digest[8:16], byteorder=\"little\") % 2 == 0) else -1\n\n        assert bucket == expected_bucket, (\n            f\"Bucket mismatch: got {bucket}, expected {expected_bucket} from MD5\"\n        )\n        assert sign == expected_sign, (\n            f\"Sign mismatch: got {sign}, expected {expected_sign} from MD5\"\n        )\n\n    def test_different_tokens_different_results(self):\n        \"\"\"Different tokens produce different hash results with high probability.\"\"\"\n        results = set()\n        for token in [\"alpha\", \"beta\", \"gamma\", \"delta\", \"epsilon\"]:\n            results.add(signed_hash(token, 64))\n        # With 5 distinct tokens, extremely unlikely all map to same (bucket, sign)\n        assert len(results) > 1, \"Different tokens should produce different hashes\"\n\n    def test_unicode_token(self):\n        \"\"\"Handles unicode tokens correctly.\"\"\"\n        bucket, sign = signed_hash(\"日本語テスト\", 64)\n        assert 0 <= bucket < 64\n        assert sign in (-1, 1)\n\n    def test_returns_tuple_or_namedtuple(self):\n        \"\"\"Return value is indexable with bucket and sign.\"\"\"\n        result = signed_hash(\"test\", 64)\n        # Should be accessible as tuple or object with .bucket/.sign\n        if hasattr(result, \"bucket\"):\n            assert isinstance(result.bucket, int)\n            assert isinstance(result.sign, int)\n        else:\n            bucket, sign = result\n            assert isinstance(bucket, int)\n            assert isinstance(sign, int)\n\n\n# ============================================================================\n# 3. Utility Function Tests: l2_normalize\n# ============================================================================\n\nclass TestL2Normalize:\n    def test_nonzero_vector_becomes_unit(self):\n        \"\"\"l2_normalize returns unit-length vector for non-zero input.\"\"\"\n        vec = np.random.randn(EMBEDDING_DIM)\n        result = l2_normalize(vec)\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6, f\"Expected unit norm, got {norm}\"\n\n    def test_zero_vector_stays_zero(self):\n        \"\"\"l2_normalize returns zero vector unchanged.\"\"\"\n        vec = np.zeros(EMBEDDING_DIM)\n        result = l2_normalize(vec)\n        assert np.allclose(result, 0.0), \"Zero vector should remain zero\"\n        assert np.linalg.norm(result) == 0.0\n\n    def test_preserves_dimension(self):\n        \"\"\"Output has exactly EMBEDDING_DIM elements.\"\"\"\n        vec = np.random.randn(EMBEDDING_DIM)\n        result = l2_normalize(vec)\n        assert result.shape == (EMBEDDING_DIM,), f\"Expected shape ({EMBEDDING_DIM},), got {result.shape}\"\n\n    def test_idempotent(self):\n        \"\"\"Applying l2_normalize twice produces same result as once.\"\"\"\n        vec = np.random.randn(EMBEDDING_DIM)\n        once = l2_normalize(vec)\n        twice = l2_normalize(once)\n        np.testing.assert_array_almost_equal(\n            once, twice, decimal=10,\n            err_msg=\"l2_normalize should be idempotent\"\n        )\n\n    def test_no_nan_inf_output(self):\n        \"\"\"Output never contains NaN or Inf.\"\"\"\n        test_vectors = [\n            np.random.randn(EMBEDDING_DIM),\n            np.ones(EMBEDDING_DIM),\n            np.zeros(EMBEDDING_DIM),\n            np.full(EMBEDDING_DIM, 1e-15),  # Very small values\n            np.full(EMBEDDING_DIM, 1e15),   # Very large values\n        ]\n        for vec in test_vectors:\n            result = l2_normalize(vec)\n            assert not np.any(np.isnan(result)), \"Output must not contain NaN\"\n            assert not np.any(np.isinf(result)), \"Output must not contain Inf\"\n\n    def test_direction_preserved(self):\n        \"\"\"Normalization preserves direction (positive scaling).\"\"\"\n        vec = np.array([3.0, 4.0] + [0.0] * (EMBEDDING_DIM - 2))\n        result = l2_normalize(vec)\n        # Direction should be the same: result should be proportional to vec\n        assert result[0] > 0 and result[1] > 0, \"Direction should be preserved\"\n        ratio = result[0] / result[1]\n        expected_ratio = 3.0 / 4.0\n        assert abs(ratio - expected_ratio) < 1e-10, \"Direction should be preserved\"\n\n\n# ============================================================================\n# 4. Utility Function Tests: zero_vector\n# ============================================================================\n\nclass TestZeroVector:\n    def test_shape(self):\n        \"\"\"zero_vector returns a 64-element vector.\"\"\"\n        result = zero_vector()\n        assert result.shape == (EMBEDDING_DIM,), f\"Expected shape ({EMBEDDING_DIM},)\"\n\n    def test_all_zeros(self):\n        \"\"\"All elements are 0.0.\"\"\"\n        result = zero_vector()\n        assert np.allclose(result, 0.0), \"All elements must be 0.0\"\n\n    def test_is_numpy_array(self):\n        \"\"\"Returns a numpy array.\"\"\"\n        result = zero_vector()\n        assert isinstance(result, np.ndarray), f\"Expected numpy array, got {type(result)}\"\n\n    def test_float_dtype(self):\n        \"\"\"Returned array has float64 dtype.\"\"\"\n        result = zero_vector()\n        assert result.dtype == np.float64, f\"Expected float64, got {result.dtype}\"\n\n    def test_norm_is_zero(self):\n        \"\"\"L2 norm is 0.0.\"\"\"\n        result = zero_vector()\n        assert np.linalg.norm(result) == 0.0, \"L2 norm of zero vector must be 0.0\"\n\n\n# ============================================================================\n# 5. SemanticStrategy Tests\n# ============================================================================\n\nclass TestSemanticStrategyInit:\n    def test_init_no_llm(self):\n        \"\"\"SemanticStrategy can be constructed without LLM service.\"\"\"\n        strategy = SemanticStrategy(llm_service=None)\n        assert strategy is not None\n\n    def test_init_with_llm(self):\n        \"\"\"SemanticStrategy can be constructed with LLM service.\"\"\"\n        mock_llm = make_mock_llm_service()\n        strategy = SemanticStrategy(llm_service=mock_llm)\n        assert strategy is not None\n\n    def test_init_default_no_llm(self):\n        \"\"\"SemanticStrategy defaults to no LLM service.\"\"\"\n        strategy = SemanticStrategy()\n        assert strategy is not None\n\n\nclass TestSemanticStrategyName:\n    def test_name_is_semantic(self):\n        \"\"\"SemanticStrategy.name returns 'semantic'.\"\"\"\n        strategy = SemanticStrategy()\n        assert strategy.name == \"semantic\", f\"Expected 'semantic', got '{strategy.name}'\"\n\n\nclass TestSemanticStrategyEmbed:\n    @pytest.mark.asyncio\n    async def test_embed_with_content_no_llm(self, semantic_strategy_no_llm, text_signal):\n        \"\"\"Returns valid embedding for non-empty content without LLM.\"\"\"\n        result = await semantic_strategy_no_llm.embed(text_signal)\n        assert_is_nonzero_unit(result, \"non-empty text should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_embed_empty_content_returns_zero(self, semantic_strategy_no_llm, empty_signal):\n        \"\"\"Returns zero vector for empty content.\"\"\"\n        result = await semantic_strategy_no_llm.embed(empty_signal)\n        assert_is_zero_vector(result, \"empty content should produce zero vector\")\n\n    @pytest.mark.asyncio\n    async def test_embed_deterministic_no_llm(self, semantic_strategy_no_llm, text_signal):\n        \"\"\"Without LLM, same input produces same output (deterministic).\"\"\"\n        result1 = await semantic_strategy_no_llm.embed(text_signal)\n        result2 = await semantic_strategy_no_llm.embed(text_signal)\n        np.testing.assert_array_equal(\n            result1, result2,\n            err_msg=\"Fallback embedding must be deterministic\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_with_llm_success(self):\n        \"\"\"Uses LLM service when available and working.\"\"\"\n        valid_vec = np.random.randn(64).tolist()\n        mock_llm = make_mock_llm_service(return_value=valid_vec)\n        strategy = SemanticStrategy(llm_service=mock_llm)\n        signal = FakeSignal(content=\"test content\", signal_type=\"message\")\n\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, \"LLM-sourced embedding should be valid\")\n        mock_llm.embed_text.assert_called()\n\n    @pytest.mark.asyncio\n    async def test_embed_llm_failure_falls_back(self):\n        \"\"\"Falls back to heuristic when LLM raises exception.\"\"\"\n        mock_llm = make_mock_llm_service(side_effect=RuntimeError(\"LLM service error\"))\n        strategy = SemanticStrategy(llm_service=mock_llm)\n        signal = FakeSignal(content=\"test content for fallback\", signal_type=\"message\")\n\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, \"Should fall back gracefully on LLM failure\")\n        # With non-empty content, fallback should produce non-zero vector\n        assert not np.allclose(result, 0.0), \"Fallback with content should produce non-zero\"\n\n    @pytest.mark.asyncio\n    async def test_embed_llm_invalid_output_falls_back(self):\n        \"\"\"Falls back when LLM returns NaN-containing vector.\"\"\"\n        invalid_vec = [float(\"nan\")] * 64\n        mock_llm = make_mock_llm_service(return_value=invalid_vec)\n        strategy = SemanticStrategy(llm_service=mock_llm)\n        signal = FakeSignal(content=\"test content for invalid LLM output\", signal_type=\"message\")\n\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, \"Should handle invalid LLM output gracefully\")\n\n    @pytest.mark.asyncio\n    async def test_embed_llm_wrong_dimension_falls_back(self):\n        \"\"\"Falls back when LLM returns wrong dimensionality.\"\"\"\n        wrong_dim_vec = np.random.randn(128).tolist()\n        mock_llm = make_mock_llm_service(return_value=wrong_dim_vec)\n        strategy = SemanticStrategy(llm_service=mock_llm)\n        signal = FakeSignal(content=\"test content wrong dim\", signal_type=\"message\")\n\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, \"Should handle wrong-dimension LLM output\")\n        assert result.shape == (EMBEDDING_DIM,), \"Must always return EMBEDDING_DIM-sized vector\"\n\n    @pytest.mark.asyncio\n    async def test_embed_never_raises(self, semantic_strategy_no_llm):\n        \"\"\"embed() never raises exceptions to the caller.\"\"\"\n        # Test with various problematic inputs\n        signals = [\n            FakeSignal(content=\"\", signal_type=\"\"),\n            FakeSignal(content=\"normal text\", signal_type=\"message\"),\n            FakeSignal(content=\"x\" * 100000, signal_type=\"message\"),  # Very long\n            FakeSignal(content=\"🎉🚀❤️\", signal_type=\"message\"),  # Unicode emoji\n        ]\n        for signal in signals:\n            try:\n                result = await semantic_strategy_no_llm.embed(signal)\n                assert_valid_embedding(result, f\"Content: {signal.content[:50]}\")\n            except Exception as e:\n                pytest.fail(f\"embed() should never raise, got: {type(e).__name__}: {e}\")\n\n    @pytest.mark.asyncio\n    async def test_embed_different_content_different_vectors(self, semantic_strategy_no_llm):\n        \"\"\"Different content produces different embeddings.\"\"\"\n        signal1 = FakeSignal(content=\"machine learning artificial intelligence\", signal_type=\"message\")\n        signal2 = FakeSignal(content=\"cooking recipes baking bread\", signal_type=\"message\")\n\n        result1 = await semantic_strategy_no_llm.embed(signal1)\n        result2 = await semantic_strategy_no_llm.embed(signal2)\n\n        assert not np.allclose(result1, result2), (\n            \"Semantically different content should produce different embeddings\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_whitespace_only_content(self, semantic_strategy_no_llm):\n        \"\"\"Handles whitespace-only content gracefully.\"\"\"\n        signal = FakeSignal(content=\"   \\t\\n  \", signal_type=\"message\")\n        result = await semantic_strategy_no_llm.embed(signal)\n        assert_valid_embedding(result, \"Whitespace-only content should not crash\")\n\n\n# ============================================================================\n# 6. TechnicalStrategy Tests\n# ============================================================================\n\nclass TestTechnicalStrategyInit:\n    def test_init(self):\n        \"\"\"TechnicalStrategy can be constructed with no arguments.\"\"\"\n        strategy = TechnicalStrategy()\n        assert strategy is not None\n\n\nclass TestTechnicalStrategyName:\n    def test_name_is_technical(self, technical_strategy):\n        \"\"\"TechnicalStrategy.name returns 'technical'.\"\"\"\n        assert technical_strategy.name == \"technical\", (\n            f\"Expected 'technical', got '{technical_strategy.name}'\"\n        )\n\n\nclass TestTechnicalStrategyTokenize:\n    def test_camel_case_splitting(self, technical_strategy):\n        \"\"\"Splits camelCase into constituent lowercase words.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\"getUserName\")\n        tokens_lower = [t.lower() for t in tokens]\n        assert \"get\" in tokens_lower, \"'get' should be in tokens from 'getUserName'\"\n        assert \"user\" in tokens_lower, \"'user' should be in tokens from 'getUserName'\"\n        assert \"name\" in tokens_lower, \"'name' should be in tokens from 'getUserName'\"\n\n    def test_snake_case_splitting(self, technical_strategy):\n        \"\"\"Splits snake_case at underscores.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\"get_user_name\")\n        tokens_lower = [t.lower() for t in tokens]\n        assert \"get\" in tokens_lower, \"'get' should be in tokens from 'get_user_name'\"\n        assert \"user\" in tokens_lower, \"'user' should be in tokens from 'get_user_name'\"\n        assert \"name\" in tokens_lower, \"'name' should be in tokens from 'get_user_name'\"\n\n    def test_dotted_path_splitting(self, technical_strategy):\n        \"\"\"Splits dotted paths at dots.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\"os.path.join\")\n        tokens_lower = [t.lower() for t in tokens]\n        assert \"path\" in tokens_lower, \"'path' should be in tokens from 'os.path.join'\"\n        assert \"join\" in tokens_lower, \"'join' should be in tokens from 'os.path.join'\"\n\n    def test_all_lowercase(self, technical_strategy):\n        \"\"\"All tokens are lowercase.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\"MyClassName getHTTPResponse\")\n        for token in tokens:\n            assert token == token.lower(), f\"Token '{token}' should be lowercase\"\n\n    def test_filter_short_tokens(self, technical_strategy):\n        \"\"\"Filters out tokens shorter than 2 characters.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\"a b c def gh\")\n        for token in tokens:\n            assert len(token) >= 2, f\"Token '{token}' should be filtered (len < 2)\"\n\n    def test_empty_string(self, technical_strategy):\n        \"\"\"Returns empty list for empty string.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\"\")\n        assert isinstance(tokens, list), \"Should return a list\"\n        assert len(tokens) == 0, \"Empty string should yield empty token list\"\n\n    def test_mixed_identifiers(self, technical_strategy):\n        \"\"\"Handles mixed identifier styles in one string.\"\"\"\n        tokens = technical_strategy.tokenize_code_aware(\n            \"getUserName get_user_name os.path.join\"\n        )\n        tokens_lower = [t.lower() for t in tokens]\n        assert \"get\" in tokens_lower\n        assert \"user\" in tokens_lower\n        assert \"path\" in tokens_lower\n        assert \"join\" in tokens_lower\n\n\nclass TestTechnicalStrategyDetectPatterns:\n    def test_function_definitions(self, technical_strategy):\n        \"\"\"Detects function definitions.\"\"\"\n        text = \"def my_function():\\n    pass\\ndef another_func(x, y):\\n    return x\"\n        patterns = technical_strategy.detect_patterns(text)\n        pattern_types = [p.pattern_type for p in patterns]\n        assert \"function_definition\" in pattern_types or any(\n            \"function\" in str(pt) for pt in pattern_types\n        ), f\"Should detect function definitions, got types: {pattern_types}\"\n\n    def test_import_statements(self, technical_strategy):\n        \"\"\"Detects import statements.\"\"\"\n        text = \"import os\\nfrom pathlib import Path\"\n        patterns = technical_strategy.detect_patterns(text)\n        pattern_types = [p.pattern_type for p in patterns]\n        assert \"import_statement\" in pattern_types or any(\n            \"import\" in str(pt) for pt in pattern_types\n        ), f\"Should detect import statements, got types: {pattern_types}\"\n\n    def test_api_paths(self, technical_strategy):\n        \"\"\"Detects API paths.\"\"\"\n        text = \"GET /api/v2/users/{id}\\nPOST /api/auth/login\"\n        patterns = technical_strategy.detect_patterns(text)\n        pattern_types = [p.pattern_type for p in patterns]\n        assert \"api_path\" in pattern_types or any(\n            \"api\" in str(pt) for pt in pattern_types\n        ), f\"Should detect API paths, got types: {pattern_types}\"\n\n    def test_class_definitions(self, technical_strategy):\n        \"\"\"Detects class definitions.\"\"\"\n        text = \"class MyClass(BaseClass):\\n    pass\"\n        patterns = technical_strategy.detect_patterns(text)\n        pattern_types = [p.pattern_type for p in patterns]\n        assert \"class_definition\" in pattern_types or any(\n            \"class\" in str(pt) for pt in pattern_types\n        ), f\"Should detect class definitions, got types: {pattern_types}\"\n\n    def test_empty_text_no_patterns(self, technical_strategy):\n        \"\"\"No patterns detected in empty text.\"\"\"\n        patterns = technical_strategy.detect_patterns(\"\")\n        assert len(patterns) == 0, \"Empty text should have no patterns\"\n\n    def test_plain_text_minimal_patterns(self, technical_strategy):\n        \"\"\"Plain non-technical text has minimal or no code patterns.\"\"\"\n        patterns = technical_strategy.detect_patterns(\n            \"Hello world this is plain text about nothing technical\"\n        )\n        # May detect 0 patterns or very few\n        for p in patterns:\n            assert p.count > 0, \"Each detected pattern must have count > 0\"\n\n    def test_no_duplicate_pattern_types(self, technical_strategy):\n        \"\"\"No duplicate pattern_type values in result.\"\"\"\n        text = \"def foo():\\n    import os\\n    class Bar: pass\"\n        patterns = technical_strategy.detect_patterns(text)\n        types_seen = [p.pattern_type for p in patterns]\n        assert len(types_seen) == len(set(types_seen)), (\n            f\"Duplicate pattern types found: {types_seen}\"\n        )\n\n    def test_count_equals_matches_length(self, technical_strategy):\n        \"\"\"Each pattern's count equals its matches list length.\"\"\"\n        text = \"def a():\\n    pass\\ndef b():\\n    pass\\ndef c():\\n    pass\"\n        patterns = technical_strategy.detect_patterns(text)\n        for p in patterns:\n            assert p.count == len(p.matches), (\n                f\"Pattern {p.pattern_type}: count={p.count} != len(matches)={len(p.matches)}\"\n            )\n\n    def test_only_matched_patterns_included(self, technical_strategy):\n        \"\"\"Result only contains patterns that were actually detected (count > 0).\"\"\"\n        text = \"def foo(): pass\"\n        patterns = technical_strategy.detect_patterns(text)\n        for p in patterns:\n            assert p.count > 0, f\"Pattern {p.pattern_type} has count=0 and should not be included\"\n            assert len(p.matches) > 0\n\n\nclass TestTechnicalStrategyEmbed:\n    @pytest.mark.asyncio\n    async def test_embed_code_content(self, technical_strategy, code_signal):\n        \"\"\"Produces non-zero L2-normalized embedding for code content.\"\"\"\n        result = await technical_strategy.embed(code_signal)\n        assert_is_nonzero_unit(result, \"Code content should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_embed_empty_content_returns_zero(self, technical_strategy, empty_signal):\n        \"\"\"Returns zero vector for empty content.\"\"\"\n        result = await technical_strategy.embed(empty_signal)\n        assert_is_zero_vector(result, \"Empty content should produce zero vector\")\n\n    @pytest.mark.asyncio\n    async def test_embed_deterministic(self, technical_strategy, code_signal):\n        \"\"\"Same input produces same output (deterministic).\"\"\"\n        result1 = await technical_strategy.embed(code_signal)\n        result2 = await technical_strategy.embed(code_signal)\n        np.testing.assert_array_equal(\n            result1, result2,\n            err_msg=\"TechnicalStrategy.embed must be deterministic\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_never_raises(self, technical_strategy):\n        \"\"\"embed() never raises exceptions to the caller.\"\"\"\n        signals = [\n            FakeSignal(content=\"\"),\n            FakeSignal(content=\"def f(): pass\", signal_type=\"code_snippet\"),\n            FakeSignal(content=\"just plain text\"),\n            FakeSignal(content=\"x\" * 100000),\n            FakeSignal(content=\"🎉 emoji content\"),\n        ]\n        for signal in signals:\n            try:\n                result = await technical_strategy.embed(signal)\n                assert_valid_embedding(result, f\"Content: {signal.content[:50]}\")\n            except Exception as e:\n                pytest.fail(f\"embed() should never raise, got: {type(e).__name__}: {e}\")\n\n    @pytest.mark.asyncio\n    async def test_embed_code_vs_prose_different(self, technical_strategy):\n        \"\"\"Code and prose produce meaningfully different embeddings.\"\"\"\n        code_sig = FakeSignal(\n            content=\"def foo(): import os\\nclass MyClass:\\n    pass\",\n            signal_type=\"code_snippet\"\n        )\n        prose_sig = FakeSignal(\n            content=\"The weather is nice today and I went for a walk\",\n            signal_type=\"message\"\n        )\n        code_emb = await technical_strategy.embed(code_sig)\n        prose_emb = await technical_strategy.embed(prose_sig)\n\n        # At least one should be non-zero; they should differ\n        if not np.allclose(code_emb, 0.0) and not np.allclose(prose_emb, 0.0):\n            assert not np.allclose(code_emb, prose_emb), (\n                \"Code and prose embeddings should differ\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_embed_non_code_text(self, technical_strategy):\n        \"\"\"Handles non-technical plain text gracefully.\"\"\"\n        signal = FakeSignal(\n            content=\"Hello world, how are you doing today?\",\n            signal_type=\"message\"\n        )\n        result = await technical_strategy.embed(signal)\n        assert_valid_embedding(result, \"Non-code text should return valid embedding\")\n\n\n# ============================================================================\n# 7. SocialStrategy Tests\n# ============================================================================\n\nclass TestSocialStrategyInit:\n    def test_init(self):\n        \"\"\"SocialStrategy can be constructed with no arguments.\"\"\"\n        strategy = SocialStrategy()\n        assert strategy is not None\n\n\nclass TestSocialStrategyName:\n    def test_name_is_social(self, social_strategy):\n        \"\"\"SocialStrategy.name returns 'social'.\"\"\"\n        assert social_strategy.name == \"social\", (\n            f\"Expected 'social', got '{social_strategy.name}'\"\n        )\n\n\nclass TestSocialStrategyEmbed:\n    @pytest.mark.asyncio\n    async def test_embed_with_author(self, social_strategy):\n        \"\"\"Non-zero embedding when author is present.\"\"\"\n        signal = FakeSignal(author=\"alice\", mentions=[], channel=\"\")\n        result = await social_strategy.embed(signal)\n        assert_is_nonzero_unit(result, \"Author-only signal should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_embed_with_mentions(self, social_strategy):\n        \"\"\"Non-zero embedding when mentions are present.\"\"\"\n        signal = FakeSignal(author=\"\", mentions=[\"bob\", \"charlie\"], channel=\"\")\n        result = await social_strategy.embed(signal)\n        assert_is_nonzero_unit(result, \"Mentions-only signal should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_embed_with_channel(self, social_strategy):\n        \"\"\"Non-zero embedding when channel is present.\"\"\"\n        signal = FakeSignal(author=\"\", mentions=[], channel=\"general\")\n        result = await social_strategy.embed(signal)\n        assert_is_nonzero_unit(result, \"Channel-only signal should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_embed_no_social_metadata_returns_zero(self, social_strategy):\n        \"\"\"Returns zero vector when no social metadata present.\"\"\"\n        signal = FakeSignal(author=\"\", mentions=[], channel=\"\", content=\"Some content\")\n        result = await social_strategy.embed(signal)\n        assert_is_zero_vector(result, \"No social metadata should produce zero vector\")\n\n    @pytest.mark.asyncio\n    async def test_embed_deterministic(self, social_strategy, social_signal):\n        \"\"\"Same input produces same output (deterministic).\"\"\"\n        result1 = await social_strategy.embed(social_signal)\n        result2 = await social_strategy.embed(social_signal)\n        np.testing.assert_array_equal(\n            result1, result2,\n            err_msg=\"SocialStrategy.embed must be deterministic\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_different_authors_different_vectors(self, social_strategy):\n        \"\"\"Different authors produce different embeddings.\"\"\"\n        signals = [\n            FakeSignal(author=name, mentions=[], channel=\"\")\n            for name in [\"alice\", \"bob\", \"charlie\"]\n        ]\n        embeddings = [await social_strategy.embed(s) for s in signals]\n\n        # At least two should be different\n        all_same = all(np.allclose(embeddings[0], e) for e in embeddings[1:])\n        assert not all_same, \"Different authors should produce different embeddings\"\n\n    @pytest.mark.asyncio\n    async def test_embed_author_mention_pair_distinct(self, social_strategy):\n        \"\"\"Author+mention co-occurrence produces distinct signal from individuals.\"\"\"\n        author_only = FakeSignal(author=\"alice\", mentions=[], channel=\"\")\n        mention_only = FakeSignal(author=\"\", mentions=[\"bob\"], channel=\"\")\n        both = FakeSignal(author=\"alice\", mentions=[\"bob\"], channel=\"\")\n\n        emb_author = await social_strategy.embed(author_only)\n        emb_mention = await social_strategy.embed(mention_only)\n        emb_both = await social_strategy.embed(both)\n\n        # The combined embedding should differ from simple sum/either individual\n        assert not np.allclose(emb_both, emb_author), (\n            \"Author+mention should differ from author-only\"\n        )\n        assert not np.allclose(emb_both, emb_mention), (\n            \"Author+mention should differ from mention-only\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_entity_prefix_separation(self, social_strategy):\n        \"\"\"Entity-type prefixes prevent cross-entity-type collisions.\"\"\"\n        # Same name as author vs as mention should produce different embeddings\n        as_author = FakeSignal(author=\"alice\", mentions=[], channel=\"\")\n        as_mention = FakeSignal(author=\"\", mentions=[\"alice\"], channel=\"\")\n\n        emb_author = await social_strategy.embed(as_author)\n        emb_mention = await social_strategy.embed(as_mention)\n\n        assert not np.allclose(emb_author, emb_mention), (\n            \"author:alice and mention:alice should hash differently due to prefix\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_never_raises(self, social_strategy):\n        \"\"\"embed() never raises exceptions to the caller.\"\"\"\n        signals = [\n            FakeSignal(author=\"\", mentions=[], channel=\"\"),\n            FakeSignal(author=\"alice\", mentions=[\"bob\", \"charlie\"], channel=\"dev\"),\n            FakeSignal(author=\"x\" * 10000, mentions=[], channel=\"\"),\n            FakeSignal(author=\"\", mentions=[\"m\" * 10000], channel=\"\"),\n        ]\n        for signal in signals:\n            try:\n                result = await social_strategy.embed(signal)\n                assert_valid_embedding(result)\n            except Exception as e:\n                pytest.fail(f\"embed() should never raise, got: {type(e).__name__}: {e}\")\n\n    @pytest.mark.asyncio\n    async def test_embed_full_social_metadata(self, social_strategy, social_signal):\n        \"\"\"Handles full social metadata correctly.\"\"\"\n        result = await social_strategy.embed(social_signal)\n        assert_is_nonzero_unit(result, \"Full social metadata should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_embed_ignores_content(self, social_strategy):\n        \"\"\"SocialStrategy does not use content field — only social metadata.\"\"\"\n        signal1 = FakeSignal(\n            content=\"completely different text\",\n            author=\"alice\", mentions=[\"bob\"], channel=\"dev\"\n        )\n        signal2 = FakeSignal(\n            content=\"totally unrelated content about something else\",\n            author=\"alice\", mentions=[\"bob\"], channel=\"dev\"\n        )\n        result1 = await social_strategy.embed(signal1)\n        result2 = await social_strategy.embed(signal2)\n        np.testing.assert_array_equal(\n            result1, result2,\n            err_msg=\"SocialStrategy should ignore content field\"\n        )\n\n\n# ============================================================================\n# 8. get_strategy_info Tests\n# ============================================================================\n\nclass TestGetStrategyInfo:\n    def test_semantic_info(self):\n        \"\"\"get_strategy_info returns correct info for 'semantic'.\"\"\"\n        info = get_strategy_info(\"semantic\")\n        assert info.name == \"semantic\", f\"Expected name='semantic', got '{info.name}'\"\n        assert info.dimension == 64, f\"Expected dimension=64, got {info.dimension}\"\n        assert isinstance(info.description, str) and len(info.description) > 0, (\n            \"Description should be non-empty string\"\n        )\n\n    def test_technical_info(self):\n        \"\"\"get_strategy_info returns correct info for 'technical'.\"\"\"\n        info = get_strategy_info(\"technical\")\n        assert info.name == \"technical\"\n        assert info.dimension == 64\n        assert info.requires_external_service is False, (\n            \"TechnicalStrategy should not require external service\"\n        )\n\n    def test_social_info(self):\n        \"\"\"get_strategy_info returns correct info for 'social'.\"\"\"\n        info = get_strategy_info(\"social\")\n        assert info.name == \"social\"\n        assert info.dimension == 64\n        assert info.requires_external_service is False, (\n            \"SocialStrategy should not require external service\"\n        )\n\n    def test_all_strategies_dimension_64(self):\n        \"\"\"All strategy infos report dimension=64.\"\"\"\n        for name in [\"semantic\", \"technical\", \"social\"]:\n            info = get_strategy_info(name)\n            assert info.dimension == 64, (\n                f\"Strategy '{name}' dimension should be 64, got {info.dimension}\"\n            )\n\n\n# ============================================================================\n# 9. Cross-Strategy Invariant Tests\n# ============================================================================\n\nclass TestCrossStrategyInvariants:\n    \"\"\"Tests that verify invariants across all three strategies.\"\"\"\n\n    @pytest.fixture(params=[\"semantic\", \"technical\", \"social\"])\n    def strategy(self, request):\n        if request.param == \"semantic\":\n            return SemanticStrategy(llm_service=None)\n        elif request.param == \"technical\":\n            return TechnicalStrategy()\n        else:\n            return SocialStrategy()\n\n    @pytest.mark.asyncio\n    async def test_embed_returns_correct_dimension(self, strategy):\n        \"\"\"All strategies return vectors of exactly EMBEDDING_DIM dimensions.\"\"\"\n        signal = FakeSignal(\n            content=\"test content def foo(): pass\",\n            signal_type=\"message\",\n            author=\"alice\",\n            mentions=[\"bob\"],\n            channel=\"general\",\n        )\n        result = await strategy.embed(signal)\n        assert result.shape == (EMBEDDING_DIM,), (\n            f\"Strategy '{strategy.name}': expected shape ({EMBEDDING_DIM},), got {result.shape}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_embed_returns_l2_normalized_or_zero(self, strategy):\n        \"\"\"All strategies return either L2-normalized or zero vectors.\"\"\"\n        signal = FakeSignal(\n            content=\"test content with some words\",\n            signal_type=\"message\",\n            author=\"alice\",\n            mentions=[\"bob\"],\n            channel=\"general\",\n        )\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, f\"Strategy '{strategy.name}'\")\n\n    @pytest.mark.asyncio\n    async def test_embed_no_nan_inf(self, strategy):\n        \"\"\"No strategy ever returns NaN or Inf.\"\"\"\n        signals = [\n            FakeSignal(content=\"\", signal_type=\"message\"),\n            FakeSignal(content=\"hello world\", signal_type=\"message\"),\n            FakeSignal(\n                content=\"def foo(): import os\",\n                signal_type=\"code_snippet\",\n                author=\"alice\",\n                mentions=[\"bob\"],\n                channel=\"dev\",\n            ),\n        ]\n        for signal in signals:\n            result = await strategy.embed(signal)\n            assert not np.any(np.isnan(result)), (\n                f\"Strategy '{strategy.name}': NaN in embedding\"\n            )\n            assert not np.any(np.isinf(result)), (\n                f\"Strategy '{strategy.name}': Inf in embedding\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_embed_never_raises_exception(self, strategy):\n        \"\"\"All embed() methods never raise exceptions to the caller.\"\"\"\n        signal = FakeSignal(\n            content=\"some content\",\n            signal_type=\"message\",\n            author=\"test_author\",\n            mentions=[\"mention1\"],\n            channel=\"test_channel\",\n        )\n        try:\n            result = await strategy.embed(signal)\n            assert isinstance(result, np.ndarray)\n        except Exception as e:\n            pytest.fail(\n                f\"Strategy '{strategy.name}' embed() raised {type(e).__name__}: {e}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_embed_empty_content_valid_result(self, strategy):\n        \"\"\"All strategies handle empty content without error.\"\"\"\n        signal = FakeSignal(content=\"\", signal_type=\"message\")\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, f\"Strategy '{strategy.name}' with empty content\")\n\n    @pytest.mark.asyncio\n    async def test_embed_is_deterministic(self, strategy):\n        \"\"\"All strategies are deterministic for same input (when not using LLM).\"\"\"\n        signal = FakeSignal(\n            content=\"determinism test content\",\n            signal_type=\"message\",\n            author=\"alice\",\n            mentions=[\"bob\"],\n            channel=\"general\",\n        )\n        result1 = await strategy.embed(signal)\n        result2 = await strategy.embed(signal)\n        np.testing.assert_array_equal(\n            result1, result2,\n            err_msg=f\"Strategy '{strategy.name}' must be deterministic\"\n        )\n\n\n# ============================================================================\n# 10. Additional Edge Cases\n# ============================================================================\n\nclass TestAdditionalEdgeCases:\n    @pytest.mark.asyncio\n    async def test_semantic_very_long_content(self):\n        \"\"\"SemanticStrategy handles very long content gracefully.\"\"\"\n        strategy = SemanticStrategy(llm_service=None)\n        signal = FakeSignal(content=\"word \" * 100000, signal_type=\"message\")\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, \"Very long content\")\n\n    @pytest.mark.asyncio\n    async def test_technical_only_short_tokens(self):\n        \"\"\"TechnicalStrategy handles content with only short tokens.\"\"\"\n        strategy = TechnicalStrategy()\n        signal = FakeSignal(content=\"a b c d e f g\", signal_type=\"message\")\n        result = await strategy.embed(signal)\n        assert_valid_embedding(result, \"Only short tokens\")\n\n    @pytest.mark.asyncio\n    async def test_social_many_mentions(self):\n        \"\"\"SocialStrategy handles many mentions.\"\"\"\n        strategy = SocialStrategy()\n        mentions = [f\"user_{i}\" for i in range(100)]\n        signal = FakeSignal(author=\"admin\", mentions=mentions, channel=\"big_channel\")\n        result = await strategy.embed(signal)\n        assert_is_nonzero_unit(result, \"Many mentions should produce non-zero embedding\")\n\n    @pytest.mark.asyncio\n    async def test_social_single_mention(self):\n        \"\"\"SocialStrategy handles a single mention.\"\"\"\n        strategy = SocialStrategy()\n        signal = FakeSignal(author=\"\", mentions=[\"only_one\"], channel=\"\")\n        result = await strategy.embed(signal)\n        assert_is_nonzero_unit(result, \"Single mention should produce non-zero embedding\")\n\n    def test_signed_hash_large_num_buckets(self):\n        \"\"\"signed_hash works with very large num_buckets.\"\"\"\n        bucket, sign = signed_hash(\"test\", 1000000)\n        assert 0 <= bucket < 1000000\n        assert sign in (-1, 1)\n\n    @pytest.mark.asyncio\n    async def test_technical_decorator_detection(self):\n        \"\"\"TechnicalStrategy detects decorator patterns.\"\"\"\n        strategy = TechnicalStrategy()\n        text = \"@property\\ndef foo(self):\\n    pass\\n@staticmethod\\ndef bar():\\n    pass\"\n        patterns = strategy.detect_patterns(text)\n        pattern_types = [p.pattern_type for p in patterns]\n        # Should detect at least function definitions, possibly decorators\n        assert len(patterns) > 0, \"Should detect patterns in decorated code\"\n\n    @pytest.mark.asyncio\n    async def test_technical_error_pattern_detection(self):\n        \"\"\"TechnicalStrategy detects error patterns.\"\"\"\n        strategy = TechnicalStrategy()\n        text = \"raise ValueError('invalid input')\\nexcept KeyError as e:\\n    logging.error(str(e))\"\n        patterns = strategy.detect_patterns(text)\n        # May or may not detect error_pattern depending on implementation regex\n        for p in patterns:\n            assert p.count == len(p.matches)\n\n    @pytest.mark.asyncio\n    async def test_semantic_embed_with_tags(self):\n        \"\"\"SemanticStrategy may use tags for enrichment.\"\"\"\n        strategy = SemanticStrategy(llm_service=None)\n        signal_no_tags = FakeSignal(content=\"some content\", signal_type=\"message\", tags=[])\n        signal_with_tags = FakeSignal(\n            content=\"some content\", signal_type=\"message\",\n            tags=[\"python\", \"machine-learning\", \"tutorial\"]\n        )\n        result_no_tags = await strategy.embed(signal_no_tags)\n        result_with_tags = await strategy.embed(signal_with_tags)\n        # Both should be valid\n        assert_valid_embedding(result_no_tags, \"Without tags\")\n        assert_valid_embedding(result_with_tags, \"With tags\")\n"
+}

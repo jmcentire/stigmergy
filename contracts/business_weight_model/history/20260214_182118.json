@@ -1,0 +1,511 @@
+{
+  "component_id": "business_weight_model",
+  "name": "Business Weight Data Model",
+  "description": "Layered data model for business weight scoring. Defines BusinessWeightMetrics (signal_frequency, author_seniority, channel_gravity, engagement_velocity) as mutable tracking state, a cached business_weight float on Context with default 0.5 and policy floor 0.1, an effective_business_weight property that enforces the floor, and a pure compute_business_weight function that aggregates metrics into a composite score clamped to [0.0, 1.0]. Backward compatible via Pydantic defaults — no migration needed for existing contexts. Metrics use 0.5 as the \"no information available\" sentinel. The effective weight is used for token budget allocation and routing priority.",
+  "version": 1,
+  "types": [
+    {
+      "name": "BusinessWeightMetrics",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_frequency",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "How frequently this context generates actionable signals. 0.0 = silent/no signals, 1.0 = highest observed frequency. Default 0.5 = no information available. Update trigger: on each new inbound message or signal event. Data source: message timestamp deltas within the context, normalized against global baseline.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "signal_frequency must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "author_seniority",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "Seniority/authority level of the primary author or identity in this context. 0.0 = unknown/lowest authority, 1.0 = highest authority. Default 0.5 = no information available. Update trigger: on identity resolution or identity metadata refresh. Data source: identity resolver component — maps author identity to a normalized seniority score.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "author_seniority must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "channel_gravity",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "Learned importance of the channel/medium this context operates in, derived from historical response patterns. 0.0 = lowest gravity (e.g. noisy broadcast channel), 1.0 = highest gravity (e.g. direct executive channel). Default 0.5 = no information available. Update trigger: on response outcome feedback (was the response acted upon, ignored, escalated). Data source: response pattern tracker — exponential moving average of response engagement by channel.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "channel_gravity must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "engagement_velocity",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "Rate of change of engagement within this context — captures momentum/urgency. 0.0 = decelerating/stale, 1.0 = rapidly accelerating engagement. Default 0.5 = no information available. Update trigger: on each interaction event (message, reaction, follow-up). Data source: windowed derivative of interaction count over time, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "engagement_velocity must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mutable Pydantic BaseModel tracking the four component metrics that feed into business weight computation. NOT frozen — metrics update over time as signals arrive. Each metric defaults to 0.5 (neutral/unknown sentinel). Lives in primitives/ alongside Context."
+    },
+    {
+      "name": "BusinessWeightConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "weight_signal_frequency",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.25",
+          "description": "Weight applied to signal_frequency in the weighted average. Must be non-negative.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "weight_signal_frequency must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "weight_author_seniority",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.25",
+          "description": "Weight applied to author_seniority in the weighted average. Must be non-negative.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "weight_author_seniority must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "weight_channel_gravity",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.25",
+          "description": "Weight applied to channel_gravity in the weighted average. Must be non-negative.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "weight_channel_gravity must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "weight_engagement_velocity",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.25",
+          "description": "Weight applied to engagement_velocity in the weighted average. Must be non-negative.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "weight_engagement_velocity must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "policy_floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.1",
+          "description": "Minimum effective business weight. The effective weight is max(computed_weight, policy_floor). Prevents any context from being starved of resources entirely.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "policy_floor must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the business weight computation, including per-metric weights for the weighted average and the policy floor. Immutable once constructed. Lives alongside the compute function in core/business_weight.py."
+    },
+    {
+      "name": "BusinessWeightResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "raw_weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The raw computed business weight from the weighted average of metrics, clamped to [0.0, 1.0]. This is stored on Context as business_weight.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "raw_weight must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "effective_weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The effective business weight after applying the policy floor: max(raw_weight, policy_floor). This is what token budget allocation and routing priority should use.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.1 <= value <= 1.0",
+              "error_message": "effective_weight must be in [0.1, 1.0] (floor enforced)"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of a business weight computation, containing both the raw computed score and the effective (floor-applied) score."
+    },
+    {
+      "name": "MetricUpdateRequest",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_frequency",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "New signal_frequency value, or None to leave unchanged.",
+          "validators": []
+        },
+        {
+          "name": "author_seniority",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "New author_seniority value, or None to leave unchanged.",
+          "validators": []
+        },
+        {
+          "name": "channel_gravity",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "New channel_gravity value, or None to leave unchanged.",
+          "validators": []
+        },
+        {
+          "name": "engagement_velocity",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "New engagement_velocity value, or None to leave unchanged.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A request to update one or more component metrics on a BusinessWeightMetrics instance. Only non-null fields are applied (partial update semantics)."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "float",
+      "variants": [],
+      "inner_types": [],
+      "description": "An optional float value — either a float or None."
+    },
+    {
+      "name": "MetricName",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "signal_frequency",
+        "author_seniority",
+        "channel_gravity",
+        "engagement_velocity"
+      ],
+      "inner_types": [],
+      "description": "Enumeration of the four component metric names that feed into business weight."
+    }
+  ],
+  "functions": [
+    {
+      "name": "compute_business_weight",
+      "description": "Pure function that computes a composite business weight from component metrics using a weighted average formula. Located in core/business_weight.py. Formula: raw = clamp((w_sf * signal_frequency + w_as * author_seniority + w_cg * channel_gravity + w_ev * engagement_velocity) / sum_of_weights, 0.0, 1.0). Returns both raw and effective (floor-applied) weights. If all config weights are zero, returns default 0.5 as raw weight. This function has NO side effects — it does not mutate metrics or context.",
+      "inputs": [
+        {
+          "name": "metrics",
+          "type_ref": "BusinessWeightMetrics",
+          "required": true,
+          "default": "",
+          "description": "The current component metrics for the context.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "BusinessWeightConfig",
+          "required": false,
+          "default": "BusinessWeightConfig()",
+          "description": "Configuration controlling per-metric weights and the policy floor. Defaults to equal weights (0.25 each) and floor 0.1.",
+          "validators": []
+        }
+      ],
+      "output_type": "BusinessWeightResult",
+      "error_cases": [
+        {
+          "name": "invalid_metric_value",
+          "condition": "Any metric value in metrics is outside [0.0, 1.0] (NaN or out of range)",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "name of the invalid metric field",
+            "value": "the invalid value as string"
+          }
+        },
+        {
+          "name": "invalid_config_weight",
+          "condition": "Any weight value in config is outside [0.0, 1.0] or is NaN",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "name of the invalid config field",
+            "value": "the invalid value as string"
+          }
+        },
+        {
+          "name": "invalid_policy_floor",
+          "condition": "config.policy_floor is outside [0.0, 1.0] or is NaN",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "policy_floor",
+            "value": "the invalid value as string"
+          }
+        }
+      ],
+      "preconditions": [
+        "All metric values in metrics are in [0.0, 1.0]",
+        "All weight values in config are in [0.0, 1.0]",
+        "config.policy_floor is in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "result.raw_weight is in [0.0, 1.0]",
+        "result.effective_weight == max(result.raw_weight, config.policy_floor)",
+        "result.effective_weight >= config.policy_floor",
+        "If all config weights are zero, result.raw_weight == 0.5",
+        "If all metric values are equal to X, result.raw_weight == X (assuming non-zero weights exist)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "apply_metric_update",
+      "description": "Applies a partial metric update to a BusinessWeightMetrics instance, returning a new updated copy. Only fields present (non-None) in the update request are overwritten. This is a pure function — the original metrics instance is not mutated. Validates all provided values are in [0.0, 1.0] before applying.",
+      "inputs": [
+        {
+          "name": "current_metrics",
+          "type_ref": "BusinessWeightMetrics",
+          "required": true,
+          "default": "",
+          "description": "The current metrics state to update from.",
+          "validators": []
+        },
+        {
+          "name": "update",
+          "type_ref": "MetricUpdateRequest",
+          "required": true,
+          "default": "",
+          "description": "The partial update to apply. None fields are skipped.",
+          "validators": []
+        }
+      ],
+      "output_type": "BusinessWeightMetrics",
+      "error_cases": [
+        {
+          "name": "metric_value_out_of_range",
+          "condition": "A non-None value in update is outside [0.0, 1.0] or is NaN",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "name of the invalid metric field",
+            "value": "the invalid value as string"
+          }
+        }
+      ],
+      "preconditions": [
+        "current_metrics is a valid BusinessWeightMetrics instance",
+        "All non-None values in update are in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "For each field in update that is not None, result.<field> == update.<field>",
+        "For each field in update that is None, result.<field> == current_metrics.<field>",
+        "All fields in result are in [0.0, 1.0]",
+        "The original current_metrics instance is not mutated"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_effective_business_weight",
+      "description": "Convenience pure function that returns the effective business weight for a given raw business_weight value and policy floor. Equivalent to max(business_weight, policy_floor). This is the logic behind the effective_business_weight computed property on Context.",
+      "inputs": [
+        {
+          "name": "business_weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The raw cached business weight from Context. Expected in [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "business_weight must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "policy_floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.1",
+          "description": "The policy floor to enforce. Defaults to 0.1.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "policy_floor must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [
+        {
+          "name": "business_weight_out_of_range",
+          "condition": "business_weight is outside [0.0, 1.0] or is NaN",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "business_weight",
+            "value": "the invalid value as string"
+          }
+        },
+        {
+          "name": "policy_floor_out_of_range",
+          "condition": "policy_floor is outside [0.0, 1.0] or is NaN",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "policy_floor",
+            "value": "the invalid value as string"
+          }
+        }
+      ],
+      "preconditions": [
+        "business_weight is in [0.0, 1.0]",
+        "policy_floor is in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "result == max(business_weight, policy_floor)",
+        "result >= policy_floor",
+        "result is in [max(policy_floor, 0.0), 1.0]"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "create_default_metrics",
+      "description": "Factory function that creates a BusinessWeightMetrics instance with all metrics set to the neutral default (0.5). Used when initializing a new context or when backward-compatible deserialization needs a default metrics object.",
+      "inputs": [],
+      "output_type": "BusinessWeightMetrics",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "result.signal_frequency == 0.5",
+        "result.author_seniority == 0.5",
+        "result.channel_gravity == 0.5",
+        "result.engagement_velocity == 0.5"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_metrics",
+      "description": "Validates that all fields in a BusinessWeightMetrics instance are within the valid range [0.0, 1.0] and are not NaN. Returns True if valid, raises on invalid. Useful for defensive checks before computation.",
+      "inputs": [
+        {
+          "name": "metrics",
+          "type_ref": "BusinessWeightMetrics",
+          "required": true,
+          "default": "",
+          "description": "The metrics instance to validate.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "metric_out_of_range",
+          "condition": "Any metric field value is outside [0.0, 1.0]",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "name of the invalid metric field",
+            "value": "the invalid value as string"
+          }
+        },
+        {
+          "name": "metric_is_nan",
+          "condition": "Any metric field value is NaN",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "name of the NaN metric field",
+            "value": "NaN"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "If function returns, result is True",
+        "All fields of metrics are in [0.0, 1.0] and are not NaN"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All four component metrics (signal_frequency, author_seniority, channel_gravity, engagement_velocity) are always in [0.0, 1.0]",
+    "The default value for all component metrics is 0.5 (neutral/no-information sentinel)",
+    "The raw business_weight cached on Context is always in [0.0, 1.0] with default 0.5",
+    "The effective_business_weight is always max(business_weight, policy_floor) where policy_floor defaults to 0.1",
+    "effective_business_weight >= 0.1 under default configuration — no context is fully starved",
+    "compute_business_weight is a pure function: same inputs always produce same outputs, no side effects",
+    "Backward compatibility: existing Context instances without business_weight or business_weight_metrics deserialize successfully using Pydantic field defaults (business_weight=0.5, business_weight_metrics=BusinessWeightMetrics())",
+    "No migration scripts or schema version changes are required — this is a purely additive change",
+    "When all config weights are zero, compute_business_weight returns raw_weight=0.5 (the neutral default) to avoid division by zero",
+    "BusinessWeightMetrics is mutable (not frozen) — metrics are tracking state that updates over time",
+    "The sum of config weights need not equal 1.0 — the computation normalizes by dividing by the sum of weights"
+  ],
+  "requires": []
+}

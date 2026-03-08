@@ -1,0 +1,886 @@
+{
+  "component_id": "embedding_context_weights",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "init_happy_multiple_strategies",
+      "description": "initialize_dimension_weights with multiple strategy names creates instance with logit 0.0 for each, update_count 0, and default learning_rate 0.05",
+      "function": "initialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\", \"technical\", \"social\"]",
+        "learning_rate": "0.05"
+      },
+      "input_description": "",
+      "expected_output_description": "EmbeddingDimensionWeights with logits {'semantic': 0.0, 'technical': 0.0, 'social': 0.0}, update_count=0, learning_rate=0.05",
+      "expected_error": "",
+      "assertions": [
+        "result.logits == {'semantic': 0.0, 'technical': 0.0, 'social': 0.0}",
+        "result.update_count == 0",
+        "result.learning_rate == 0.05"
+      ]
+    },
+    {
+      "id": "init_happy_single_strategy",
+      "description": "initialize_dimension_weights with a single strategy name works correctly",
+      "function": "initialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\"]",
+        "learning_rate": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "EmbeddingDimensionWeights with logits {'semantic': 0.0}, update_count=0, learning_rate=0.1",
+      "expected_error": "",
+      "assertions": [
+        "result.logits == {'semantic': 0.0}",
+        "result.update_count == 0",
+        "result.learning_rate == 0.1"
+      ]
+    },
+    {
+      "id": "init_happy_empty_strategies",
+      "description": "initialize_dimension_weights with empty strategy list creates instance with empty logits dict",
+      "function": "initialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[]"
+      },
+      "input_description": "",
+      "expected_output_description": "EmbeddingDimensionWeights with empty logits dict",
+      "expected_error": "",
+      "assertions": [
+        "result.logits == {} or len(result.logits) == 0",
+        "result.update_count == 0"
+      ]
+    },
+    {
+      "id": "init_error_empty_strategy_name",
+      "description": "initialize_dimension_weights raises ValueError when a strategy name is an empty string",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\", \"\", \"social\"]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'non-empty' in str(exc_info.value).lower() or 'empty string' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "init_error_duplicate_strategy_name",
+      "description": "initialize_dimension_weights raises ValueError when duplicate strategy names are provided",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\", \"technical\", \"semantic\"]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'duplicate' in str(exc_info.value).lower() or 'Duplicate' in str(exc_info.value)"
+      ]
+    },
+    {
+      "id": "init_error_invalid_learning_rate_zero",
+      "description": "initialize_dimension_weights raises ValueError when learning_rate is 0.0",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\"]",
+        "learning_rate": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'learning' in str(exc_info.value).lower() or 'rate' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "init_error_invalid_learning_rate_negative",
+      "description": "initialize_dimension_weights raises ValueError when learning_rate is negative",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\"]",
+        "learning_rate": "-0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "init_error_invalid_learning_rate_above_one",
+      "description": "initialize_dimension_weights raises ValueError when learning_rate is above 1.0",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "[\"semantic\"]",
+        "learning_rate": "1.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "norm_happy_uniform_logits",
+      "description": "get_normalized_weights with uniform logits (all 0.0) produces equal weights summing to 1.0",
+      "function": "get_normalized_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 0.0, 'technical': 0.0, 'social': 0.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "Each weight is approximately 1/3, all sum to 1.0",
+      "expected_error": "",
+      "assertions": [
+        "all weights are approximately 1/3",
+        "weights sum to 1.0 within tolerance"
+      ]
+    },
+    {
+      "id": "norm_happy_unequal_logits",
+      "description": "get_normalized_weights with unequal logits produces valid probability distribution where higher logit gets higher weight",
+      "function": "get_normalized_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 2.0, 'technical': 0.0, 'social': -1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "Weights sum to 1.0, semantic has highest weight, social has lowest",
+      "expected_error": "",
+      "assertions": [
+        "weights sum to 1.0",
+        "semantic weight > technical weight > social weight",
+        "all weights in (0, 1)"
+      ]
+    },
+    {
+      "id": "norm_happy_with_extra_strategies",
+      "description": "get_normalized_weights with strategies parameter includes missing strategies at default logit 0.0",
+      "function": "get_normalized_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 1.0}",
+        "strategies": "['semantic', 'technical']"
+      },
+      "input_description": "",
+      "expected_output_description": "Both strategies present; semantic has higher weight than technical (which defaults to logit 0.0)",
+      "expected_error": "",
+      "assertions": [
+        "'semantic' in result",
+        "'technical' in result",
+        "semantic weight > technical weight",
+        "weights sum to 1.0"
+      ]
+    },
+    {
+      "id": "norm_edge_empty_logits_no_strategies",
+      "description": "get_normalized_weights with empty logits and no strategies parameter returns empty dict",
+      "function": "get_normalized_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "Empty dict",
+      "expected_error": "",
+      "assertions": [
+        "result is empty dict"
+      ]
+    },
+    {
+      "id": "norm_edge_single_strategy",
+      "description": "get_normalized_weights with single strategy returns weight 1.0 for that strategy",
+      "function": "get_normalized_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 5.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "{'semantic': 1.0}",
+      "expected_error": "",
+      "assertions": [
+        "result['semantic'] == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "norm_edge_extreme_logits",
+      "description": "get_normalized_weights with very large logit differences still produces valid output (numerical stability)",
+      "function": "get_normalized_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 1000.0, 'technical': 0.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "semantic weight very close to 1.0, technical very close to 0.0, no overflow/NaN",
+      "expected_error": "",
+      "assertions": [
+        "result['semantic'] is close to 1.0",
+        "result['technical'] is close to 0.0",
+        "all values are finite",
+        "sum is 1.0"
+      ]
+    },
+    {
+      "id": "norm_invariant_translation",
+      "description": "get_normalized_weights is invariant to constant shift of all logits (softmax translation invariance)",
+      "function": "get_normalized_weights",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits_a": "{'s': 1.0, 't': 2.0}",
+        "logits_b": "{'s': 101.0, 't': 102.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "Both sets of logits produce identical normalized weights",
+      "expected_error": "",
+      "assertions": [
+        "weights_a == weights_b within tolerance"
+      ]
+    },
+    {
+      "id": "norm_no_side_effects",
+      "description": "get_normalized_weights does not modify the EmbeddingDimensionWeights instance",
+      "function": "get_normalized_weights",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 1.0, 'technical': 2.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "Logits unchanged after call",
+      "expected_error": "",
+      "assertions": [
+        "logits unchanged after call"
+      ]
+    },
+    {
+      "id": "sim_happy_identical_vectors",
+      "description": "compute_weighted_embedding_similarity with identical unit vectors returns similarity 1.0",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0, 0.0, 0.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0, 0.0, 0.0]}",
+        "dimension_weights": "{'semantic': 1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "similarity == 1.0, strategies_used == ['semantic']",
+      "expected_error": "",
+      "assertions": [
+        "result.similarity == pytest.approx(1.0)",
+        "'semantic' in result.strategies_used"
+      ]
+    },
+    {
+      "id": "sim_happy_orthogonal_vectors",
+      "description": "compute_weighted_embedding_similarity with orthogonal unit vectors returns similarity 0.0",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0, 0.0, 0.0]}",
+        "context_prototypes": "{'semantic': [0.0, 1.0, 0.0, 0.0]}",
+        "dimension_weights": "{'semantic': 1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "similarity == 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result.similarity == pytest.approx(0.0)"
+      ]
+    },
+    {
+      "id": "sim_happy_multi_strategy_weighted",
+      "description": "compute_weighted_embedding_similarity with two strategies and unequal weights correctly computes weighted average",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0], 'technical': [0.0, 1.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0], 'technical': [0.0, 1.0]}",
+        "dimension_weights": "{'semantic': 0.75, 'technical': 0.25}"
+      },
+      "input_description": "",
+      "expected_output_description": "similarity == 1.0 (both strategies identical), effective_weights re-normalized",
+      "expected_error": "",
+      "assertions": [
+        "result.similarity == pytest.approx(1.0)",
+        "len(result.strategies_used) == 2"
+      ]
+    },
+    {
+      "id": "sim_edge_empty_intersection",
+      "description": "compute_weighted_embedding_similarity with no shared strategies returns similarity 0.0",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0]}",
+        "context_prototypes": "{'technical': [1.0, 0.0]}"
+      },
+      "input_description": "",
+      "expected_output_description": "similarity == 0.0, strategies_used is empty, effective_weights is empty",
+      "expected_error": "",
+      "assertions": [
+        "result.similarity == 0.0",
+        "result.strategies_used == []",
+        "result.effective_weights == {}"
+      ]
+    },
+    {
+      "id": "sim_edge_no_weights_equal_default",
+      "description": "compute_weighted_embedding_similarity with dimension_weights=None uses equal weights",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0], 'technical': [0.0, 1.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0], 'technical': [0.0, 1.0]}",
+        "dimension_weights": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "similarity == 1.0 with equal effective weights of 0.5 each",
+      "expected_error": "",
+      "assertions": [
+        "result.similarity == pytest.approx(1.0)",
+        "result.effective_weights['semantic'] == pytest.approx(0.5)",
+        "result.effective_weights['technical'] == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "sim_error_dimension_mismatch",
+      "description": "compute_weighted_embedding_similarity raises ValueError when signal and prototype have different vector lengths for same strategy",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0, 0.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0]}",
+        "dimension_weights": "{'semantic': 1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'mismatch' in str(exc_info.value).lower() or 'dimension' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "sim_error_zero_norm",
+      "description": "compute_weighted_embedding_similarity raises ValueError when an embedding vector has zero norm",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [0.0, 0.0, 0.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0, 0.0]}",
+        "dimension_weights": "{'semantic': 1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'zero' in str(exc_info.value).lower() or 'norm' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "sim_error_non_finite_embedding",
+      "description": "compute_weighted_embedding_similarity raises ValueError when an embedding contains NaN",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [float('nan'), 0.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0]}",
+        "dimension_weights": "{'semantic': 1.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'finite' in str(exc_info.value).lower() or 'nan' in str(exc_info.value).lower() or 'Non-finite' in str(exc_info.value)"
+      ]
+    },
+    {
+      "id": "sim_error_negative_weight",
+      "description": "compute_weighted_embedding_similarity raises ValueError when a dimension weight is negative",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_embeddings": "{'semantic': [1.0, 0.0]}",
+        "context_prototypes": "{'semantic': [1.0, 0.0]}",
+        "dimension_weights": "{'semantic': -0.5}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'negative' in str(exc_info.value).lower() or 'Negative' in str(exc_info.value)"
+      ]
+    },
+    {
+      "id": "accept_happy_basic_update",
+      "description": "record_acceptance updates logits, increments update_count, and returns correct effective_learning_rate",
+      "function": "record_acceptance",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 0.0, 'technical': 0.0}",
+        "strategy_contributions": "{'semantic': 0.9, 'technical': 0.1}",
+        "learning_rate": "0.05",
+        "update_count": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "update_count incremented to 1, logits adjusted, effective_learning_rate == 0.05, zero-sum deltas",
+      "expected_error": "",
+      "assertions": [
+        "result.weights.update_count == 1",
+        "result.effective_learning_rate == pytest.approx(0.05)",
+        "sum(result.logit_deltas.values()) == pytest.approx(0.0, abs=1e-10)"
+      ]
+    },
+    {
+      "id": "accept_happy_zero_sum_deltas",
+      "description": "record_acceptance logit deltas are zero-sum across strategies",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 1.0, 'technical': -0.5, 'social': 0.3}",
+        "strategy_contributions": "{'semantic': 0.8, 'technical': 0.2, 'social': 0.5}",
+        "learning_rate": "0.1",
+        "update_count": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "Sum of logit_deltas is approximately 0.0",
+      "expected_error": "",
+      "assertions": [
+        "sum(result.logit_deltas.values()) == pytest.approx(0.0, abs=1e-10)"
+      ]
+    },
+    {
+      "id": "accept_happy_learning_rate_decay",
+      "description": "record_acceptance effective learning rate decays with update_count",
+      "function": "record_acceptance",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "learning_rate": "0.05",
+        "update_count": "100"
+      },
+      "input_description": "",
+      "expected_output_description": "effective_learning_rate == 0.05 / (1 + 100 * 0.01) = 0.05 / 2.0 = 0.025",
+      "expected_error": "",
+      "assertions": [
+        "result.effective_learning_rate == pytest.approx(0.025)"
+      ]
+    },
+    {
+      "id": "accept_happy_new_strategy_inserted",
+      "description": "record_acceptance inserts new strategies not yet in logits with default logit 0.0 before update",
+      "function": "record_acceptance",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 0.5}",
+        "strategy_contributions": "{'semantic': 0.8, 'technical': 0.6}",
+        "learning_rate": "0.05",
+        "update_count": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "After update, both 'semantic' and 'technical' keys exist in logits",
+      "expected_error": "",
+      "assertions": [
+        "'semantic' in result.weights.logits",
+        "'technical' in result.weights.logits"
+      ]
+    },
+    {
+      "id": "accept_happy_deltas_shrink_over_time",
+      "description": "record_acceptance deltas shrink in magnitude as update_count grows (ART stability)",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "After many updates, the magnitude of deltas decreases",
+      "expected_error": "",
+      "assertions": [
+        "later deltas are smaller in magnitude than earlier deltas"
+      ]
+    },
+    {
+      "id": "accept_error_empty_contributions",
+      "description": "record_acceptance raises ValueError when strategy_contributions is empty",
+      "function": "record_acceptance",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_contributions": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'non-empty' in str(exc_info.value).lower() or 'empty' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "accept_error_non_finite_contribution",
+      "description": "record_acceptance raises ValueError when a contribution value is NaN",
+      "function": "record_acceptance",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_contributions": "{'semantic': float('nan')}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'finite' in str(exc_info.value).lower() or 'Non-finite' in str(exc_info.value)"
+      ]
+    },
+    {
+      "id": "accept_inplace_mutation",
+      "description": "record_acceptance returns the same object reference (in-place mutation)",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "result.weights is the same object as the input dimension_weights",
+      "expected_error": "",
+      "assertions": [
+        "result.weights is dimension_weights"
+      ]
+    },
+    {
+      "id": "ensure_happy_adds_missing",
+      "description": "ensure_strategies_present adds missing strategies with default logit 0.0",
+      "function": "ensure_strategies_present",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "existing_logits": "{'semantic': 1.0}",
+        "strategy_names": "['semantic', 'technical', 'social']"
+      },
+      "input_description": "",
+      "expected_output_description": "All three strategies present; semantic unchanged at 1.0, technical and social at 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result.logits['semantic'] == 1.0",
+        "result.logits['technical'] == 0.0",
+        "result.logits['social'] == 0.0"
+      ]
+    },
+    {
+      "id": "ensure_happy_idempotent",
+      "description": "ensure_strategies_present is idempotent - calling twice with same strategies yields same result",
+      "function": "ensure_strategies_present",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "existing_logits": "{'semantic': 2.0}",
+        "strategy_names": "['semantic', 'technical']"
+      },
+      "input_description": "",
+      "expected_output_description": "Second call does not change logits",
+      "expected_error": "",
+      "assertions": [
+        "logits after second call == logits after first call"
+      ]
+    },
+    {
+      "id": "ensure_happy_same_reference",
+      "description": "ensure_strategies_present returns the same object (in-place mutation)",
+      "function": "ensure_strategies_present",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Returned instance is the same object as the input",
+      "expected_error": "",
+      "assertions": [
+        "result is dimension_weights"
+      ]
+    },
+    {
+      "id": "ensure_error_empty_strategy_name",
+      "description": "ensure_strategies_present raises ValueError when a strategy name is empty string",
+      "function": "ensure_strategies_present",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_names": "['semantic', '']"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'non-empty' in str(exc_info.value).lower() or 'empty' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "serialize_happy_basic",
+      "description": "serialize_dimension_weights returns dict with logits, learning_rate, and update_count keys",
+      "function": "serialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'semantic': 1.5, 'technical': -0.3}",
+        "learning_rate": "0.05",
+        "update_count": "10"
+      },
+      "input_description": "",
+      "expected_output_description": "Dict with correct keys and values matching the input",
+      "expected_error": "",
+      "assertions": [
+        "result['logits'] == {'semantic': 1.5, 'technical': -0.3}",
+        "result['learning_rate'] == 0.05",
+        "result['update_count'] == 10"
+      ]
+    },
+    {
+      "id": "serialize_happy_json_compatible",
+      "description": "serialize_dimension_weights output is JSON-serializable",
+      "function": "serialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "json.dumps(result) does not raise",
+      "expected_error": "",
+      "assertions": [
+        "json.dumps(result) succeeds without error"
+      ]
+    },
+    {
+      "id": "deserialize_happy_full_data",
+      "description": "deserialize_dimension_weights with complete data restores EmbeddingDimensionWeights correctly",
+      "function": "deserialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'logits': {'semantic': 1.5, 'technical': -0.3}, 'learning_rate': 0.1, 'update_count': 5}"
+      },
+      "input_description": "",
+      "expected_output_description": "EmbeddingDimensionWeights with matching logits, learning_rate, update_count",
+      "expected_error": "",
+      "assertions": [
+        "result.logits['semantic'] == 1.5",
+        "result.logits['technical'] == -0.3",
+        "result.learning_rate == 0.1",
+        "result.update_count == 5"
+      ]
+    },
+    {
+      "id": "deserialize_happy_defaults",
+      "description": "deserialize_dimension_weights with only logits key uses defaults for learning_rate and update_count",
+      "function": "deserialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'logits': {'semantic': 0.0}}"
+      },
+      "input_description": "",
+      "expected_output_description": "learning_rate defaults to 0.05, update_count defaults to 0",
+      "expected_error": "",
+      "assertions": [
+        "result.learning_rate == 0.05",
+        "result.update_count == 0"
+      ]
+    },
+    {
+      "id": "deserialize_error_missing_logits",
+      "description": "deserialize_dimension_weights raises ValidationError when logits key is missing",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'learning_rate': 0.05}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": []
+    },
+    {
+      "id": "deserialize_error_non_finite_logit",
+      "description": "deserialize_dimension_weights raises ValidationError when a logit value is NaN",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'logits': {'semantic': float('nan')}}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": []
+    },
+    {
+      "id": "deserialize_error_invalid_learning_rate",
+      "description": "deserialize_dimension_weights raises ValidationError when learning_rate is out of range",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'logits': {}, 'learning_rate': -0.5}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": []
+    },
+    {
+      "id": "deserialize_error_negative_update_count",
+      "description": "deserialize_dimension_weights raises ValidationError when update_count is negative",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'logits': {}, 'update_count': -1}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": []
+    },
+    {
+      "id": "deserialize_error_logits_not_dict",
+      "description": "deserialize_dimension_weights raises ValidationError when logits is not a dict",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "data": "{'logits': [1.0, 2.0]}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": []
+    },
+    {
+      "id": "roundtrip_serialization",
+      "description": "Serialization round-trip: deserialize(serialize(w)) produces an equivalent instance",
+      "function": "serialize_dimension_weights",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Round-tripped instance has identical logits, learning_rate, and update_count",
+      "expected_error": "",
+      "assertions": [
+        "round-tripped logits == original logits",
+        "round-tripped learning_rate == original learning_rate",
+        "round-tripped update_count == original update_count"
+      ]
+    },
+    {
+      "id": "invariant_logits_always_finite",
+      "description": "After any sequence of record_acceptance calls, all logits remain finite",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "All logit values are finite after multiple updates",
+      "expected_error": "",
+      "assertions": [
+        "all(math.isfinite(v) for v in result.weights.logits.values())"
+      ]
+    },
+    {
+      "id": "invariant_equal_logits_equal_weights",
+      "description": "EmbeddingDimensionWeights with all logits equal to 0.0 produces equal normalized weights 1/N",
+      "function": "get_normalized_weights",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "logits": "{'a': 0.0, 'b': 0.0, 'c': 0.0, 'd': 0.0}"
+      },
+      "input_description": "",
+      "expected_output_description": "All weights are 0.25",
+      "expected_error": "",
+      "assertions": [
+        "all weights == pytest.approx(0.25)"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for embedding_context_weights component.\n\nTests verify the Per-Context Embedding Dimension Weights contract:\n- Initialization of dimension weights\n- Softmax normalization of logits\n- Weighted embedding similarity computation\n- Match-based learning (record_acceptance)\n- Strategy management (ensure_strategies_present)\n- Serialization / deserialization round-trip\n- Invariants: finite logits, zero-sum deltas, learning rate decay, etc.\n\"\"\"\n\nimport json\nimport math\nimport pytest\nfrom unittest.mock import MagicMock\n\n# Import the component under test\nfrom src.embedding_context_weights import (\n    EmbeddingDimensionWeights,\n    initialize_dimension_weights,\n    get_normalized_weights,\n    compute_weighted_embedding_similarity,\n    record_acceptance,\n    ensure_strategies_present,\n    serialize_dimension_weights,\n    deserialize_dimension_weights,\n)\n\n\n# ---------------------------------------------------------------------------\n# Fixtures\n# ---------------------------------------------------------------------------\n\n@pytest.fixture\ndef empty_weights():\n    \"\"\"EmbeddingDimensionWeights with empty logits (new context default).\"\"\"\n    return initialize_dimension_weights(strategy_names=[])\n\n\n@pytest.fixture\ndef uniform_weights():\n    \"\"\"EmbeddingDimensionWeights with three strategies at equal logits.\"\"\"\n    return initialize_dimension_weights(\n        strategy_names=[\"semantic\", \"technical\", \"social\"]\n    )\n\n\n@pytest.fixture\ndef biased_weights():\n    \"\"\"EmbeddingDimensionWeights with pre-set unequal logits.\"\"\"\n    w = initialize_dimension_weights(\n        strategy_names=[\"semantic\", \"technical\", \"social\"],\n        learning_rate=0.1,\n    )\n    w.logits[\"semantic\"] = 2.0\n    w.logits[\"technical\"] = 0.0\n    w.logits[\"social\"] = -1.0\n    return w\n\n\n# ===========================================================================\n# 1. Initialization tests\n# ===========================================================================\n\nclass TestInitializeDimensionWeights:\n    \"\"\"Tests for initialize_dimension_weights factory function.\"\"\"\n\n    def test_init_multiple_strategies(self):\n        \"\"\"Multiple strategy names each get logit 0.0, update_count 0, default lr.\"\"\"\n        result = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\", \"social\"]\n        )\n        assert result.logits == {\"semantic\": 0.0, \"technical\": 0.0, \"social\": 0.0}, \\\n            \"Each strategy should have logit 0.0\"\n        assert result.update_count == 0, \"update_count should be 0 for new instance\"\n        assert result.learning_rate == pytest.approx(0.05), \\\n            \"Default learning_rate should be 0.05\"\n\n    def test_init_single_strategy_custom_lr(self):\n        \"\"\"Single strategy with custom learning rate.\"\"\"\n        result = initialize_dimension_weights(\n            strategy_names=[\"semantic\"], learning_rate=0.1\n        )\n        assert result.logits == {\"semantic\": 0.0}\n        assert result.update_count == 0\n        assert result.learning_rate == pytest.approx(0.1)\n\n    def test_init_empty_strategies(self):\n        \"\"\"Empty strategy list creates instance with empty logits dict.\"\"\"\n        result = initialize_dimension_weights(strategy_names=[])\n        assert result.logits == {} or len(result.logits) == 0, \\\n            \"Empty strategy list should produce empty logits dict\"\n        assert result.update_count == 0\n\n    def test_init_learning_rate_boundary_one(self):\n        \"\"\"learning_rate=1.0 is the upper boundary and should be accepted.\"\"\"\n        result = initialize_dimension_weights(\n            strategy_names=[\"x\"], learning_rate=1.0\n        )\n        assert result.learning_rate == pytest.approx(1.0)\n\n    def test_init_error_empty_strategy_name(self):\n        \"\"\"Raises ValueError when one of the strategy names is an empty string.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            initialize_dimension_weights(strategy_names=[\"semantic\", \"\", \"social\"])\n        msg = str(exc_info.value).lower()\n        assert \"non-empty\" in msg or \"empty string\" in msg or \"empty\" in msg, \\\n            f\"Error message should mention empty string issue, got: {exc_info.value}\"\n\n    def test_init_error_duplicate_strategy_name(self):\n        \"\"\"Raises ValueError when duplicate strategy names are provided.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            initialize_dimension_weights(\n                strategy_names=[\"semantic\", \"technical\", \"semantic\"]\n            )\n        msg = str(exc_info.value)\n        assert \"uplicate\" in msg or \"duplicate\" in msg.lower(), \\\n            f\"Error should mention duplicate, got: {exc_info.value}\"\n\n    def test_init_error_learning_rate_zero(self):\n        \"\"\"Raises ValueError when learning_rate is 0.0 (not in (0.0, 1.0]).\"\"\"\n        with pytest.raises(ValueError):\n            initialize_dimension_weights(\n                strategy_names=[\"semantic\"], learning_rate=0.0\n            )\n\n    def test_init_error_learning_rate_negative(self):\n        \"\"\"Raises ValueError when learning_rate is negative.\"\"\"\n        with pytest.raises(ValueError):\n            initialize_dimension_weights(\n                strategy_names=[\"semantic\"], learning_rate=-0.1\n            )\n\n    def test_init_error_learning_rate_above_one(self):\n        \"\"\"Raises ValueError when learning_rate exceeds 1.0.\"\"\"\n        with pytest.raises(ValueError):\n            initialize_dimension_weights(\n                strategy_names=[\"semantic\"], learning_rate=1.5\n            )\n\n\n# ===========================================================================\n# 2. Normalization tests\n# ===========================================================================\n\nclass TestGetNormalizedWeights:\n    \"\"\"Tests for get_normalized_weights (softmax over logits).\"\"\"\n\n    def test_uniform_logits_equal_weights(self, uniform_weights):\n        \"\"\"Uniform logits (all 0.0) produce equal weights 1/N.\"\"\"\n        result = get_normalized_weights(uniform_weights)\n        n = 3\n        for strategy, weight in result.items():\n            assert weight == pytest.approx(1.0 / n, abs=1e-9), \\\n                f\"Expected 1/{n} for '{strategy}', got {weight}\"\n        assert sum(result.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_unequal_logits_ordering(self, biased_weights):\n        \"\"\"Higher logit → higher weight, weights sum to 1.0, all in (0,1).\"\"\"\n        result = get_normalized_weights(biased_weights)\n        assert sum(result.values()) == pytest.approx(1.0, abs=1e-9), \\\n            \"Weights must sum to 1.0\"\n        assert result[\"semantic\"] > result[\"technical\"] > result[\"social\"], \\\n            \"Higher logit should yield higher weight\"\n        for w in result.values():\n            assert 0.0 < w < 1.0, f\"Each weight should be in (0, 1), got {w}\"\n\n    def test_extra_strategies_default_logit(self):\n        \"\"\"Requesting strategies not in logits treats them as logit 0.0.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        w.logits[\"semantic\"] = 1.0\n        result = get_normalized_weights(w, strategies=[\"semantic\", \"technical\"])\n        assert \"semantic\" in result and \"technical\" in result, \\\n            \"Both strategies must be present\"\n        assert result[\"semantic\"] > result[\"technical\"], \\\n            \"semantic (logit 1.0) should have higher weight than technical (logit 0.0)\"\n        assert sum(result.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_empty_logits_empty_result(self, empty_weights):\n        \"\"\"Empty logits with no strategies parameter returns empty dict.\"\"\"\n        result = get_normalized_weights(empty_weights)\n        assert result == {} or len(result) == 0, \\\n            \"Empty logits should produce empty normalized weights\"\n\n    def test_single_strategy_weight_one(self):\n        \"\"\"Single strategy always gets weight 1.0 regardless of logit value.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        w.logits[\"semantic\"] = 5.0\n        result = get_normalized_weights(w)\n        assert result[\"semantic\"] == pytest.approx(1.0, abs=1e-9)\n\n    def test_numerical_stability_extreme_logits(self):\n        \"\"\"Very large logit differences handled without overflow or NaN.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\"]\n        )\n        w.logits[\"semantic\"] = 1000.0\n        w.logits[\"technical\"] = 0.0\n        result = get_normalized_weights(w)\n        for v in result.values():\n            assert math.isfinite(v), f\"All weights must be finite, got {v}\"\n        assert result[\"semantic\"] == pytest.approx(1.0, abs=1e-6), \\\n            \"Dominant logit should have weight ≈ 1.0\"\n        assert result[\"technical\"] == pytest.approx(0.0, abs=1e-6)\n        assert sum(result.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_translation_invariance(self):\n        \"\"\"Shifting all logits by same constant does not change weights.\"\"\"\n        w_a = initialize_dimension_weights(strategy_names=[\"s\", \"t\"])\n        w_a.logits[\"s\"] = 1.0\n        w_a.logits[\"t\"] = 2.0\n\n        w_b = initialize_dimension_weights(strategy_names=[\"s\", \"t\"])\n        w_b.logits[\"s\"] = 101.0\n        w_b.logits[\"t\"] = 102.0\n\n        result_a = get_normalized_weights(w_a)\n        result_b = get_normalized_weights(w_b)\n\n        for key in result_a:\n            assert result_a[key] == pytest.approx(result_b[key], abs=1e-9), \\\n                f\"Weights should be translation-invariant for '{key}'\"\n\n    def test_no_side_effects(self, biased_weights):\n        \"\"\"get_normalized_weights does not modify the weights instance.\"\"\"\n        logits_before = dict(biased_weights.logits)\n        lr_before = biased_weights.learning_rate\n        uc_before = biased_weights.update_count\n\n        _ = get_normalized_weights(biased_weights)\n\n        assert biased_weights.logits == logits_before, \"Logits must not change\"\n        assert biased_weights.learning_rate == lr_before\n        assert biased_weights.update_count == uc_before\n\n    def test_four_equal_logits_quarter_each(self):\n        \"\"\"4 strategies at logit 0.0 each get weight 0.25.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"a\", \"b\", \"c\", \"d\"]\n        )\n        result = get_normalized_weights(w)\n        for key, val in result.items():\n            assert val == pytest.approx(0.25, abs=1e-9), \\\n                f\"Expected 0.25 for '{key}', got {val}\"\n\n\n# ===========================================================================\n# 3. Weighted similarity tests\n# ===========================================================================\n\nclass TestComputeWeightedEmbeddingSimilarity:\n    \"\"\"Tests for compute_weighted_embedding_similarity.\"\"\"\n\n    def test_identical_vectors_similarity_one(self):\n        \"\"\"Identical unit vectors yield similarity 1.0.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\"semantic\": [1.0, 0.0, 0.0, 0.0]},\n            context_prototypes={\"semantic\": [1.0, 0.0, 0.0, 0.0]},\n            dimension_weights={\"semantic\": 1.0},\n        )\n        assert result.similarity == pytest.approx(1.0, abs=1e-9)\n        assert \"semantic\" in result.strategies_used\n\n    def test_orthogonal_vectors_similarity_zero(self):\n        \"\"\"Orthogonal unit vectors yield similarity 0.0.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\"semantic\": [1.0, 0.0, 0.0, 0.0]},\n            context_prototypes={\"semantic\": [0.0, 1.0, 0.0, 0.0]},\n            dimension_weights={\"semantic\": 1.0},\n        )\n        assert result.similarity == pytest.approx(0.0, abs=1e-9)\n\n    def test_multi_strategy_weighted_identical(self):\n        \"\"\"Multiple strategies, all identical → similarity 1.0 regardless of weights.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            context_prototypes={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            dimension_weights={\"semantic\": 0.75, \"technical\": 0.25},\n        )\n        assert result.similarity == pytest.approx(1.0, abs=1e-9)\n        assert len(result.strategies_used) == 2\n\n    def test_multi_strategy_mixed_similarity(self):\n        \"\"\"One strategy identical (sim=1), one orthogonal (sim=0), equal weights → 0.5.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [1.0, 0.0],\n            },\n            context_prototypes={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            dimension_weights={\"semantic\": 0.5, \"technical\": 0.5},\n        )\n        assert result.similarity == pytest.approx(0.5, abs=1e-9), \\\n            \"Equal weights with sim=1 and sim=0 should average to 0.5\"\n        assert result.per_strategy_similarities[\"semantic\"] == pytest.approx(1.0, abs=1e-9)\n        assert result.per_strategy_similarities[\"technical\"] == pytest.approx(0.0, abs=1e-9)\n\n    def test_empty_intersection_returns_zero(self):\n        \"\"\"No shared strategies → similarity 0.0, empty strategies_used.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\"semantic\": [1.0, 0.0]},\n            context_prototypes={\"technical\": [1.0, 0.0]},\n        )\n        assert result.similarity == 0.0\n        assert result.strategies_used == [] or len(result.strategies_used) == 0\n        assert result.effective_weights == {} or len(result.effective_weights) == 0\n\n    def test_none_weights_equal_default(self):\n        \"\"\"dimension_weights=None uses equal weights (backward compatible).\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            context_prototypes={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            dimension_weights=None,\n        )\n        assert result.similarity == pytest.approx(1.0, abs=1e-9)\n        assert result.effective_weights[\"semantic\"] == pytest.approx(0.5, abs=1e-9)\n        assert result.effective_weights[\"technical\"] == pytest.approx(0.5, abs=1e-9)\n\n    def test_effective_weights_sum_to_one(self):\n        \"\"\"effective_weights sum to 1.0 over the intersection.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n                \"social\": [1.0, 1.0],\n            },\n            context_prototypes={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n                # social missing from prototypes\n            },\n            dimension_weights={\n                \"semantic\": 0.6,\n                \"technical\": 0.3,\n                \"social\": 0.1,\n            },\n        )\n        # Intersection is semantic + technical; weights re-normalized\n        assert sum(result.effective_weights.values()) == pytest.approx(1.0, abs=1e-9)\n        assert set(result.strategies_used) == {\"semantic\", \"technical\"}\n\n    def test_per_strategy_similarities_populated(self):\n        \"\"\"per_strategy_similarities has one entry per strategy in intersection.\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            context_prototypes={\n                \"semantic\": [1.0, 0.0],\n                \"technical\": [0.0, 1.0],\n            },\n            dimension_weights={\"semantic\": 0.5, \"technical\": 0.5},\n        )\n        assert len(result.per_strategy_similarities) == 2\n        assert \"semantic\" in result.per_strategy_similarities\n        assert \"technical\" in result.per_strategy_similarities\n\n    # --- Error cases ---\n\n    def test_error_dimension_mismatch(self):\n        \"\"\"Raises ValueError when signal and prototype dimensions differ.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            compute_weighted_embedding_similarity(\n                signal_embeddings={\"semantic\": [1.0, 0.0, 0.0]},\n                context_prototypes={\"semantic\": [1.0, 0.0]},\n                dimension_weights={\"semantic\": 1.0},\n            )\n        msg = str(exc_info.value).lower()\n        assert \"mismatch\" in msg or \"dimension\" in msg\n\n    def test_error_zero_norm_vector(self):\n        \"\"\"Raises ValueError when an embedding vector is all zeros.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            compute_weighted_embedding_similarity(\n                signal_embeddings={\"semantic\": [0.0, 0.0, 0.0]},\n                context_prototypes={\"semantic\": [1.0, 0.0, 0.0]},\n                dimension_weights={\"semantic\": 1.0},\n            )\n        msg = str(exc_info.value).lower()\n        assert \"zero\" in msg or \"norm\" in msg\n\n    def test_error_non_finite_embedding(self):\n        \"\"\"Raises ValueError when embedding contains NaN.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            compute_weighted_embedding_similarity(\n                signal_embeddings={\"semantic\": [float(\"nan\"), 0.0]},\n                context_prototypes={\"semantic\": [1.0, 0.0]},\n                dimension_weights={\"semantic\": 1.0},\n            )\n        msg = str(exc_info.value)\n        assert \"finite\" in msg.lower() or \"nan\" in msg.lower() or \"Non-finite\" in msg\n\n    def test_error_inf_embedding(self):\n        \"\"\"Raises ValueError when embedding contains Inf.\"\"\"\n        with pytest.raises(ValueError):\n            compute_weighted_embedding_similarity(\n                signal_embeddings={\"semantic\": [float(\"inf\"), 0.0]},\n                context_prototypes={\"semantic\": [1.0, 0.0]},\n                dimension_weights={\"semantic\": 1.0},\n            )\n\n    def test_error_negative_weight(self):\n        \"\"\"Raises ValueError when a dimension weight is negative.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            compute_weighted_embedding_similarity(\n                signal_embeddings={\"semantic\": [1.0, 0.0]},\n                context_prototypes={\"semantic\": [1.0, 0.0]},\n                dimension_weights={\"semantic\": -0.5},\n            )\n        msg = str(exc_info.value)\n        assert \"egative\" in msg or \"negative\" in msg.lower()\n\n\n# ===========================================================================\n# 4. Acceptance / learning tests\n# ===========================================================================\n\nclass TestRecordAcceptance:\n    \"\"\"Tests for record_acceptance (match-based learning).\"\"\"\n\n    def test_basic_update(self, uniform_weights):\n        \"\"\"Basic acceptance updates logits, increments update_count, returns diagnostics.\"\"\"\n        contributions = {\"semantic\": 0.9, \"technical\": 0.1, \"social\": 0.5}\n        result = record_acceptance(uniform_weights, contributions)\n\n        assert result.weights.update_count == 1, \"update_count should be incremented\"\n        assert result.effective_learning_rate == pytest.approx(0.05), \\\n            \"First update (count=0) → effective lr = 0.05 / (1 + 0*0.01) = 0.05\"\n        delta_sum = sum(result.logit_deltas.values())\n        assert delta_sum == pytest.approx(0.0, abs=1e-10), \\\n            f\"Logit deltas must be zero-sum, got sum={delta_sum}\"\n        assert len(result.logit_deltas) == 3\n\n    def test_zero_sum_deltas_unequal_logits(self, biased_weights):\n        \"\"\"Logit deltas are always zero-sum, even with pre-existing unequal logits.\"\"\"\n        contributions = {\"semantic\": 0.8, \"technical\": 0.2, \"social\": 0.5}\n        result = record_acceptance(biased_weights, contributions)\n        delta_sum = sum(result.logit_deltas.values())\n        assert delta_sum == pytest.approx(0.0, abs=1e-10), \\\n            f\"Zero-sum invariant violated: sum = {delta_sum}\"\n\n    def test_learning_rate_decay(self):\n        \"\"\"Effective learning rate decays as lr / (1 + update_count * 0.01).\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\"], learning_rate=0.05\n        )\n        # Manually set update_count to 100 to test decay\n        w.update_count = 100\n        contributions = {\"semantic\": 0.5}\n        result = record_acceptance(w, contributions)\n        expected_lr = 0.05 / (1 + 100 * 0.01)  # 0.05 / 2.0 = 0.025\n        assert result.effective_learning_rate == pytest.approx(expected_lr, abs=1e-10), \\\n            f\"Expected effective lr {expected_lr}, got {result.effective_learning_rate}\"\n\n    def test_new_strategy_inserted(self):\n        \"\"\"Strategies in contributions but not in logits are inserted with default 0.0.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        w.logits[\"semantic\"] = 0.5\n        contributions = {\"semantic\": 0.8, \"technical\": 0.6}\n        result = record_acceptance(w, contributions)\n        assert \"semantic\" in result.weights.logits\n        assert \"technical\" in result.weights.logits, \\\n            \"New strategy 'technical' should be inserted into logits\"\n\n    def test_in_place_mutation(self, uniform_weights):\n        \"\"\"record_acceptance mutates in-place and returns same object reference.\"\"\"\n        contributions = {\"semantic\": 0.5, \"technical\": 0.5, \"social\": 0.5}\n        result = record_acceptance(uniform_weights, contributions)\n        assert result.weights is uniform_weights, \\\n            \"Returned weights must be the same object (in-place mutation)\"\n\n    def test_deltas_shrink_over_successive_updates(self):\n        \"\"\"After many updates, delta magnitudes decrease (ART stability).\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\"], learning_rate=0.1\n        )\n        contributions = {\"semantic\": 0.9, \"technical\": 0.1}\n\n        # First update\n        result_first = record_acceptance(w, contributions)\n        first_max_delta = max(abs(d) for d in result_first.logit_deltas.values())\n\n        # Run 200 more updates with the same contributions\n        for _ in range(200):\n            record_acceptance(w, contributions)\n\n        # One more update to capture current delta magnitude\n        result_late = record_acceptance(w, contributions)\n        late_max_delta = max(abs(d) for d in result_late.logit_deltas.values())\n\n        assert late_max_delta < first_max_delta, \\\n            f\"Deltas should shrink: first={first_max_delta}, late={late_max_delta}\"\n\n    def test_update_count_monotonic(self):\n        \"\"\"update_count monotonically increases across multiple updates.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        contributions = {\"semantic\": 0.5}\n        counts = []\n        for _ in range(5):\n            record_acceptance(w, contributions)\n            counts.append(w.update_count)\n        assert counts == [1, 2, 3, 4, 5], \\\n            f\"update_count should monotonically increase: {counts}\"\n\n    def test_logits_remain_finite_after_many_updates(self):\n        \"\"\"All logit values remain finite after many updates.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\", \"social\"],\n            learning_rate=0.5,\n        )\n        contributions = {\"semantic\": 1.0, \"technical\": 0.0, \"social\": 0.5}\n        for _ in range(500):\n            result = record_acceptance(w, contributions)\n        for key, val in result.weights.logits.items():\n            assert math.isfinite(val), \\\n                f\"Logit for '{key}' is not finite: {val}\"\n\n    # --- Error cases ---\n\n    def test_error_empty_contributions(self, uniform_weights):\n        \"\"\"Raises ValueError when strategy_contributions is empty.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            record_acceptance(uniform_weights, {})\n        msg = str(exc_info.value).lower()\n        assert \"non-empty\" in msg or \"empty\" in msg\n\n    def test_error_nan_contribution(self, uniform_weights):\n        \"\"\"Raises ValueError when a contribution value is NaN.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            record_acceptance(\n                uniform_weights, {\"semantic\": float(\"nan\")}\n            )\n        msg = str(exc_info.value)\n        assert \"finite\" in msg.lower() or \"Non-finite\" in msg or \"nan\" in msg.lower()\n\n    def test_error_inf_contribution(self, uniform_weights):\n        \"\"\"Raises ValueError when a contribution value is Inf.\"\"\"\n        with pytest.raises(ValueError):\n            record_acceptance(\n                uniform_weights, {\"semantic\": float(\"inf\")}\n            )\n\n\n# ===========================================================================\n# 5. Strategy management tests\n# ===========================================================================\n\nclass TestEnsureStrategiesPresent:\n    \"\"\"Tests for ensure_strategies_present.\"\"\"\n\n    def test_adds_missing_strategies(self):\n        \"\"\"Missing strategies are added with default logit 0.0; existing unchanged.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        w.logits[\"semantic\"] = 1.0\n        result = ensure_strategies_present(\n            w, [\"semantic\", \"technical\", \"social\"]\n        )\n        assert result.logits[\"semantic\"] == 1.0, \\\n            \"Existing logit should be unchanged\"\n        assert result.logits[\"technical\"] == 0.0, \\\n            \"Missing strategy 'technical' should be inserted at 0.0\"\n        assert result.logits[\"social\"] == 0.0, \\\n            \"Missing strategy 'social' should be inserted at 0.0\"\n\n    def test_idempotent(self):\n        \"\"\"Calling twice with the same strategies yields identical logits.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        w.logits[\"semantic\"] = 2.0\n        ensure_strategies_present(w, [\"semantic\", \"technical\"])\n        logits_after_first = dict(w.logits)\n        ensure_strategies_present(w, [\"semantic\", \"technical\"])\n        logits_after_second = dict(w.logits)\n        assert logits_after_first == logits_after_second, \\\n            \"Idempotent: second call should not change logits\"\n\n    def test_returns_same_reference(self):\n        \"\"\"Returns the same object (in-place mutation).\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        result = ensure_strategies_present(w, [\"technical\"])\n        assert result is w, \\\n            \"ensure_strategies_present should return the same object reference\"\n\n    def test_preserves_all_existing_logits(self):\n        \"\"\"All pre-existing logit values are preserved, not just checked strategies.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\"]\n        )\n        w.logits[\"semantic\"] = 3.0\n        w.logits[\"technical\"] = -1.5\n        ensure_strategies_present(w, [\"social\"])\n        assert w.logits[\"semantic\"] == 3.0\n        assert w.logits[\"technical\"] == -1.5\n        assert w.logits[\"social\"] == 0.0\n\n    def test_error_empty_strategy_name(self):\n        \"\"\"Raises ValueError when a strategy name is empty string.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        with pytest.raises(ValueError) as exc_info:\n            ensure_strategies_present(w, [\"semantic\", \"\"])\n        msg = str(exc_info.value).lower()\n        assert \"non-empty\" in msg or \"empty\" in msg\n\n\n# ===========================================================================\n# 6. Serialization / deserialization tests\n# ===========================================================================\n\nclass TestSerialization:\n    \"\"\"Tests for serialize_dimension_weights and deserialize_dimension_weights.\"\"\"\n\n    def test_serialize_basic(self):\n        \"\"\"Serialized dict has correct keys and values.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\"], learning_rate=0.05\n        )\n        w.logits[\"semantic\"] = 1.5\n        w.logits[\"technical\"] = -0.3\n        w.update_count = 10\n        # Manually set update_count for serialization test\n        result = serialize_dimension_weights(w)\n        assert result[\"logits\"][\"semantic\"] == 1.5\n        assert result[\"logits\"][\"technical\"] == -0.3\n        assert result[\"learning_rate\"] == 0.05\n        assert result[\"update_count\"] == 10\n\n    def test_serialize_json_compatible(self, biased_weights):\n        \"\"\"Serialized output is JSON-serializable.\"\"\"\n        result = serialize_dimension_weights(biased_weights)\n        try:\n            json_str = json.dumps(result)\n        except (TypeError, ValueError) as e:\n            pytest.fail(f\"Serialized output is not JSON-compatible: {e}\")\n        assert isinstance(json_str, str)\n\n    def test_serialize_empty_logits(self, empty_weights):\n        \"\"\"Serialization works with empty logits dict.\"\"\"\n        result = serialize_dimension_weights(empty_weights)\n        assert result[\"logits\"] == {} or len(result[\"logits\"]) == 0\n\n    def test_deserialize_full_data(self):\n        \"\"\"Deserialization with complete data restores all fields correctly.\"\"\"\n        data = {\n            \"logits\": {\"semantic\": 1.5, \"technical\": -0.3},\n            \"learning_rate\": 0.1,\n            \"update_count\": 5,\n        }\n        result = deserialize_dimension_weights(data)\n        assert result.logits[\"semantic\"] == pytest.approx(1.5)\n        assert result.logits[\"technical\"] == pytest.approx(-0.3)\n        assert result.learning_rate == pytest.approx(0.1)\n        assert result.update_count == 5\n\n    def test_deserialize_defaults(self):\n        \"\"\"Deserialization with only logits uses defaults for other fields.\"\"\"\n        data = {\"logits\": {\"semantic\": 0.0}}\n        result = deserialize_dimension_weights(data)\n        assert result.learning_rate == pytest.approx(0.05), \\\n            \"Default learning_rate should be 0.05\"\n        assert result.update_count == 0, \\\n            \"Default update_count should be 0\"\n\n    def test_roundtrip_serialization(self, biased_weights):\n        \"\"\"deserialize(serialize(w)) produces an equivalent instance.\"\"\"\n        biased_weights.update_count = 42\n        serialized = serialize_dimension_weights(biased_weights)\n        restored = deserialize_dimension_weights(serialized)\n        assert restored.logits == biased_weights.logits, \\\n            f\"Logits mismatch: {restored.logits} != {biased_weights.logits}\"\n        assert restored.learning_rate == pytest.approx(biased_weights.learning_rate)\n        assert restored.update_count == biased_weights.update_count\n\n    def test_roundtrip_empty_logits(self, empty_weights):\n        \"\"\"Round-trip works with empty logits.\"\"\"\n        serialized = serialize_dimension_weights(empty_weights)\n        restored = deserialize_dimension_weights(serialized)\n        assert restored.logits == empty_weights.logits\n        assert restored.learning_rate == pytest.approx(empty_weights.learning_rate)\n        assert restored.update_count == empty_weights.update_count\n\n    # --- Deserialization error cases ---\n\n    def test_deserialize_error_missing_logits(self):\n        \"\"\"Raises error when 'logits' key is missing from data.\"\"\"\n        with pytest.raises((ValueError, TypeError, KeyError, Exception)):\n            # Contract says ValidationError — most implementations use pydantic\n            deserialize_dimension_weights({\"learning_rate\": 0.05})\n\n    def test_deserialize_error_nan_logit(self):\n        \"\"\"Raises error when a logit value is NaN.\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            deserialize_dimension_weights(\n                {\"logits\": {\"semantic\": float(\"nan\")}}\n            )\n\n    def test_deserialize_error_inf_logit(self):\n        \"\"\"Raises error when a logit value is Inf.\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            deserialize_dimension_weights(\n                {\"logits\": {\"semantic\": float(\"inf\")}}\n            )\n\n    def test_deserialize_error_invalid_learning_rate(self):\n        \"\"\"Raises error when learning_rate is out of (0.0, 1.0].\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            deserialize_dimension_weights(\n                {\"logits\": {}, \"learning_rate\": -0.5}\n            )\n\n    def test_deserialize_error_negative_update_count(self):\n        \"\"\"Raises error when update_count is negative.\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            deserialize_dimension_weights(\n                {\"logits\": {}, \"update_count\": -1}\n            )\n\n    def test_deserialize_error_logits_not_dict(self):\n        \"\"\"Raises error when 'logits' is not a dict.\"\"\"\n        with pytest.raises((ValueError, TypeError, Exception)):\n            deserialize_dimension_weights({\"logits\": [1.0, 2.0]})\n\n\n# ===========================================================================\n# 7. Invariant / property tests\n# ===========================================================================\n\nclass TestInvariants:\n    \"\"\"Cross-cutting invariant tests.\"\"\"\n\n    def test_softmax_sum_to_one_parametric(self):\n        \"\"\"Softmax weights always sum to 1.0 for various logit configurations.\"\"\"\n        configs = [\n            {\"a\": 0.0, \"b\": 0.0},\n            {\"a\": 10.0, \"b\": -10.0, \"c\": 0.0},\n            {\"x\": 0.001, \"y\": -0.001},\n            {\"p\": 100.0, \"q\": 100.0, \"r\": 100.0},\n            {\"solo\": 42.0},\n        ]\n        for logits_dict in configs:\n            w = initialize_dimension_weights(\n                strategy_names=list(logits_dict.keys())\n            )\n            for k, v in logits_dict.items():\n                w.logits[k] = v\n            nw = get_normalized_weights(w)\n            assert sum(nw.values()) == pytest.approx(1.0, abs=1e-9), \\\n                f\"Weights must sum to 1.0 for logits {logits_dict}, got {sum(nw.values())}\"\n\n    def test_learning_rate_never_changes(self):\n        \"\"\"learning_rate is constant across updates.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\"], learning_rate=0.07\n        )\n        for _ in range(20):\n            record_acceptance(w, {\"semantic\": 0.5})\n        assert w.learning_rate == pytest.approx(0.07), \\\n            \"learning_rate must never change after initialization\"\n\n    def test_effective_lr_formula(self):\n        \"\"\"Effective learning rate follows: lr / (1 + update_count * 0.01).\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\"], learning_rate=0.1\n        )\n        for i in range(10):\n            expected_effective_lr = 0.1 / (1 + i * 0.01)\n            result = record_acceptance(w, {\"semantic\": 0.5})\n            assert result.effective_learning_rate == pytest.approx(\n                expected_effective_lr, abs=1e-12\n            ), f\"At update {i}: expected {expected_effective_lr}, got {result.effective_learning_rate}\"\n\n    def test_empty_intersection_backward_compatible(self):\n        \"\"\"When strategy intersection is empty, similarity is 0.0 (backward compatible).\"\"\"\n        result = compute_weighted_embedding_similarity(\n            signal_embeddings={\"semantic\": [1.0, 0.0]},\n            context_prototypes={\"technical\": [0.0, 1.0]},\n            dimension_weights={\"social\": 1.0},\n        )\n        assert result.similarity == 0.0\n\n    def test_missing_strategies_default_logit_zero(self):\n        \"\"\"Missing strategies are treated as logit 0.0 when requested via strategies param.\"\"\"\n        w = initialize_dimension_weights(strategy_names=[\"semantic\"])\n        w.logits[\"semantic\"] = 0.0  # Explicitly set to 0.0\n        # Request both semantic and technical; both at logit 0.0 should give equal weights\n        result = get_normalized_weights(\n            w, strategies=[\"semantic\", \"technical\"]\n        )\n        assert result[\"semantic\"] == pytest.approx(result[\"technical\"], abs=1e-9), \\\n            \"Both at logit 0.0 should have equal weights\"\n\n    def test_similarity_idempotent(self):\n        \"\"\"compute_weighted_embedding_similarity is idempotent (pure function).\"\"\"\n        kwargs = dict(\n            signal_embeddings={\"semantic\": [1.0, 0.0, 0.0]},\n            context_prototypes={\"semantic\": [0.5, 0.5, 0.0]},\n            dimension_weights={\"semantic\": 1.0},\n        )\n        result1 = compute_weighted_embedding_similarity(**kwargs)\n        result2 = compute_weighted_embedding_similarity(**kwargs)\n        assert result1.similarity == pytest.approx(result2.similarity, abs=1e-15), \\\n            \"Pure function should return identical results on identical inputs\"\n        assert result1.strategies_used == result2.strategies_used\n\n    def test_no_input_mutation_similarity(self):\n        \"\"\"compute_weighted_embedding_similarity does not modify its input arguments.\"\"\"\n        sig = {\"semantic\": [1.0, 0.0], \"technical\": [0.0, 1.0]}\n        proto = {\"semantic\": [1.0, 0.0], \"technical\": [0.0, 1.0]}\n        weights = {\"semantic\": 0.5, \"technical\": 0.5}\n\n        sig_copy = {k: list(v) for k, v in sig.items()}\n        proto_copy = {k: list(v) for k, v in proto.items()}\n        weights_copy = dict(weights)\n\n        compute_weighted_embedding_similarity(sig, proto, weights)\n\n        assert sig == sig_copy, \"signal_embeddings must not be modified\"\n        assert proto == proto_copy, \"context_prototypes must not be modified\"\n        assert weights == weights_copy, \"dimension_weights must not be modified\"\n\n    def test_logit_delta_direction(self):\n        \"\"\"Strategy with above-mean contribution gets positive delta, below-mean gets negative.\"\"\"\n        w = initialize_dimension_weights(\n            strategy_names=[\"semantic\", \"technical\"], learning_rate=0.1\n        )\n        # semantic contribution (0.9) > mean (0.5) → positive delta\n        # technical contribution (0.1) < mean (0.5) → negative delta\n        result = record_acceptance(\n            w, {\"semantic\": 0.9, \"technical\": 0.1}\n        )\n        assert result.logit_deltas[\"semantic\"] > 0, \\\n            \"Above-mean contribution should yield positive delta\"\n        assert result.logit_deltas[\"technical\"] < 0, \\\n            \"Below-mean contribution should yield negative delta\"\n"
+}

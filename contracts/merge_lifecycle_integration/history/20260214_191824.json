@@ -1,0 +1,1509 @@
+{
+  "component_id": "merge_lifecycle_integration",
+  "name": "Merge Lifecycle Integration",
+  "description": "Wire merge detection and execution into the existing lifecycle check loop in mesh/mesh.py, alongside fork and decay. Merge checks run at the same cadence as fork/decay. Pure detection functions compute signal overlap and assessment agreement between neighboring contexts; when thresholds are exceeded a MergeProposal is created. A planning phase collects all lifecycle proposals (fork, decay, merge), resolves conflicts, and executes them atomically within a single event-loop turn. In-flight signals routed to a merged context are re-routed to the surviving context via a redirect map with TTL-based cleanup. Decay-to-fork handoff is detected and converted to a merge-fold operation. All existing lifecycle tests must continue to pass.",
+  "version": 1,
+  "types": [
+    {
+      "name": "ContextId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Unique string identifier for a context within the mesh."
+    },
+    {
+      "name": "SignalId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Unique string identifier for a signal."
+    },
+    {
+      "name": "Timestamp",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "ISO-8601 string timestamp or float epoch seconds."
+    },
+    {
+      "name": "LifecycleState",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "STABLE",
+        "FORKING",
+        "DECAYING",
+        "MERGING",
+        "MERGED"
+      ],
+      "inner_types": [],
+      "description": "The current lifecycle state of a context. Extends any existing lifecycle state tracking."
+    },
+    {
+      "name": "LifecycleProposalKind",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "FORK",
+        "DECAY",
+        "MERGE",
+        "DECAY_FOLD"
+      ],
+      "inner_types": [],
+      "description": "Discriminator for the kind of lifecycle proposal."
+    },
+    {
+      "name": "AssessmentDecision",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "ACCEPT",
+        "REJECT"
+      ],
+      "inner_types": [],
+      "description": "The accept/reject decision for a signal assessment."
+    },
+    {
+      "name": "Assessment",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_id",
+          "type_ref": "SignalId",
+          "required": true,
+          "default": "",
+          "description": "The signal this assessment pertains to.",
+          "validators": []
+        },
+        {
+          "name": "decision",
+          "type_ref": "AssessmentDecision",
+          "required": true,
+          "default": "",
+          "description": "Accept or reject decision.",
+          "validators": []
+        },
+        {
+          "name": "familiarity_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Familiarity score in [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "familiarity_score must be between 0.0 and 1.0"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single assessment record for a signal, containing the decision and a familiarity score."
+    },
+    {
+      "name": "MergeConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "overlap_threshold",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.7",
+          "description": "Minimum signal ID overlap ratio to consider merge. Must be in (0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 < value <= 1.0",
+              "error_message": "overlap_threshold must be in (0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "agreement_threshold",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.8",
+          "description": "Minimum assessment agreement ratio to consider merge. Must be in (0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 < value <= 1.0",
+              "error_message": "agreement_threshold must be in (0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "window_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "3600.0",
+          "description": "Rolling time window in seconds over which signal overlap and agreement are computed.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0.0",
+              "error_message": "window_seconds must be positive"
+            }
+          ]
+        },
+        {
+          "name": "agreement_epsilon",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.05",
+          "description": "Tolerance for familiarity score comparison when determining assessment agreement.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "agreement_epsilon must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "redirect_ttl_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "300.0",
+          "description": "Time-to-live for redirect map entries after merge, in seconds.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0.0",
+              "error_message": "redirect_ttl_seconds must be positive"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen configuration for merge detection thresholds and parameters."
+    },
+    {
+      "name": "MergeProposal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "source_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context that will be removed/absorbed after merge.",
+          "validators": []
+        },
+        {
+          "name": "target_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context that will survive after merge.",
+          "validators": []
+        },
+        {
+          "name": "overlap_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Computed signal overlap ratio.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "overlap_score must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "agreement_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Computed assessment agreement ratio.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "agreement_score must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "Timestamp",
+          "required": true,
+          "default": "",
+          "description": "Timestamp when this proposal was created.",
+          "validators": []
+        },
+        {
+          "name": "is_decay_fold",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "True if this merge was generated from a decay-to-fork handoff scenario.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen proposal for merging two contexts, produced by check_merge when thresholds are met."
+    },
+    {
+      "name": "AgentId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Unique string identifier for an agent."
+    },
+    {
+      "name": "AgentIdList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AgentId",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of agent identifiers."
+    },
+    {
+      "name": "NeighborEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "Neighbor context ID.",
+          "validators": []
+        },
+        {
+          "name": "weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "1.0",
+          "description": "Edge weight / affinity to this neighbor.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "An entry in the neighbor topology list."
+    },
+    {
+      "name": "NeighborList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "NeighborEntry",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of neighbor entries."
+    },
+    {
+      "name": "TopologyPatch",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "surviving_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context whose topology is being patched.",
+          "validators": []
+        },
+        {
+          "name": "removed_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context removed from the mesh.",
+          "validators": []
+        },
+        {
+          "name": "new_neighbors",
+          "type_ref": "NeighborList",
+          "required": true,
+          "default": "",
+          "description": "Neighbors to add to the surviving context (inherited from the removed context, deduplicated).",
+          "validators": []
+        },
+        {
+          "name": "removed_neighbor_refs",
+          "type_ref": "ContextIdList",
+          "required": true,
+          "default": "",
+          "description": "Context IDs of third-party contexts that must remove the removed_context_id from their neighbor lists and optionally add the surviving_context_id.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Describes the topology changes required after a merge: which neighbors to add, remove, and update."
+    },
+    {
+      "name": "ContextIdList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ContextId",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of context identifiers."
+    },
+    {
+      "name": "SignalIdSet",
+      "kind": "list",
+      "fields": [],
+      "item_type": "SignalId",
+      "variants": [],
+      "inner_types": [],
+      "description": "A collection of signal IDs (treated as a set for overlap computation)."
+    },
+    {
+      "name": "AssessmentList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Assessment",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of assessment records."
+    },
+    {
+      "name": "MergeRedirect",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "removed_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context ID that was removed.",
+          "validators": []
+        },
+        {
+          "name": "surviving_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context ID to which signals should be re-routed.",
+          "validators": []
+        },
+        {
+          "name": "created_at",
+          "type_ref": "Timestamp",
+          "required": true,
+          "default": "",
+          "description": "When this redirect was created.",
+          "validators": []
+        },
+        {
+          "name": "ttl_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Time-to-live in seconds from created_at.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0.0",
+              "error_message": "ttl_seconds must be positive"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A redirect entry mapping a removed context to its surviving replacement, with TTL for cleanup."
+    },
+    {
+      "name": "MergeResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "surviving_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context that survives the merge.",
+          "validators": []
+        },
+        {
+          "name": "removed_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context that was absorbed and removed.",
+          "validators": []
+        },
+        {
+          "name": "merged_agent_ids",
+          "type_ref": "AgentIdList",
+          "required": true,
+          "default": "",
+          "description": "Deduplicated list of agent IDs in the surviving context after merge.",
+          "validators": []
+        },
+        {
+          "name": "merged_energy",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Energy of the surviving context after merge (max of the two inputs).",
+          "validators": []
+        },
+        {
+          "name": "redirect",
+          "type_ref": "MergeRedirect",
+          "required": true,
+          "default": "",
+          "description": "Redirect entry for signal re-routing.",
+          "validators": []
+        },
+        {
+          "name": "topology_patch",
+          "type_ref": "TopologyPatch",
+          "required": true,
+          "default": "",
+          "description": "Topology changes to apply to the mesh.",
+          "validators": []
+        },
+        {
+          "name": "proposal",
+          "type_ref": "MergeProposal",
+          "required": true,
+          "default": "",
+          "description": "The original proposal that produced this result.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen result of executing a merge: describes the surviving context, the removed context, redirect info, and topology changes."
+    },
+    {
+      "name": "LifecycleProposal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "kind",
+          "type_ref": "LifecycleProposalKind",
+          "required": true,
+          "default": "",
+          "description": "The type of lifecycle operation proposed.",
+          "validators": []
+        },
+        {
+          "name": "affected_context_ids",
+          "type_ref": "ContextIdList",
+          "required": true,
+          "default": "",
+          "description": "All context IDs involved in this proposal (1 for fork/decay, 2 for merge/decay_fold).",
+          "validators": []
+        },
+        {
+          "name": "priority",
+          "type_ref": "int",
+          "required": true,
+          "default": "0",
+          "description": "Priority for conflict resolution; higher wins. Fork > Merge > Decay as default ordering.",
+          "validators": []
+        },
+        {
+          "name": "merge_proposal",
+          "type_ref": "OptionalMergeProposal",
+          "required": false,
+          "default": "",
+          "description": "The merge-specific proposal data, present only when kind is MERGE or DECAY_FOLD.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "Timestamp",
+          "required": true,
+          "default": "",
+          "description": "When this proposal was generated.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A unified lifecycle proposal wrapping any lifecycle operation kind and its associated data."
+    },
+    {
+      "name": "OptionalMergeProposal",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "MergeProposal"
+      ],
+      "description": "An optional MergeProposal; None when the lifecycle proposal is not merge-related."
+    },
+    {
+      "name": "LifecycleProposalList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "LifecycleProposal",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of lifecycle proposals collected during a planning phase."
+    },
+    {
+      "name": "LifecyclePlan",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "accepted_proposals",
+          "type_ref": "LifecycleProposalList",
+          "required": true,
+          "default": "",
+          "description": "Proposals accepted for execution after conflict resolution.",
+          "validators": []
+        },
+        {
+          "name": "rejected_proposals",
+          "type_ref": "LifecycleProposalList",
+          "required": true,
+          "default": "",
+          "description": "Proposals rejected due to conflicts.",
+          "validators": []
+        },
+        {
+          "name": "conflict_reasons",
+          "type_ref": "ConflictReasonMap",
+          "required": true,
+          "default": "",
+          "description": "Map from rejected proposal index to human-readable conflict reason.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The resolved plan of non-conflicting lifecycle operations to execute in a single cycle."
+    },
+    {
+      "name": "ConflictReasonMap",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping int (index into rejected_proposals) to str (conflict reason). Represented as dict."
+    },
+    {
+      "name": "LifecycleStateMap",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping ContextId (str) to LifecycleState (str). The authoritative registry of context lifecycle states in the mesh."
+    },
+    {
+      "name": "RedirectMap",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping removed ContextId (str) to MergeRedirect. Maintained by the mesh for signal re-routing."
+    },
+    {
+      "name": "MergeResultList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "MergeResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of merge results from a lifecycle cycle."
+    },
+    {
+      "name": "LifecycleCycleReport",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "plan",
+          "type_ref": "LifecyclePlan",
+          "required": true,
+          "default": "",
+          "description": "The resolved plan that was executed.",
+          "validators": []
+        },
+        {
+          "name": "merge_results",
+          "type_ref": "MergeResultList",
+          "required": true,
+          "default": "",
+          "description": "Results of all merge operations executed in this cycle.",
+          "validators": []
+        },
+        {
+          "name": "errors",
+          "type_ref": "LifecycleErrorList",
+          "required": true,
+          "default": "",
+          "description": "Errors encountered during execution; affected contexts were reverted to STABLE.",
+          "validators": []
+        },
+        {
+          "name": "redirects_cleaned",
+          "type_ref": "int",
+          "required": true,
+          "default": "0",
+          "description": "Number of expired redirect entries cleaned up in this cycle.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Report produced by a full lifecycle cycle execution, summarizing what happened."
+    },
+    {
+      "name": "LifecycleError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "proposal_kind",
+          "type_ref": "LifecycleProposalKind",
+          "required": true,
+          "default": "",
+          "description": "The kind of proposal that failed.",
+          "validators": []
+        },
+        {
+          "name": "affected_context_ids",
+          "type_ref": "ContextIdList",
+          "required": true,
+          "default": "",
+          "description": "Contexts that were reverted to STABLE.",
+          "validators": []
+        },
+        {
+          "name": "error_message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error description.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "An error that occurred during lifecycle execution, with context reversion info."
+    },
+    {
+      "name": "LifecycleErrorList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "LifecycleError",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of lifecycle errors from a cycle."
+    },
+    {
+      "name": "ContextSnapshot",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier of this context.",
+          "validators": []
+        },
+        {
+          "name": "signal_ids",
+          "type_ref": "SignalIdSet",
+          "required": true,
+          "default": "",
+          "description": "Signal IDs seen by this context within the rolling window.",
+          "validators": []
+        },
+        {
+          "name": "assessments",
+          "type_ref": "AssessmentList",
+          "required": true,
+          "default": "",
+          "description": "Assessments made by this context within the rolling window.",
+          "validators": []
+        },
+        {
+          "name": "agent_ids",
+          "type_ref": "AgentIdList",
+          "required": true,
+          "default": "",
+          "description": "Agent IDs currently assigned to this context.",
+          "validators": []
+        },
+        {
+          "name": "energy",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Current energy level of the context.",
+          "validators": []
+        },
+        {
+          "name": "neighbors",
+          "type_ref": "NeighborList",
+          "required": true,
+          "default": "",
+          "description": "Current neighbor topology of this context.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_state",
+          "type_ref": "LifecycleState",
+          "required": true,
+          "default": "",
+          "description": "Current lifecycle state of this context.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A lightweight read-only snapshot of a context's state relevant to merge detection and execution. Abstracts away the full context object."
+    },
+    {
+      "name": "ContextSnapshotPair",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_a",
+          "type_ref": "ContextSnapshot",
+          "required": true,
+          "default": "",
+          "description": "First context snapshot.",
+          "validators": []
+        },
+        {
+          "name": "context_b",
+          "type_ref": "ContextSnapshot",
+          "required": true,
+          "default": "",
+          "description": "Second context snapshot.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A pair of context snapshots for merge evaluation."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "float"
+      ],
+      "description": "An optional float value."
+    }
+  ],
+  "functions": [
+    {
+      "name": "compute_signal_overlap",
+      "description": "Pure function. Computes the Jaccard-style signal ID overlap ratio between two sets of signal IDs. Returns |A ∩ B| / |A ∪ B|. Returns 0.0 if both sets are empty.",
+      "inputs": [
+        {
+          "name": "signals_a",
+          "type_ref": "SignalIdSet",
+          "required": true,
+          "default": "",
+          "description": "Signal IDs from context A within the rolling window.",
+          "validators": []
+        },
+        {
+          "name": "signals_b",
+          "type_ref": "SignalIdSet",
+          "required": true,
+          "default": "",
+          "description": "Signal IDs from context B within the rolling window.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Result is in [0.0, 1.0].",
+        "If both inputs are empty, result is 0.0.",
+        "Result is symmetric: compute_signal_overlap(a, b) == compute_signal_overlap(b, a)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "compute_assessment_agreement",
+      "description": "Pure function. Computes the agreement ratio between two sets of assessments on shared signals. Two assessments on the same signal 'agree' if they have the same decision AND their familiarity scores are within epsilon of each other. Returns count_of_agreements / count_of_shared_signals. Returns 0.0 if there are no shared signals.",
+      "inputs": [
+        {
+          "name": "assessments_a",
+          "type_ref": "AssessmentList",
+          "required": true,
+          "default": "",
+          "description": "Assessments from context A.",
+          "validators": []
+        },
+        {
+          "name": "assessments_b",
+          "type_ref": "AssessmentList",
+          "required": true,
+          "default": "",
+          "description": "Assessments from context B.",
+          "validators": []
+        },
+        {
+          "name": "epsilon",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Tolerance for familiarity score comparison.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "epsilon must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [
+        {
+          "name": "duplicate_signal_in_assessments",
+          "condition": "A single assessment list contains multiple assessments for the same signal_id.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Assessment list contains duplicate signal_id entries."
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "Result is in [0.0, 1.0].",
+        "If there are no shared signals between the two assessment lists, result is 0.0.",
+        "Result is symmetric: compute_assessment_agreement(a, b, eps) == compute_assessment_agreement(b, a, eps)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "check_merge",
+      "description": "Pure function. Evaluates whether two neighboring contexts should merge based on signal overlap and assessment agreement thresholds defined in config. Returns a MergeProposal if both thresholds are met, or None otherwise. Does not mutate any state.",
+      "inputs": [
+        {
+          "name": "context_a",
+          "type_ref": "ContextSnapshot",
+          "required": true,
+          "default": "",
+          "description": "Snapshot of the first context.",
+          "validators": []
+        },
+        {
+          "name": "context_b",
+          "type_ref": "ContextSnapshot",
+          "required": true,
+          "default": "",
+          "description": "Snapshot of the second context.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "MergeConfig",
+          "required": true,
+          "default": "",
+          "description": "Merge configuration with thresholds.",
+          "validators": []
+        }
+      ],
+      "output_type": "OptionalMergeProposal",
+      "error_cases": [
+        {
+          "name": "same_context",
+          "condition": "context_a.context_id == context_b.context_id.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Cannot check merge of a context with itself."
+          }
+        }
+      ],
+      "preconditions": [
+        "context_a.context_id != context_b.context_id.",
+        "context_a and context_b are neighbors (context_b.context_id appears in context_a.neighbors or vice versa)."
+      ],
+      "postconditions": [
+        "If returned value is not None, then returned.overlap_score >= config.overlap_threshold and returned.agreement_score >= config.agreement_threshold.",
+        "If returned value is not None, source_context_id is the context with lower energy (tie-broken by lexicographic context_id), target_context_id is the other.",
+        "If returned value is None, at least one threshold was not met."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "execute_merge",
+      "description": "Pure function. Given two context snapshots and an approved MergeProposal, computes the MergeResult describing the merged state. Unions vector store signal sets (via signal_ids), deduplicates agent lists, takes max energy, computes topology patch (union of neighbors minus the two merging contexts, deduplicated). Does not apply any changes; returns a result to be applied by the caller.",
+      "inputs": [
+        {
+          "name": "context_a",
+          "type_ref": "ContextSnapshot",
+          "required": true,
+          "default": "",
+          "description": "Snapshot of the first context (must match one of the proposal's context IDs).",
+          "validators": []
+        },
+        {
+          "name": "context_b",
+          "type_ref": "ContextSnapshot",
+          "required": true,
+          "default": "",
+          "description": "Snapshot of the second context (must match the other proposal context ID).",
+          "validators": []
+        },
+        {
+          "name": "proposal",
+          "type_ref": "MergeProposal",
+          "required": true,
+          "default": "",
+          "description": "The approved merge proposal.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "MergeConfig",
+          "required": true,
+          "default": "",
+          "description": "Merge configuration (used for redirect TTL).",
+          "validators": []
+        }
+      ],
+      "output_type": "MergeResult",
+      "error_cases": [
+        {
+          "name": "context_id_mismatch",
+          "condition": "The context snapshot IDs do not match the proposal's source and target IDs.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Context snapshot IDs do not match proposal source/target IDs."
+          }
+        },
+        {
+          "name": "zero_energy_contexts",
+          "condition": "Both contexts have energy <= 0.0, which indicates they may both be decayed.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Cannot merge two contexts with zero or negative energy."
+          }
+        }
+      ],
+      "preconditions": [
+        "The set {context_a.context_id, context_b.context_id} == {proposal.source_context_id, proposal.target_context_id}.",
+        "proposal.overlap_score >= 0.0 and proposal.agreement_score >= 0.0."
+      ],
+      "postconditions": [
+        "result.surviving_context_id == proposal.target_context_id.",
+        "result.removed_context_id == proposal.source_context_id.",
+        "result.merged_energy == max(context_a.energy, context_b.energy).",
+        "All agent IDs from both contexts appear in result.merged_agent_ids with no duplicates.",
+        "result.redirect.removed_context_id == result.removed_context_id and result.redirect.surviving_context_id == result.surviving_context_id.",
+        "result.redirect.ttl_seconds == config.redirect_ttl_seconds.",
+        "result.topology_patch.surviving_context_id == result.surviving_context_id.",
+        "Neither surviving_context_id nor removed_context_id appear in topology_patch.new_neighbors."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "detect_decay_fold_candidates",
+      "description": "Pure function. Scans a set of lifecycle proposals to detect decay-to-fork handoff scenarios: a context is DECAYING and a neighboring context is FORKING into its territory. Returns additional DECAY_FOLD merge proposals that should replace or supplement the original decay/fork proposals.",
+      "inputs": [
+        {
+          "name": "proposals",
+          "type_ref": "LifecycleProposalList",
+          "required": true,
+          "default": "",
+          "description": "All lifecycle proposals collected in this cycle.",
+          "validators": []
+        },
+        {
+          "name": "context_snapshots",
+          "type_ref": "ContextSnapshotList",
+          "required": true,
+          "default": "",
+          "description": "Snapshots of all contexts in the mesh for neighbor lookups.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "MergeConfig",
+          "required": true,
+          "default": "",
+          "description": "Merge configuration.",
+          "validators": []
+        }
+      ],
+      "output_type": "LifecycleProposalList",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "All returned proposals have kind == DECAY_FOLD.",
+        "Each returned proposal has exactly 2 affected_context_ids.",
+        "Each returned proposal has a non-None merge_proposal with is_decay_fold == true."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "resolve_lifecycle_conflicts",
+      "description": "Pure function. Given a list of all lifecycle proposals (fork, decay, merge, decay_fold), resolves conflicts where multiple proposals affect the same context. Priority order: FORK > MERGE/DECAY_FOLD > DECAY. Within the same priority, earlier timestamps win. Returns a LifecyclePlan with accepted and rejected proposals.",
+      "inputs": [
+        {
+          "name": "proposals",
+          "type_ref": "LifecycleProposalList",
+          "required": true,
+          "default": "",
+          "description": "All lifecycle proposals including decay_fold candidates.",
+          "validators": []
+        }
+      ],
+      "output_type": "LifecyclePlan",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Every proposal in the input appears in exactly one of accepted_proposals or rejected_proposals.",
+        "No two accepted proposals share any affected_context_id.",
+        "len(accepted_proposals) + len(rejected_proposals) == len(proposals).",
+        "All rejected proposals have an entry in conflict_reasons."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "check_lifecycle_guard",
+      "description": "Checks whether a context can transition to a new lifecycle state. Returns true if the context is currently STABLE and the transition is allowed; false otherwise. This is the atomic guard that must be called within a single event-loop turn before setting the state.",
+      "inputs": [
+        {
+          "name": "context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context to check.",
+          "validators": []
+        },
+        {
+          "name": "desired_state",
+          "type_ref": "LifecycleState",
+          "required": true,
+          "default": "",
+          "description": "The state to transition to.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_states",
+          "type_ref": "LifecycleStateMap",
+          "required": true,
+          "default": "",
+          "description": "The current lifecycle state map.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "invalid_desired_state",
+          "condition": "desired_state is STABLE or MERGED, which are not valid transition targets.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Cannot explicitly transition to STABLE or MERGED via guard check."
+          }
+        }
+      ],
+      "preconditions": [
+        "desired_state is one of FORKING, DECAYING, MERGING."
+      ],
+      "postconditions": [
+        "Returns true only if lifecycle_states[context_id] is STABLE or context_id is not in lifecycle_states.",
+        "Returns false if lifecycle_states[context_id] is FORKING, DECAYING, MERGING, or MERGED."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "transition_lifecycle_state",
+      "description": "Atomically transitions a context's lifecycle state in the state map. Must be called immediately after check_lifecycle_guard returns true, with no intervening await.",
+      "inputs": [
+        {
+          "name": "context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context to transition.",
+          "validators": []
+        },
+        {
+          "name": "new_state",
+          "type_ref": "LifecycleState",
+          "required": true,
+          "default": "",
+          "description": "The new lifecycle state.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_states",
+          "type_ref": "LifecycleStateMap",
+          "required": true,
+          "default": "",
+          "description": "The mutable lifecycle state map to update in place.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "concurrent_state_change",
+          "condition": "The context's state changed between the guard check and this transition call (should not happen if no await intervenes, but defensively checked).",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "detail": "Lifecycle state changed concurrently; aborting transition."
+          }
+        }
+      ],
+      "preconditions": [
+        "check_lifecycle_guard was called and returned true for this context_id and a compatible desired_state immediately prior, OR new_state is STABLE (revert) or MERGED (post-merge)."
+      ],
+      "postconditions": [
+        "lifecycle_states[context_id] == new_state after call."
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Mutates lifecycle_states in place."
+      ]
+    },
+    {
+      "name": "apply_merge_result",
+      "description": "Side-effectful function. Applies a MergeResult to the mesh: updates the surviving context's agents, energy, and vector store; removes the source context; updates neighbor topology for all affected contexts; adds the redirect entry to the redirect map. This is the integration point in mesh/mesh.py.",
+      "inputs": [
+        {
+          "name": "merge_result",
+          "type_ref": "MergeResult",
+          "required": true,
+          "default": "",
+          "description": "The merge result to apply.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_states",
+          "type_ref": "LifecycleStateMap",
+          "required": true,
+          "default": "",
+          "description": "The lifecycle state map to update (surviving -> STABLE, removed -> MERGED).",
+          "validators": []
+        },
+        {
+          "name": "redirect_map",
+          "type_ref": "RedirectMap",
+          "required": true,
+          "default": "",
+          "description": "The redirect map to update with the new redirect entry.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "surviving_context_not_found",
+          "condition": "The surviving context does not exist in the mesh.",
+          "error_type": "KeyError",
+          "error_data": {
+            "detail": "Surviving context not found in mesh."
+          }
+        },
+        {
+          "name": "removed_context_not_found",
+          "condition": "The removed context does not exist in the mesh.",
+          "error_type": "KeyError",
+          "error_data": {
+            "detail": "Removed context not found in mesh."
+          }
+        },
+        {
+          "name": "unexpected_lifecycle_state",
+          "condition": "Either context is not in MERGING state when apply is called.",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "detail": "Context not in MERGING state; cannot apply merge result."
+          }
+        },
+        {
+          "name": "merge_apply_failed",
+          "condition": "An unexpected error occurs during application (e.g., vector store error). Both contexts are reverted to STABLE.",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "detail": "Merge application failed; contexts reverted to STABLE."
+          }
+        }
+      ],
+      "preconditions": [
+        "lifecycle_states[merge_result.surviving_context_id] == MERGING.",
+        "lifecycle_states[merge_result.removed_context_id] == MERGING.",
+        "merge_result.surviving_context_id exists in the mesh.",
+        "merge_result.removed_context_id exists in the mesh."
+      ],
+      "postconditions": [
+        "lifecycle_states[merge_result.surviving_context_id] == STABLE.",
+        "lifecycle_states[merge_result.removed_context_id] == MERGED.",
+        "redirect_map contains an entry for merge_result.removed_context_id.",
+        "The surviving context has the merged agents, energy, and updated neighbors.",
+        "The removed context is no longer active in the mesh."
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Mutates the surviving context's state (agents, energy, vector store, neighbors).",
+        "Removes the source context from the mesh.",
+        "Mutates lifecycle_states for both contexts.",
+        "Adds a redirect entry to redirect_map.",
+        "Updates neighbor lists of third-party contexts per topology_patch."
+      ]
+    },
+    {
+      "name": "resolve_signal_redirect",
+      "description": "Resolves a target context ID through the redirect map, following chains if necessary (a merged context may redirect to another merged context). Returns the final surviving context ID, or the original ID if no redirect exists. Enforces a maximum chain depth to prevent cycles.",
+      "inputs": [
+        {
+          "name": "target_context_id",
+          "type_ref": "ContextId",
+          "required": true,
+          "default": "",
+          "description": "The context ID to resolve.",
+          "validators": []
+        },
+        {
+          "name": "redirect_map",
+          "type_ref": "RedirectMap",
+          "required": true,
+          "default": "",
+          "description": "The current redirect map.",
+          "validators": []
+        },
+        {
+          "name": "max_depth",
+          "type_ref": "int",
+          "required": true,
+          "default": "10",
+          "description": "Maximum redirect chain depth to follow.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 1",
+              "error_message": "max_depth must be at least 1"
+            }
+          ]
+        }
+      ],
+      "output_type": "ContextId",
+      "error_cases": [
+        {
+          "name": "redirect_chain_too_deep",
+          "condition": "The redirect chain exceeds max_depth, indicating a possible cycle or excessively long chain.",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "detail": "Redirect chain exceeded max_depth; possible cycle detected."
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "Returned context ID is not a key in redirect_map (i.e., it is not a merged/removed context), OR max_depth was reached.",
+        "If target_context_id is not in redirect_map, it is returned unchanged."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "cleanup_expired_redirects",
+      "description": "Removes expired redirect entries from the redirect map based on their TTL and the current time. Also removes the MERGED lifecycle state entry for cleaned-up contexts.",
+      "inputs": [
+        {
+          "name": "redirect_map",
+          "type_ref": "RedirectMap",
+          "required": true,
+          "default": "",
+          "description": "The redirect map to clean up.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_states",
+          "type_ref": "LifecycleStateMap",
+          "required": true,
+          "default": "",
+          "description": "The lifecycle state map to clean up MERGED entries.",
+          "validators": []
+        },
+        {
+          "name": "current_time",
+          "type_ref": "Timestamp",
+          "required": true,
+          "default": "",
+          "description": "The current time for TTL comparison.",
+          "validators": []
+        }
+      ],
+      "output_type": "int",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "All entries in redirect_map where (created_at + ttl_seconds) < current_time have been removed.",
+        "Corresponding MERGED entries in lifecycle_states have been removed.",
+        "Return value equals the number of entries removed."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Mutates redirect_map by removing expired entries.",
+        "Mutates lifecycle_states by removing MERGED entries for cleaned-up contexts."
+      ]
+    },
+    {
+      "name": "run_lifecycle_cycle",
+      "description": "Top-level integration function called from mesh/mesh.py's lifecycle check loop. Orchestrates a complete lifecycle cycle: (1) snapshot all contexts, (2) collect fork/decay/merge proposals, (3) detect decay-fold candidates, (4) resolve conflicts, (5) execute all accepted proposals (applying state guards, transitions, and side effects), (6) clean up expired redirects. Returns a report of everything that happened. This replaces separate _check_forks/_check_decays/_check_merges with a unified planning-then-execution approach.",
+      "inputs": [
+        {
+          "name": "config",
+          "type_ref": "MergeConfig",
+          "required": true,
+          "default": "",
+          "description": "Merge configuration.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_states",
+          "type_ref": "LifecycleStateMap",
+          "required": true,
+          "default": "",
+          "description": "The mutable lifecycle state map.",
+          "validators": []
+        },
+        {
+          "name": "redirect_map",
+          "type_ref": "RedirectMap",
+          "required": true,
+          "default": "",
+          "description": "The mutable redirect map.",
+          "validators": []
+        },
+        {
+          "name": "current_time",
+          "type_ref": "Timestamp",
+          "required": true,
+          "default": "",
+          "description": "Current time for window computation and TTL cleanup.",
+          "validators": []
+        }
+      ],
+      "output_type": "LifecycleCycleReport",
+      "error_cases": [
+        {
+          "name": "lifecycle_cycle_fatal",
+          "condition": "A catastrophic error prevents the cycle from completing (e.g., mesh state corruption). All in-progress transitions are best-effort reverted to STABLE.",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "detail": "Fatal error during lifecycle cycle; best-effort revert performed."
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "All accepted proposals have been executed or appear in report.errors with contexts reverted to STABLE.",
+        "report.plan.accepted_proposals and report.plan.rejected_proposals are disjoint and cover all collected proposals.",
+        "Expired redirects have been cleaned up.",
+        "No context is left in MERGING state after this function returns (either STABLE or MERGED)."
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Mutates lifecycle_states for all affected contexts.",
+        "Mutates redirect_map (adds new redirects, removes expired ones).",
+        "Mutates mesh context state (agents, energy, vector stores, topology) for all executed proposals.",
+        "Removes contexts that were absorbed in merges."
+      ]
+    },
+    {
+      "name": "check_merges",
+      "description": "Scans all pairs of neighboring contexts and returns MergeProposals for pairs that exceed the overlap and agreement thresholds. This is the merge-specific proposal collection step within the lifecycle cycle. Skips contexts not in STABLE state.",
+      "inputs": [
+        {
+          "name": "context_snapshots",
+          "type_ref": "ContextSnapshotList",
+          "required": true,
+          "default": "",
+          "description": "Snapshots of all contexts.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "MergeConfig",
+          "required": true,
+          "default": "",
+          "description": "Merge configuration.",
+          "validators": []
+        },
+        {
+          "name": "lifecycle_states",
+          "type_ref": "LifecycleStateMap",
+          "required": true,
+          "default": "",
+          "description": "Current lifecycle states; only STABLE contexts are considered.",
+          "validators": []
+        }
+      ],
+      "output_type": "MergeProposalList",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "All returned proposals have overlap_score >= config.overlap_threshold and agreement_score >= config.agreement_threshold.",
+        "No proposal involves a context whose lifecycle_state is not STABLE.",
+        "Each unordered pair of contexts appears at most once in the result."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "A context may be in at most one LifecycleState transition at any time; concurrent FORKING, DECAYING, and MERGING on the same context are mutually exclusive.",
+    "The lifecycle_states dict is the single source of truth for context lifecycle state; check-then-transition must occur within a single event-loop turn with no await between check and set.",
+    "After a merge completes, exactly one of the two input contexts survives; the other is removed and an entry is added to the redirect map.",
+    "Redirect map entries have a finite TTL and are cleaned up after expiry; no unbounded growth.",
+    "All pure functions (compute_signal_overlap, compute_assessment_agreement, check_merge, execute_merge, resolve_lifecycle_conflicts) are deterministic and produce no side effects.",
+    "Fork, decay, and merge proposals collected in the same cycle are conflict-resolved before any execution begins.",
+    "Existing fork and decay lifecycle behavior is unchanged; all pre-existing lifecycle tests must pass.",
+    "MergeConfig thresholds overlap_threshold and agreement_threshold default to 0.7 and 0.8 respectively but are configurable."
+  ],
+  "requires": []
+}

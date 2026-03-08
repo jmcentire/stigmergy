@@ -1,0 +1,2336 @@
+{
+  "component_id": "active_inquiry",
+  "name": "Active Inquiry (Feature 1)",
+  "description": "Implement the active inquiry step in the mesh routing pipeline. When a worker accepts a signal (scores above threshold), it decomposes the signal into dimensions (people, projects, tickets, keywords, sentiment) and queries the worker's context knowledge base for relevant connections. Produces InquiryResult frozen Pydantic models that feed into assessment. Runs ONLY on the single accepting worker (after accept, before consensus). Uses LLM when available, falls back to embedding similarity + keyword overlap. Includes: defining InquiryResult primitive in primitives/, adding inquire() method to WorkerNode, wiring into mesh routing pipeline, and tests.",
+  "version": 1,
+  "types": [
+    {
+      "name": "InquiryDimension",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "people",
+        "projects",
+        "tickets",
+        "keywords",
+        "sentiment"
+      ],
+      "inner_types": [],
+      "description": "StrEnum defining the five inquiry dimensions used to decompose a signal. Each value serializes cleanly as a dict key string. Uses Python 3.12 StrEnum semantics."
+    },
+    {
+      "name": "DimensionConnectionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of discovered connection strings for a single inquiry dimension. Each entry is a string identifier referencing an entity (person name, project ID, ticket ID, keyword, or sentiment label) found in the worker's context knowledge base."
+    },
+    {
+      "name": "DimensionsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from InquiryDimension enum value (str key) to DimensionConnectionsList. Keys must be valid InquiryDimension variants.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping each InquiryDimension to a list of discovered connection strings. All five dimension keys need not be present — only dimensions with discovered connections are included."
+    },
+    {
+      "name": "ConfidenceScoresMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from InquiryDimension enum value (str key) to float confidence score. Every value must satisfy 0.0 <= v <= 1.0.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(0.0 <= v <= 1.0 for v in value.values())",
+              "error_message": "All confidence scores must be in the range [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping each InquiryDimension to a confidence score float in [0.0, 1.0]. Keys must be exactly equal to the keys present in the sibling dimensions field."
+    },
+    {
+      "name": "PrimitiveInquiryResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this inquiry result. Generated via UUID4 default_factory. Immutable once set.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the originating Signal that triggered this inquiry. Must correspond to a valid Signal.id in the system.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the accepting worker's Context knowledge base that was queried during inquiry. Must correspond to a valid Context.id.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "context_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "dimensions",
+          "type_ref": "DimensionsMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension enum values to lists of discovered connection strings. Keys must be valid InquiryDimension variants.",
+          "validators": []
+        },
+        {
+          "name": "confidence_scores",
+          "type_ref": "ConfidenceScoresMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension enum values to confidence floats in [0.0, 1.0]. A model_validator(mode='after') enforces that the key set here is exactly equal to the key set in dimensions.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(0.0 <= v <= 1.0 for v in value.values())",
+              "error_message": "All confidence scores must be in the range [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 formatted UTC timestamp recording when this inquiry result was produced.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}",
+              "error_message": "timestamp must be a valid ISO 8601 datetime string"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic BaseModel (model_config = ConfigDict(frozen=True)) representing the output of the active inquiry step in the mesh routing pipeline. Produced by the single accepting worker after signal acceptance and before consensus. Immutable at the shallow level. Follows the same pattern as Assessment primitive. Exported from primitives/__init__.py."
+    },
+    {
+      "name": "InquiryValidationError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The name of the field that failed validation.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the validation failure.",
+          "validators": []
+        },
+        {
+          "name": "invalid_value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "String representation of the value that failed validation.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error detail returned when InquiryResult construction or validation fails. Subclass of ValueError."
+    },
+    {
+      "name": "PrimitiveInquiryResultList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "PrimitiveInquiryResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of PrimitiveInquiryResult instances, typically collected from a single worker's inquiry step."
+    },
+    {
+      "name": "OptionalPrimitiveInquiryResult",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "PrimitiveInquiryResult"
+      ],
+      "description": "An optional PrimitiveInquiryResult — either a valid instance or None."
+    },
+    {
+      "name": "ExtractionMethod",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "llm",
+        "heuristic"
+      ],
+      "inner_types": [],
+      "description": "Indicates which extraction path was used to produce the inquiry result."
+    },
+    {
+      "name": "MatchMethod",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "llm_extraction",
+        "embedding_similarity",
+        "keyword_overlap",
+        "combined",
+        "none"
+      ],
+      "inner_types": [],
+      "description": "Indicates the method used to find matches for a particular dimension."
+    },
+    {
+      "name": "MatchedTerms",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable tuple of matched term strings. Serialized as a list but enforced as tuple at runtime for frozen model compatibility."
+    },
+    {
+      "name": "MatchScores",
+      "kind": "list",
+      "fields": [],
+      "item_type": "float",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable tuple of float scores in [0.0, 1.0], positionally corresponding to MatchedTerms."
+    },
+    {
+      "name": "DimensionMatch",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "matched_terms",
+          "type_ref": "MatchedTerms",
+          "required": true,
+          "default": "",
+          "description": "Tuple of matched term strings found in the worker's context for this dimension. Empty tuple if no matches or on failure.",
+          "validators": []
+        },
+        {
+          "name": "scores",
+          "type_ref": "MatchScores",
+          "required": true,
+          "default": "",
+          "description": "Tuple of similarity/relevance scores corresponding positionally to matched_terms. Each score in [0.0, 1.0]. Same length as matched_terms.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(0.0 <= s <= 1.0 for s in value)",
+              "error_message": "All scores must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "method",
+          "type_ref": "MatchMethod",
+          "required": true,
+          "default": "",
+          "description": "The method used to find these matches.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing matches found for a single inquiry dimension (e.g., people, projects, tickets, keywords). Uses tuples for true immutability. len(matched_terms) must always equal len(scores)."
+    },
+    {
+      "name": "EngineSentimentResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "polarity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Sentiment polarity from -1.0 (very negative) to 1.0 (very positive). 0.0 is neutral.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "-1.0 <= value <= 1.0",
+              "error_message": "polarity must be in [-1.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "magnitude",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Sentiment magnitude/intensity from 0.0 (no sentiment) to 1.0 (very strong). Represents confidence/strength independent of polarity direction.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "magnitude must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "label",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable sentiment label (e.g., 'positive', 'negative', 'neutral', 'mixed'). Derived from polarity and magnitude.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1 <= len(value) <= 50",
+              "error_message": "label must be between 1 and 50 characters"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the sentiment analysis of a signal's content."
+    },
+    {
+      "name": "ErrorTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable tuple of error message strings captured during inquiry. Empty when no errors occurred."
+    },
+    {
+      "name": "EngineInquiryResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The unique identifier of the signal that was inquired upon.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The unique identifier of the worker that performed the inquiry.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "worker_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "people",
+          "type_ref": "DimensionMatch",
+          "required": true,
+          "default": "",
+          "description": "Matches found in the people dimension (names, user handles, team references).",
+          "validators": []
+        },
+        {
+          "name": "projects",
+          "type_ref": "DimensionMatch",
+          "required": true,
+          "default": "",
+          "description": "Matches found in the projects dimension (project names, codenames, repository references).",
+          "validators": []
+        },
+        {
+          "name": "tickets",
+          "type_ref": "DimensionMatch",
+          "required": true,
+          "default": "",
+          "description": "Matches found in the tickets dimension (ticket IDs, issue references, PR numbers).",
+          "validators": []
+        },
+        {
+          "name": "keywords",
+          "type_ref": "DimensionMatch",
+          "required": true,
+          "default": "",
+          "description": "Matches found in the keywords dimension (topic terms, technology names, domain concepts).",
+          "validators": []
+        },
+        {
+          "name": "sentiment",
+          "type_ref": "EngineSentimentResult",
+          "required": true,
+          "default": "",
+          "description": "Sentiment analysis result for the signal content.",
+          "validators": []
+        },
+        {
+          "name": "extraction_method",
+          "type_ref": "ExtractionMethod",
+          "required": true,
+          "default": "",
+          "description": "Which extraction path was used: 'llm' if LLM extraction succeeded, 'heuristic' if fallback embedding+keyword was used.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of when the inquiry was performed. Format: YYYY-MM-DDTHH:MM:SS.ffffffZ.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+              "error_message": "timestamp must be ISO 8601 UTC format ending with Z"
+            }
+          ]
+        },
+        {
+          "name": "errors",
+          "type_ref": "ErrorTuple",
+          "required": true,
+          "default": "",
+          "description": "Tuple of error messages encountered during inquiry. Empty tuple if no errors. Errors are captured here rather than raised.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the complete result of an inquiry operation from the engine layer. Contains dimension matches, sentiment, metadata, and any errors encountered. This is the primary output primitive of the inquiry engine and feeds directly into the assessment phase."
+    },
+    {
+      "name": "Signal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique signal identifier.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "Signal id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal to be decomposed into dimensions.",
+          "validators": []
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Origin/source identifier of the signal (e.g., channel, integration name).",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value metadata associated with the signal.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "An incoming signal that has been accepted by a worker (scored above threshold). This is the input to the inquiry engine and pipeline."
+    },
+    {
+      "name": "DimensionName",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "people",
+        "projects",
+        "tickets",
+        "keywords",
+        "sentiment"
+      ],
+      "inner_types": [],
+      "description": "The canonical set of inquiry dimensions used by the engine layer."
+    },
+    {
+      "name": "Embedding",
+      "kind": "list",
+      "fields": [],
+      "item_type": "float",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dense vector embedding. All embedding strategies produce same-dimensionality vectors."
+    },
+    {
+      "name": "ContextTerm",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "term",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The term string (e.g., a person name, project name, keyword).",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "DimensionName",
+          "required": true,
+          "default": "",
+          "description": "Which dimension this term belongs to.",
+          "validators": []
+        },
+        {
+          "name": "embedding",
+          "type_ref": "OptionalEmbedding",
+          "required": false,
+          "default": "None",
+          "description": "The embedding vector for this term. All embeddings have the same dimensionality per engineering decision.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single term in the worker's context knowledge base, with its embedding vector and metadata."
+    },
+    {
+      "name": "OptionalEmbedding",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "Embedding"
+      ],
+      "description": "An optional embedding vector — either a list of floats or None."
+    },
+    {
+      "name": "ContextTermList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ContextTerm",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of context terms in a worker's knowledge base."
+    },
+    {
+      "name": "Context",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The worker that owns this context.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "worker_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "terms",
+          "type_ref": "ContextTermList",
+          "required": true,
+          "default": "",
+          "description": "All context terms in the worker's knowledge base.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The worker's context knowledge base containing terms, embeddings, and a vector store for similarity search. This is the query target for the inquiry engine."
+    },
+    {
+      "name": "LLMService",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "available",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the LLM service is currently reachable and ready.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Interface to an LLM service for structured extraction. Passed optionally to enable the LLM extraction path. Opaque to this contract — only the availability matters for path selection."
+    },
+    {
+      "name": "EmbeddingService",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "available",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the embedding service is currently reachable and ready.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Interface to an embedding service for computing vector similarity. Used in the fallback heuristic path."
+    },
+    {
+      "name": "OptionalLLMService",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "LLMService"
+      ],
+      "description": "An optional LLM service — either a valid LLMService instance or None."
+    },
+    {
+      "name": "OptionalEmbeddingService",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "EmbeddingService"
+      ],
+      "description": "An optional embedding service — either a valid EmbeddingService instance or None."
+    },
+    {
+      "name": "LLMDimensionExtraction",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "people",
+          "type_ref": "MatchedTerms",
+          "required": true,
+          "default": "",
+          "description": "People/person references extracted by the LLM.",
+          "validators": []
+        },
+        {
+          "name": "projects",
+          "type_ref": "MatchedTerms",
+          "required": true,
+          "default": "",
+          "description": "Project references extracted by the LLM.",
+          "validators": []
+        },
+        {
+          "name": "tickets",
+          "type_ref": "MatchedTerms",
+          "required": true,
+          "default": "",
+          "description": "Ticket/issue references extracted by the LLM.",
+          "validators": []
+        },
+        {
+          "name": "keywords",
+          "type_ref": "MatchedTerms",
+          "required": true,
+          "default": "",
+          "description": "Keyword/topic references extracted by the LLM.",
+          "validators": []
+        },
+        {
+          "name": "sentiment_polarity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Sentiment polarity extracted by the LLM.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "-1.0 <= value <= 1.0",
+              "error_message": "sentiment_polarity must be in [-1.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "sentiment_magnitude",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Sentiment magnitude extracted by the LLM.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "sentiment_magnitude must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "sentiment_label",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Sentiment label extracted by the LLM.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The structured output expected from the LLM when extracting dimensions from signal content."
+    },
+    {
+      "name": "OptionalLLMDimensionExtraction",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "LLMDimensionExtraction"
+      ],
+      "description": "An optional LLM extraction result — either a valid LLMDimensionExtraction or None."
+    },
+    {
+      "name": "InquiryConnection",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "dimension",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The inquiry dimension this connection belongs to (e.g. 'people', 'projects', 'tickets', 'keywords', 'sentiment').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "dimension must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "matched_item",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The item from the worker's context knowledge base that matched the signal dimension.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "matched_item must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Relevance score of this connection, in the range [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "score must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": false,
+          "default": "None",
+          "description": "Optional provenance label indicating where the matched_item was found (e.g. 'llm', 'embedding', 'keyword_overlap').",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single connection discovered during inquiry — links a matched item in a specific dimension back to a source in the worker's context knowledge base. Frozen Pydantic v2 BaseModel."
+    },
+    {
+      "name": "InquiryConnectionTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "InquiryConnection",
+      "variants": [],
+      "inner_types": [],
+      "description": "An immutable tuple of InquiryConnection items. Represented as a frozen tuple in the Pydantic model."
+    },
+    {
+      "name": "StringTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "An immutable tuple of strings. Used for people, projects, tickets, keywords dimensions."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "float"
+      ],
+      "description": "An optional float — either a float value or None."
+    },
+    {
+      "name": "PipelineInquiryResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "people",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "People entities extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "projects",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "Project identifiers extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "tickets",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "Ticket/issue identifiers extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "keywords",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "Keywords extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "sentiment",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "Sentiment score derived from the signal, in the range [-1.0, 1.0]. None if sentiment analysis was not performed.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value is None or -1.0 <= value <= 1.0",
+              "error_message": "sentiment must be None or in [-1.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "connections",
+          "type_ref": "InquiryConnectionTuple",
+          "required": false,
+          "default": "()",
+          "description": "All connections discovered across dimensions during inquiry.",
+          "validators": []
+        },
+        {
+          "name": "confidence",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.0",
+          "description": "Overall confidence of the inquiry result, in range [0.0, 1.0]. 0.0 means no confidence / empty result.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "confidence must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "None",
+          "description": "Identifier of the worker that produced this inquiry result.",
+          "validators": []
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "None",
+          "description": "Identifier of the signal that was inquired upon.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 BaseModel capturing the full result of an inquiry step in the pipeline integration layer. Produced by a single accepting worker after signal decomposition and knowledge-base querying. All collection fields default to empty tuples, numeric fields to zero/None, and string fields to empty — so a default-constructed PipelineInquiryResult represents 'no findings'."
+    },
+    {
+      "name": "OptionalPipelineInquiryResult",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "PipelineInquiryResult"
+      ],
+      "description": "An optional PipelineInquiryResult — either a valid instance or None."
+    },
+    {
+      "name": "AcceptResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the worker that accepted the signal.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "worker_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The acceptance score that exceeded the threshold.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "score must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The result of the stop-on-first-accept phase: identifies the winning worker and its accept score."
+    },
+    {
+      "name": "RoutingResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The signal that was routed.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "accepted_by",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Worker ID of the accepting worker.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "accepted_by must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "inquiry_result",
+          "type_ref": "OptionalPipelineInquiryResult",
+          "required": false,
+          "default": "None",
+          "description": "The PipelineInquiryResult produced by the accepting worker, or None if inquiry was skipped or produced no results.",
+          "validators": []
+        },
+        {
+          "name": "consensus",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "The consensus/assessment outcome, potentially enriched by inquiry_result.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The full result of routing a signal through the mesh pipeline, now augmented with an optional PipelineInquiryResult."
+    },
+    {
+      "name": "InquiryStrategy",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "LLM",
+        "EMBEDDING_SIMILARITY",
+        "KEYWORD_OVERLAP",
+        "FALLBACK_CHAIN"
+      ],
+      "inner_types": [],
+      "description": "The strategy used by inquire() to decompose and match signal dimensions."
+    }
+  ],
+  "functions": [
+    {
+      "name": "create_inquiry_result",
+      "description": "Construct and validate a new PrimitiveInquiryResult frozen instance. Applies all field validators (non-empty IDs, confidence range [0.0, 1.0], ISO 8601 timestamp) and the model_validator ensuring confidence_scores keys exactly equal dimensions keys. Returns the frozen, immutable PrimitiveInquiryResult. This is the primary factory entrypoint — callers should prefer this over direct constructor access to ensure all cross-field invariants are checked.",
+      "inputs": [
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the originating Signal that triggered this inquiry.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the accepting worker's Context knowledge base.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "context_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "dimensions",
+          "type_ref": "DimensionsMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension values to lists of discovered connection strings.",
+          "validators": []
+        },
+        {
+          "name": "confidence_scores",
+          "type_ref": "ConfidenceScoresMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension values to confidence floats in [0.0, 1.0].",
+          "validators": []
+        },
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": false,
+          "default": "uuid4()",
+          "description": "Unique identifier. Defaults to a new UUID4 string.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": false,
+          "default": "datetime.now(UTC).isoformat()",
+          "description": "ISO 8601 UTC timestamp. Defaults to current time.",
+          "validators": []
+        }
+      ],
+      "output_type": "PrimitiveInquiryResult",
+      "error_cases": [
+        {
+          "name": "empty_signal_id",
+          "condition": "signal_id is an empty string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "signal_id",
+            "detail": "signal_id must be a non-empty string"
+          }
+        },
+        {
+          "name": "empty_context_id",
+          "condition": "context_id is an empty string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "context_id",
+            "detail": "context_id must be a non-empty string"
+          }
+        },
+        {
+          "name": "invalid_dimension_key",
+          "condition": "A key in dimensions is not a valid InquiryDimension variant",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "dimensions",
+            "detail": "All keys must be valid InquiryDimension variants: people, projects, tickets, keywords, sentiment"
+          }
+        },
+        {
+          "name": "confidence_out_of_range",
+          "condition": "Any value in confidence_scores is less than 0.0 or greater than 1.0",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "confidence_scores",
+            "detail": "All confidence scores must be in the range [0.0, 1.0]"
+          }
+        },
+        {
+          "name": "key_mismatch",
+          "condition": "The key set of confidence_scores does not exactly equal the key set of dimensions",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "confidence_scores",
+            "detail": "confidence_scores keys must exactly equal dimensions keys"
+          }
+        },
+        {
+          "name": "invalid_timestamp_format",
+          "condition": "Explicitly provided timestamp does not match ISO 8601 format",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "timestamp",
+            "detail": "timestamp must be a valid ISO 8601 datetime string"
+          }
+        },
+        {
+          "name": "empty_id",
+          "condition": "Explicitly provided id is an empty string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "id",
+            "detail": "id must be a non-empty string"
+          }
+        }
+      ],
+      "preconditions": [
+        "signal_id is a non-empty string referencing a valid Signal",
+        "context_id is a non-empty string referencing a valid Context",
+        "All keys in dimensions are valid InquiryDimension variants",
+        "All keys in confidence_scores are valid InquiryDimension variants",
+        "All confidence_scores values are floats in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "Returned PrimitiveInquiryResult is frozen (immutable at shallow level)",
+        "Returned PrimitiveInquiryResult.id is a non-empty string",
+        "Returned PrimitiveInquiryResult.signal_id == input signal_id",
+        "Returned PrimitiveInquiryResult.context_id == input context_id",
+        "set(result.confidence_scores.keys()) == set(result.dimensions.keys())",
+        "All values in result.confidence_scores satisfy 0.0 <= v <= 1.0",
+        "result.timestamp is a valid ISO 8601 UTC datetime string"
+      ],
+      "idempotent": false,
+      "side_effects": []
+    },
+    {
+      "name": "get_dimension_connections",
+      "description": "Retrieve the list of discovered connections for a specific dimension from a PrimitiveInquiryResult. Returns the connection list if the dimension exists, or an empty list if the dimension is not present.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "PrimitiveInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PrimitiveInquiryResult instance.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "InquiryDimension",
+          "required": true,
+          "default": "",
+          "description": "The dimension to retrieve connections for.",
+          "validators": []
+        }
+      ],
+      "output_type": "DimensionConnectionsList",
+      "error_cases": [
+        {
+          "name": "invalid_dimension",
+          "condition": "dimension is not a valid InquiryDimension variant",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "dimension must be a valid InquiryDimension variant"
+          }
+        }
+      ],
+      "preconditions": [
+        "inquiry_result is a valid PrimitiveInquiryResult instance",
+        "dimension is a valid InquiryDimension variant"
+      ],
+      "postconditions": [
+        "If dimension is a key in inquiry_result.dimensions, returns inquiry_result.dimensions[dimension]",
+        "If dimension is not a key in inquiry_result.dimensions, returns an empty list"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_dimension_confidence",
+      "description": "Retrieve the confidence score for a specific dimension from a PrimitiveInquiryResult. Returns the float confidence if the dimension exists, or 0.0 if not present.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "PrimitiveInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PrimitiveInquiryResult instance.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "InquiryDimension",
+          "required": true,
+          "default": "",
+          "description": "The dimension to retrieve confidence for.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [
+        {
+          "name": "invalid_dimension",
+          "condition": "dimension is not a valid InquiryDimension variant",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "dimension must be a valid InquiryDimension variant"
+          }
+        }
+      ],
+      "preconditions": [
+        "inquiry_result is a valid PrimitiveInquiryResult instance",
+        "dimension is a valid InquiryDimension variant"
+      ],
+      "postconditions": [
+        "If dimension is a key in inquiry_result.confidence_scores, returns inquiry_result.confidence_scores[dimension]",
+        "If dimension is not a key in inquiry_result.confidence_scores, returns 0.0",
+        "Return value satisfies 0.0 <= result <= 1.0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_active_dimensions",
+      "description": "Return the list of InquiryDimension values that have at least one connection in the PrimitiveInquiryResult's dimensions map. Useful for determining which dimensions the inquiry step actually populated.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "PrimitiveInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PrimitiveInquiryResult instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [],
+      "preconditions": [
+        "inquiry_result is a valid PrimitiveInquiryResult instance"
+      ],
+      "postconditions": [
+        "Returned list contains only valid InquiryDimension variants",
+        "Every element in the returned list is a key in inquiry_result.dimensions where len(connections) >= 1",
+        "Dimensions with empty connection lists are excluded"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_overall_confidence",
+      "description": "Compute the mean confidence score across all dimensions present in the PrimitiveInquiryResult. Returns 0.0 if no dimensions are present. Provides a single summary confidence value for the entire inquiry result.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "PrimitiveInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PrimitiveInquiryResult instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [],
+      "preconditions": [
+        "inquiry_result is a valid PrimitiveInquiryResult instance"
+      ],
+      "postconditions": [
+        "If inquiry_result.confidence_scores is empty, returns 0.0",
+        "Otherwise returns sum(confidence_scores.values()) / len(confidence_scores)",
+        "Return value satisfies 0.0 <= result <= 1.0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "serialize_inquiry_result",
+      "description": "Serialize a PrimitiveInquiryResult to a JSON-compatible dict. InquiryDimension enum keys are serialized as their string values for clean JSON output. Uses Pydantic's model_dump() under the hood with mode='json'.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "PrimitiveInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PrimitiveInquiryResult instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "dict",
+      "error_cases": [],
+      "preconditions": [
+        "inquiry_result is a valid PrimitiveInquiryResult instance"
+      ],
+      "postconditions": [
+        "Returned dict contains keys: id, signal_id, context_id, dimensions, confidence_scores, timestamp",
+        "All InquiryDimension enum keys are serialized as plain strings",
+        "dimensions values are lists of strings",
+        "confidence_scores values are floats in [0.0, 1.0]",
+        "timestamp is an ISO 8601 UTC string",
+        "Returned dict is JSON-serializable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deserialize_inquiry_result",
+      "description": "Deserialize a JSON-compatible dict into a validated PrimitiveInquiryResult instance. Uses Pydantic's model_validate() to parse and validate all fields, including cross-field key alignment. String keys in dimensions and confidence_scores are coerced to InquiryDimension enum values.",
+      "inputs": [
+        {
+          "name": "data",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "A dict containing at minimum the required keys: signal_id, context_id, dimensions, confidence_scores.",
+          "validators": []
+        }
+      ],
+      "output_type": "PrimitiveInquiryResult",
+      "error_cases": [
+        {
+          "name": "missing_required_field",
+          "condition": "data dict is missing one or more required keys (signal_id, context_id, dimensions, confidence_scores)",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Missing required field(s) in input data"
+          }
+        },
+        {
+          "name": "invalid_dimension_key_in_data",
+          "condition": "A key in dimensions or confidence_scores is not a valid InquiryDimension string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Invalid dimension key — must be one of: people, projects, tickets, keywords, sentiment"
+          }
+        },
+        {
+          "name": "confidence_out_of_range",
+          "condition": "Any confidence_scores value is not in [0.0, 1.0]",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "All confidence scores must be in the range [0.0, 1.0]"
+          }
+        },
+        {
+          "name": "key_mismatch",
+          "condition": "confidence_scores keys do not exactly equal dimensions keys",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "confidence_scores keys must exactly equal dimensions keys"
+          }
+        },
+        {
+          "name": "invalid_data_type",
+          "condition": "data is not a dict or contains values of incorrect types",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Input must be a dict with correctly-typed values"
+          }
+        }
+      ],
+      "preconditions": [
+        "data is a dict containing at minimum the required keys: signal_id, context_id, dimensions, confidence_scores",
+        "dimensions keys are valid InquiryDimension string values",
+        "confidence_scores values are numeric and in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "Returned PrimitiveInquiryResult passes all validation (field validators and model_validator)",
+        "Returned PrimitiveInquiryResult is frozen (immutable at shallow level)",
+        "set(result.confidence_scores.keys()) == set(result.dimensions.keys())"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "inquire_engine",
+      "description": "Primary engine entry point. Decomposes an accepted signal into dimensions (people, projects, tickets, keywords, sentiment) and queries the worker's context knowledge base for relevant connections. Attempts LLM extraction first if llm_service is provided and available; falls back to embedding similarity + keyword overlap. Parallelizes per-dimension queries via asyncio.gather(). Never raises — all errors are captured in the returned EngineInquiryResult's errors field. Async.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The accepted signal to decompose and query against the worker's context.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "The accepting worker's context knowledge base.",
+          "validators": []
+        },
+        {
+          "name": "llm_service",
+          "type_ref": "OptionalLLMService",
+          "required": false,
+          "default": "None",
+          "description": "Optional LLM service for structured extraction. If provided and available, LLM path is attempted first.",
+          "validators": []
+        },
+        {
+          "name": "embedding_service",
+          "type_ref": "OptionalEmbeddingService",
+          "required": false,
+          "default": "None",
+          "description": "Optional embedding service for similarity matching. Used in fallback heuristic path.",
+          "validators": []
+        }
+      ],
+      "output_type": "EngineInquiryResult",
+      "error_cases": [
+        {
+          "name": "llm_extraction_failed",
+          "condition": "LLM service was provided and available but extraction call failed (timeout, parse error, service error)",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Falls back to heuristic path. Error message appended to result.errors. Does not raise."
+          }
+        },
+        {
+          "name": "embedding_service_failed",
+          "condition": "Embedding service was provided and available but similarity computation failed",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Falls back to keyword overlap only for affected dimensions. Error message appended to result.errors. Does not raise."
+          }
+        },
+        {
+          "name": "dimension_query_failed",
+          "condition": "A single dimension query (people, projects, tickets, or keywords) raised an exception",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "That dimension returns empty DimensionMatch. Error appended to result.errors. Other dimensions unaffected. Does not raise."
+          }
+        },
+        {
+          "name": "sentiment_analysis_failed",
+          "condition": "Sentiment extraction or analysis raised an exception",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Returns neutral SentimentResult (polarity=0.0, magnitude=0.0, label='neutral'). Error appended to result.errors. Does not raise."
+          }
+        },
+        {
+          "name": "total_failure",
+          "condition": "All dimension queries and sentiment analysis failed",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Returns EngineInquiryResult with all empty DimensionMatches, neutral sentiment, extraction_method='heuristic', and all errors in result.errors. Does not raise."
+          }
+        },
+        {
+          "name": "empty_signal_content",
+          "condition": "signal.content is empty or whitespace-only",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Returns EngineInquiryResult with all empty DimensionMatches and neutral sentiment. Not treated as error. extraction_method='heuristic'."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is non-empty",
+        "context.worker_id is non-empty",
+        "Signal has been accepted by the worker (scored above threshold) — this function runs only on the accepting worker",
+        "Function is called after accept phase and before consensus phase in the mesh routing pipeline"
+      ],
+      "postconditions": [
+        "Returns a valid EngineInquiryResult — never raises an exception",
+        "result.signal_id == signal.id",
+        "result.worker_id == context.worker_id",
+        "result.extraction_method is 'llm' if LLM path succeeded, 'heuristic' otherwise",
+        "result.timestamp is a valid ISO 8601 UTC timestamp",
+        "len(result.people.matched_terms) == len(result.people.scores)",
+        "len(result.projects.matched_terms) == len(result.projects.scores)",
+        "len(result.tickets.matched_terms) == len(result.tickets.scores)",
+        "len(result.keywords.matched_terms) == len(result.keywords.scores)",
+        "All scores in each DimensionMatch are in [0.0, 1.0]",
+        "result.sentiment.polarity is in [-1.0, 1.0]",
+        "result.sentiment.magnitude is in [0.0, 1.0]",
+        "If any dimension query failed, the corresponding DimensionMatch has empty matched_terms and the error is recorded in result.errors",
+        "If signal.content is empty, all DimensionMatch fields have empty matched_terms and sentiment is neutral"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May call LLM service (network I/O) if llm_service is provided and available",
+        "May call embedding service (network I/O or computation) if embedding_service is provided and available",
+        "Reads from context knowledge base (no mutations)"
+      ]
+    },
+    {
+      "name": "extract_dimensions_llm",
+      "description": "Internal engine function. Uses the LLM service to extract structured dimensions from signal content. Sends a structured extraction prompt and parses the LLM response into dimension terms and sentiment. Async.",
+      "inputs": [
+        {
+          "name": "signal_content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal to extract dimensions from.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_content must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "llm_service",
+          "type_ref": "LLMService",
+          "required": true,
+          "default": "",
+          "description": "The LLM service to use for extraction. Must be available.",
+          "validators": []
+        }
+      ],
+      "output_type": "LLMDimensionExtraction",
+      "error_cases": [
+        {
+          "name": "llm_timeout",
+          "condition": "LLM service call exceeded timeout threshold",
+          "error_type": "TimeoutError",
+          "error_data": {}
+        },
+        {
+          "name": "llm_parse_error",
+          "condition": "LLM response could not be parsed into LLMDimensionExtraction schema",
+          "error_type": "ValueError",
+          "error_data": {}
+        },
+        {
+          "name": "llm_service_error",
+          "condition": "LLM service returned an error response (rate limit, internal error, etc.)",
+          "error_type": "RuntimeError",
+          "error_data": {}
+        }
+      ],
+      "preconditions": [
+        "llm_service.available is True",
+        "signal_content is non-empty"
+      ],
+      "postconditions": [
+        "Returns a valid LLMDimensionExtraction with all fields populated",
+        "sentiment_polarity is in [-1.0, 1.0]",
+        "sentiment_magnitude is in [0.0, 1.0]"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Calls LLM service (network I/O)"
+      ]
+    },
+    {
+      "name": "match_dimension_embedding",
+      "description": "Internal engine function. Matches signal content against context terms for a given dimension using embedding similarity. Computes cosine similarity between the signal content embedding and each context term embedding. Returns matches above a similarity threshold, sorted by score descending. Async.",
+      "inputs": [
+        {
+          "name": "signal_content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "DimensionName",
+          "required": true,
+          "default": "",
+          "description": "The dimension to match against.",
+          "validators": []
+        },
+        {
+          "name": "context_terms",
+          "type_ref": "ContextTermList",
+          "required": true,
+          "default": "",
+          "description": "The context terms to search within.",
+          "validators": []
+        },
+        {
+          "name": "embedding_service",
+          "type_ref": "EmbeddingService",
+          "required": true,
+          "default": "",
+          "description": "The embedding service to compute vectors. Must be available.",
+          "validators": []
+        },
+        {
+          "name": "similarity_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "Minimum cosine similarity to include a match.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "similarity_threshold must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "output_type": "DimensionMatch",
+      "error_cases": [
+        {
+          "name": "embedding_computation_failed",
+          "condition": "Embedding service failed to compute embedding for signal content",
+          "error_type": "RuntimeError",
+          "error_data": {}
+        },
+        {
+          "name": "no_terms_in_dimension",
+          "condition": "No context terms exist for the specified dimension",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Returns empty DimensionMatch with method='embedding_similarity'. Not an error."
+          }
+        }
+      ],
+      "preconditions": [
+        "embedding_service.available is True",
+        "All context terms in the specified dimension have non-empty embeddings",
+        "All embeddings have the same dimensionality"
+      ],
+      "postconditions": [
+        "result.method is 'embedding_similarity'",
+        "All scores in result.scores are >= similarity_threshold",
+        "result.matched_terms and result.scores have equal length",
+        "Results are sorted by score descending"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Calls embedding service to compute signal content embedding (may involve network I/O)"
+      ]
+    },
+    {
+      "name": "match_dimension_keyword",
+      "description": "Internal engine function. Matches signal content against context terms for a given dimension using keyword/lexical overlap. Computes normalized overlap score between tokenized signal content and each context term. Returns matches above a score threshold, sorted by score descending. Pure computation — no external service calls. Async for uniform interface.",
+      "inputs": [
+        {
+          "name": "signal_content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_content must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "dimension",
+          "type_ref": "DimensionName",
+          "required": true,
+          "default": "",
+          "description": "The dimension to match against.",
+          "validators": []
+        },
+        {
+          "name": "context_terms",
+          "type_ref": "ContextTermList",
+          "required": true,
+          "default": "",
+          "description": "The context terms to search within.",
+          "validators": []
+        },
+        {
+          "name": "score_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.3",
+          "description": "Minimum overlap score to include a match.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "score_threshold must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "output_type": "DimensionMatch",
+      "error_cases": [
+        {
+          "name": "no_terms_in_dimension",
+          "condition": "No context terms exist for the specified dimension",
+          "error_type": "str",
+          "error_data": {
+            "behavior": "Returns empty DimensionMatch with method='keyword_overlap'. Not an error."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal_content is non-empty"
+      ],
+      "postconditions": [
+        "result.method is 'keyword_overlap'",
+        "All scores in result.scores are >= score_threshold",
+        "result.matched_terms and result.scores have equal length",
+        "Results are sorted by score descending"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "analyze_sentiment",
+      "description": "Internal engine function. Analyzes the sentiment of signal content. Uses LLM extraction result if available, otherwise applies a heuristic sentiment analysis. Async.",
+      "inputs": [
+        {
+          "name": "signal_content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal to analyze.",
+          "validators": []
+        },
+        {
+          "name": "llm_extraction",
+          "type_ref": "OptionalLLMDimensionExtraction",
+          "required": false,
+          "default": "None",
+          "description": "Optional LLM extraction result containing pre-extracted sentiment values.",
+          "validators": []
+        }
+      ],
+      "output_type": "EngineSentimentResult",
+      "error_cases": [
+        {
+          "name": "heuristic_analysis_failed",
+          "condition": "Heuristic sentiment analysis encountered an unexpected error",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "behavior": "Caller catches and returns neutral sentiment."
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "result.polarity is in [-1.0, 1.0]",
+        "result.magnitude is in [0.0, 1.0]",
+        "result.label is non-empty",
+        "If signal_content is empty, returns neutral sentiment (polarity=0.0, magnitude=0.0, label='neutral')",
+        "If llm_extraction is provided, uses LLM-derived sentiment values"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "merge_dimension_matches",
+      "description": "Internal engine function. Merges DimensionMatch results from embedding similarity and keyword overlap paths into a single combined DimensionMatch. Deduplicates by term (keeping highest score), re-sorts by score descending.",
+      "inputs": [
+        {
+          "name": "embedding_match",
+          "type_ref": "DimensionMatch",
+          "required": true,
+          "default": "",
+          "description": "The DimensionMatch from embedding similarity.",
+          "validators": []
+        },
+        {
+          "name": "keyword_match",
+          "type_ref": "DimensionMatch",
+          "required": true,
+          "default": "",
+          "description": "The DimensionMatch from keyword overlap.",
+          "validators": []
+        }
+      ],
+      "output_type": "DimensionMatch",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "result.method is 'combined'",
+        "No duplicate terms in result.matched_terms",
+        "For terms present in both inputs, the higher score is kept",
+        "result.matched_terms and result.scores have equal length",
+        "Results are sorted by score descending"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "make_empty_dimension_match",
+      "description": "Factory function. Creates an empty DimensionMatch with no matches, used as a safe default when a dimension query fails or when signal content is empty.",
+      "inputs": [
+        {
+          "name": "method",
+          "type_ref": "MatchMethod",
+          "required": false,
+          "default": "none",
+          "description": "The match method to record. Defaults to 'none'.",
+          "validators": []
+        }
+      ],
+      "output_type": "DimensionMatch",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "result.matched_terms is empty tuple",
+        "result.scores is empty tuple",
+        "result.method == method"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "make_neutral_sentiment",
+      "description": "Factory function. Creates a neutral EngineSentimentResult, used as a safe default when sentiment analysis fails or when signal content is empty.",
+      "inputs": [],
+      "output_type": "EngineSentimentResult",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "result.polarity == 0.0",
+        "result.magnitude == 0.0",
+        "result.label == 'neutral'"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "inquire_pipeline",
+      "description": "WorkerNode.inquire() method in the pipeline integration layer. Decompose the given signal into dimensions (people, projects, tickets, keywords, sentiment) and query the accepting worker's context knowledge base for relevant connections. Uses LLM when available, falls back to embedding similarity + keyword overlap. All errors are handled internally — this function NEVER raises. On any failure, returns a default-constructed (empty) PipelineInquiryResult with worker_id and signal_id populated. Async.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The accepted signal to decompose and query.",
+          "validators": []
+        }
+      ],
+      "output_type": "PipelineInquiryResult",
+      "error_cases": [
+        {
+          "name": "llm_unavailable",
+          "condition": "LLM backend is not configured or unreachable",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Falls back to embedding similarity + keyword overlap. No exception propagated."
+          }
+        },
+        {
+          "name": "knowledge_base_empty",
+          "condition": "The worker's context knowledge base contains no entries",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Returns empty PipelineInquiryResult with confidence 0.0. No exception propagated."
+          }
+        },
+        {
+          "name": "signal_decomposition_failure",
+          "condition": "Signal content cannot be decomposed into any dimensions",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Returns empty PipelineInquiryResult with confidence 0.0. Logs warning. No exception propagated."
+          }
+        },
+        {
+          "name": "unexpected_error",
+          "condition": "Any unexpected exception during inquiry processing",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Catches all exceptions, logs error, returns default PipelineInquiryResult with worker_id and signal_id set."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is a non-empty string",
+        "signal.content is a non-empty string",
+        "The worker has already accepted this signal (score above threshold) in the stop-on-first-accept phase",
+        "This method is called on the single accepting worker only"
+      ],
+      "postconditions": [
+        "Returned PipelineInquiryResult is a frozen Pydantic v2 model (immutable)",
+        "Returned PipelineInquiryResult.worker_id equals the calling worker's identifier",
+        "Returned PipelineInquiryResult.signal_id equals signal.id",
+        "Returned PipelineInquiryResult.confidence is in [0.0, 1.0]",
+        "Returned PipelineInquiryResult.sentiment is None or in [-1.0, 1.0]",
+        "All InquiryConnection.score values in connections are in [0.0, 1.0]",
+        "On any internal error, returns a default-constructed PipelineInquiryResult with worker_id and signal_id set and confidence == 0.0",
+        "Function never raises an exception"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke LLM API calls (network I/O) when LLM backend is available",
+        "May compute embedding vectors (CPU/GPU) for similarity matching",
+        "Logs inquiry execution details at DEBUG level",
+        "Logs errors/warnings for internal failures at WARNING/ERROR level"
+      ]
+    },
+    {
+      "name": "route_signal",
+      "description": "Route a signal through the mesh pipeline: broadcast to workers, stop on first accept, run inquiry on the accepting worker, then pass the optional PipelineInquiryResult into consensus/assessment. This is the modified top-level pipeline entry point in mesh/mesh.py. When inquiry_result is None or empty, downstream consensus/assessment behaves identically to the pre-inquiry implementation. Async.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to route through the mesh pipeline.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value.id) >= 1",
+              "error_message": "signal.id must be a non-empty string"
+            }
+          ]
+        }
+      ],
+      "output_type": "RoutingResult",
+      "error_cases": [
+        {
+          "name": "no_worker_accepts",
+          "condition": "No worker scores above the acceptance threshold for this signal",
+          "error_type": "NoAcceptError",
+          "error_data": {
+            "signal_id": "The signal ID that no worker accepted"
+          }
+        },
+        {
+          "name": "no_workers_registered",
+          "condition": "The mesh has no registered workers",
+          "error_type": "MeshConfigurationError",
+          "error_data": {
+            "detail": "Cannot route signal: no workers registered in the mesh"
+          }
+        },
+        {
+          "name": "consensus_failure",
+          "condition": "Consensus/assessment phase fails after accept and inquiry",
+          "error_type": "ConsensusError",
+          "error_data": {
+            "signal_id": "The signal ID",
+            "worker_id": "The accepting worker ID"
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is a non-empty string",
+        "signal.content is a non-empty string",
+        "At least one worker is registered in the mesh"
+      ],
+      "postconditions": [
+        "Returned RoutingResult.signal_id equals signal.id",
+        "Returned RoutingResult.accepted_by is a valid registered worker ID",
+        "If inquiry was performed, RoutingResult.inquiry_result is a frozen PipelineInquiryResult with matching signal_id and worker_id",
+        "If inquiry was not performed or failed, RoutingResult.inquiry_result is None",
+        "Consensus output is present in RoutingResult.consensus",
+        "Existing routing behavior (stop-on-first-accept, consensus) is unchanged when inquiry_result is None",
+        "All existing tests continue to pass without modification"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Broadcasts signal to all registered workers for scoring",
+        "Calls inquire() on the single accepting worker (after accept, before consensus)",
+        "Invokes consensus/assessment with optional inquiry_result parameter",
+        "Logs routing lifecycle events at INFO level"
+      ]
+    },
+    {
+      "name": "run_consensus",
+      "description": "Execute the consensus/assessment phase, now accepting an optional PipelineInquiryResult. When inquiry_result is None, behavior is identical to the pre-inquiry implementation. When present, the inquiry data enriches the consensus assessment. Async.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal being routed.",
+          "validators": []
+        },
+        {
+          "name": "accept_result",
+          "type_ref": "AcceptResult",
+          "required": true,
+          "default": "",
+          "description": "The result of the stop-on-first-accept phase.",
+          "validators": []
+        },
+        {
+          "name": "inquiry_result",
+          "type_ref": "OptionalPipelineInquiryResult",
+          "required": false,
+          "default": "None",
+          "description": "The optional inquiry result from the accepting worker. Defaults to None for backward compatibility.",
+          "validators": []
+        }
+      ],
+      "output_type": "dict",
+      "error_cases": [
+        {
+          "name": "consensus_timeout",
+          "condition": "Consensus computation exceeds configured timeout",
+          "error_type": "ConsensusError",
+          "error_data": {
+            "detail": "Consensus timed out"
+          }
+        },
+        {
+          "name": "invalid_accept_result",
+          "condition": "accept_result references a worker not registered in the mesh",
+          "error_type": "ConsensusError",
+          "error_data": {
+            "detail": "Accepting worker not found in mesh"
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is a non-empty string",
+        "accept_result.worker_id is a non-empty string referencing a valid worker",
+        "If inquiry_result is not None, inquiry_result.signal_id == signal.id",
+        "If inquiry_result is not None, inquiry_result.worker_id == accept_result.worker_id"
+      ],
+      "postconditions": [
+        "Returned dict contains consensus assessment data",
+        "When inquiry_result is None, output is identical to pre-inquiry consensus behavior",
+        "When inquiry_result is provided, output may include enriched assessment data derived from inquiry connections",
+        "Function does not mutate any of its inputs"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke assessment logic that reads worker state",
+        "Logs consensus computation details at DEBUG level"
+      ]
+    },
+    {
+      "name": "create_empty_inquiry_result",
+      "description": "Factory function to create a default-constructed (empty) PipelineInquiryResult with only worker_id and signal_id populated. Used as the safe fallback when inquiry fails or is not applicable.",
+      "inputs": [
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the worker.",
+          "validators": []
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the signal.",
+          "validators": []
+        }
+      ],
+      "output_type": "PipelineInquiryResult",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned PipelineInquiryResult.worker_id == worker_id",
+        "Returned PipelineInquiryResult.signal_id == signal_id",
+        "Returned PipelineInquiryResult.people == ()",
+        "Returned PipelineInquiryResult.projects == ()",
+        "Returned PipelineInquiryResult.tickets == ()",
+        "Returned PipelineInquiryResult.keywords == ()",
+        "Returned PipelineInquiryResult.sentiment is None",
+        "Returned PipelineInquiryResult.connections == ()",
+        "Returned PipelineInquiryResult.confidence == 0.0",
+        "Returned PipelineInquiryResult is frozen (immutable)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_inquiry_result_frozen",
+      "description": "Contract test helper: verify that a PipelineInquiryResult instance is truly frozen (immutable). Attempts to set any field and confirms TypeError is raised.",
+      "inputs": [
+        {
+          "name": "result",
+          "type_ref": "PipelineInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PipelineInquiryResult instance to verify.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "not_frozen",
+          "condition": "The PipelineInquiryResult allows field mutation (not properly frozen)",
+          "error_type": "ContractViolation",
+          "error_data": {
+            "detail": "PipelineInquiryResult is not frozen — field mutation did not raise TypeError"
+          }
+        }
+      ],
+      "preconditions": [
+        "result is a valid PipelineInquiryResult instance"
+      ],
+      "postconditions": [
+        "Returns true if and only if the PipelineInquiryResult is frozen (all field mutations raise TypeError)",
+        "Does not mutate the input result"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_inquiry_result_serializable",
+      "description": "Contract test helper: verify that a PipelineInquiryResult instance can be serialized to JSON and deserialized back to an equivalent instance. Confirms round-trip fidelity.",
+      "inputs": [
+        {
+          "name": "result",
+          "type_ref": "PipelineInquiryResult",
+          "required": true,
+          "default": "",
+          "description": "A valid PipelineInquiryResult instance to verify.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "serialization_failure",
+          "condition": "PipelineInquiryResult cannot be serialized to JSON",
+          "error_type": "ContractViolation",
+          "error_data": {
+            "detail": "PipelineInquiryResult failed JSON serialization"
+          }
+        },
+        {
+          "name": "deserialization_mismatch",
+          "condition": "Deserialized PipelineInquiryResult does not equal the original",
+          "error_type": "ContractViolation",
+          "error_data": {
+            "detail": "PipelineInquiryResult JSON round-trip produced a non-equivalent instance"
+          }
+        }
+      ],
+      "preconditions": [
+        "result is a valid PipelineInquiryResult instance"
+      ],
+      "postconditions": [
+        "Returns true if and only if JSON round-trip produces an equivalent PipelineInquiryResult",
+        "Does not mutate the input result"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [
+    "inquiry_primitive",
+    "inquiry_engine",
+    "inquiry_pipeline_integration"
+  ],
+  "dependency_contracts": {
+    "inquiry_primitive": [
+      "InquiryDimension",
+      "DimensionsMap",
+      "ConfidenceScoresMap",
+      "InquiryResult",
+      "InquiryValidationError",
+      "DimensionConnectionsList",
+      "InquiryResultList",
+      "OptionalInquiryResult",
+      "create_inquiry_result",
+      "get_dimension_connections",
+      "get_dimension_confidence",
+      "get_active_dimensions",
+      "get_overall_confidence",
+      "serialize_inquiry_result",
+      "deserialize_inquiry_result"
+    ],
+    "inquiry_engine": [
+      "ExtractionMethod",
+      "MatchMethod",
+      "DimensionMatch",
+      "MatchedTerms",
+      "MatchScores",
+      "SentimentResult",
+      "InquiryResult",
+      "ErrorTuple",
+      "Signal",
+      "ContextTerm",
+      "Embedding",
+      "DimensionName",
+      "Context",
+      "LLMService",
+      "EmbeddingService",
+      "OptionalLLMService",
+      "OptionalEmbeddingService",
+      "LLMDimensionExtraction",
+      "inquire",
+      "extract_dimensions_llm",
+      "match_dimension_embedding",
+      "match_dimension_keyword",
+      "analyze_sentiment",
+      "merge_dimension_matches",
+      "make_empty_dimension_match",
+      "make_neutral_sentiment"
+    ],
+    "inquiry_pipeline_integration": [
+      "InquiryConnection",
+      "InquiryConnectionTuple",
+      "StringTuple",
+      "OptionalFloat",
+      "OptionalInquiryResult",
+      "InquiryResult",
+      "Signal",
+      "AcceptResult",
+      "RoutingResult",
+      "InquiryStrategy",
+      "inquire",
+      "route_signal",
+      "run_consensus",
+      "create_empty_inquiry_result",
+      "validate_inquiry_result_frozen",
+      "validate_inquiry_result_serializable"
+    ]
+  },
+  "invariants": [
+    "InquiryResult instances are always frozen (model_config = ConfigDict(frozen=True)) — field assignment after construction raises TypeError",
+    "For any valid primitive InquiryResult r: set(r.confidence_scores.keys()) == set(r.dimensions.keys()) — enforced by @model_validator(mode='after')",
+    "For any valid primitive InquiryResult r: all(0.0 <= v <= 1.0 for v in r.confidence_scores.values())",
+    "InquiryDimension has exactly five variants: people, projects, tickets, keywords, sentiment",
+    "Shallow-freeze semantics: nested mutable containers (list values in dimensions dict, the dicts themselves) are not deep-frozen — InquiryResult is NOT guaranteed hashable",
+    "serialize_inquiry_result followed by deserialize_inquiry_result produces a value-equal InquiryResult (round-trip fidelity)",
+    "All temporal fields use ISO 8601 with UTC timezone internally",
+    "inquire() in the engine layer NEVER raises an exception — all errors are captured in InquiryResult.errors",
+    "For every DimensionMatch: len(matched_terms) == len(scores)",
+    "For every DimensionMatch: all values in scores are in [0.0, 1.0]",
+    "For every SentimentResult: polarity is in [-1.0, 1.0] and magnitude is in [0.0, 1.0]",
+    "Active inquiry runs ONLY on the single accepting worker — never broadcast to multiple workers",
+    "Inquiry executes after the accept phase and before the consensus phase in the mesh routing pipeline",
+    "The LLM path is attempted first; heuristic path is used only as fallback",
+    "Per-dimension queries are parallelized via asyncio.gather() for performance",
+    "When inquiry_result is None in pipeline integration, all downstream consensus/assessment behavior is identical to the pre-inquiry implementation",
+    "Pipeline InquiryResult.confidence is always in [0.0, 1.0]",
+    "Pipeline InquiryResult.sentiment is always None or in [-1.0, 1.0]",
+    "All InquiryConnection.score values are always in [0.0, 1.0]",
+    "All existing mesh routing tests pass without modification after inquiry integration",
+    "The inquiry_result parameter in consensus/assessment functions always defaults to None for backward compatibility"
+  ],
+  "requires": [
+    "from __future__ import annotations used in all source files",
+    "Pydantic v2 with frozen=True ConfigDict for all model classes",
+    "asyncio for all I/O-bound functions",
+    "Python 3.12+ for StrEnum support"
+  ]
+}

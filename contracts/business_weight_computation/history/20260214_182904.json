@@ -1,0 +1,807 @@
+{
+  "component_id": "business_weight_computation",
+  "name": "Business Weight Computation",
+  "description": "Implement business weight calculation from its component metrics. Signal frequency: count of signals accepted per time window. Author seniority: average seniority score of signal authors (from identity resolver). Channel gravity: learned weight per source channel based on response patterns. Engagement velocity: rate of change of signal volume. Combine into a single [0.0, 1.0] score with floor of 0.1. Update periodically (during lifecycle checks). Async where identity resolver is needed. Module location: src/stigmergy/core/business_weight.py.",
+  "version": 1,
+  "types": [
+    {
+      "name": "NormalizedScore",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A float value clamped to [0.0, 1.0], representing a normalized sub-metric score. Annotated[float, Field(ge=0.0, le=1.0)]."
+    },
+    {
+      "name": "BusinessWeight",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A float value in [0.1, 1.0], representing the composite business weight with a floor of 0.1 baked into the type. Annotated[float, Field(ge=0.1, le=1.0)]."
+    },
+    {
+      "name": "BusinessWeightComponents",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_frequency",
+          "type_ref": "NormalizedScore",
+          "required": true,
+          "default": "",
+          "description": "Count of signals accepted in the time window, normalized to [0,1] via saturation divisor.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "signal_frequency must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "author_seniority",
+          "type_ref": "NormalizedScore",
+          "required": true,
+          "default": "0.5",
+          "description": "Average seniority score of signal authors resolved from identity resolver, normalized to [0,1]. Defaults to 0.5 when resolver is unavailable.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "author_seniority must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "channel_gravity",
+          "type_ref": "NormalizedScore",
+          "required": true,
+          "default": "0.5",
+          "description": "Learned per-channel weight based on historical response patterns, normalized to [0,1]. Defaults to 0.5 when no learned weight is available for the channel.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "channel_gravity must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "engagement_velocity",
+          "type_ref": "NormalizedScore",
+          "required": true,
+          "default": "",
+          "description": "Rate of change of signal volume over the time window, squashed to [0,1] via sigmoid or similar monotonic function.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "engagement_velocity must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "composite",
+          "type_ref": "BusinessWeight",
+          "required": true,
+          "default": "",
+          "description": "Final weighted linear combination of the four sub-metrics, normalized and floored at 0.1. This is the value written to context.business_weight.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.1 <= value <= 1.0",
+              "error_message": "composite must be in [0.1, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "defaulted_metrics",
+          "type_ref": "FrozenSetStr",
+          "required": true,
+          "default": "frozenset()",
+          "description": "Names of sub-metrics that used fallback/default values rather than resolved values. Used for observability and debugging. Valid names: 'signal_frequency', 'author_seniority', 'channel_gravity', 'engagement_velocity'.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model holding four normalized sub-metric scores, the composite business weight, and a frozenset of metric names that fell back to defaults. Immutable after construction for safe sharing across async boundaries."
+    },
+    {
+      "name": "FrozenSetStr",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A frozenset of strings. Represented as list<str> in the contract type system but implemented as frozenset[str] in Python for immutability."
+    },
+    {
+      "name": "MetricWeights",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_frequency",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.25",
+          "description": "Relative weight for signal_frequency sub-metric.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0.0",
+              "error_message": "Weight must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "author_seniority",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.30",
+          "description": "Relative weight for author_seniority sub-metric.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0.0",
+              "error_message": "Weight must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "channel_gravity",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.25",
+          "description": "Relative weight for channel_gravity sub-metric.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0.0",
+              "error_message": "Weight must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "engagement_velocity",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.20",
+          "description": "Relative weight for engagement_velocity sub-metric.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0.0",
+              "error_message": "Weight must be non-negative"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Relative weights for the four sub-metrics used in the weighted linear combination. Values do not need to sum to 1.0; they are normalized internally."
+    },
+    {
+      "name": "BusinessWeightConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "metric_weights",
+          "type_ref": "MetricWeights",
+          "required": true,
+          "default": "",
+          "description": "Relative weights for the four sub-metrics in the weighted linear combination.",
+          "validators": []
+        },
+        {
+          "name": "window_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "300.0",
+          "description": "Time window in seconds over which signal_frequency and engagement_velocity are computed.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0.0",
+              "error_message": "window_seconds must be positive"
+            }
+          ]
+        },
+        {
+          "name": "frequency_saturation",
+          "type_ref": "float",
+          "required": true,
+          "default": "100.0",
+          "description": "Maximum expected signal count within the time window. Used to normalize raw signal count to [0,1]. signal_frequency = min(raw_count / frequency_saturation, 1.0).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0.0",
+              "error_message": "frequency_saturation must be positive"
+            }
+          ]
+        },
+        {
+          "name": "default_weight",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "Default business weight value used before first computation and as fallback for sub-metrics when resolution fails.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.1 <= value <= 1.0",
+              "error_message": "default_weight must be in [0.1, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.1",
+          "description": "Minimum composite business weight. The composite is clamped to max(computed, floor).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "floor must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "seniority_timeout_seconds",
+          "type_ref": "float",
+          "required": false,
+          "default": "2.0",
+          "description": "Maximum time in seconds to wait for the identity resolver to return author seniority before falling back to default.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0.0",
+              "error_message": "seniority_timeout_seconds must be positive"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration model for business weight computation. Controls metric weights, time windows, normalization parameters, defaults, and timeout behavior. Pydantic v2 model."
+    },
+    {
+      "name": "SignalRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Unix timestamp (seconds since epoch) when the signal was accepted.",
+          "validators": []
+        },
+        {
+          "name": "author_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the signal author, used to resolve seniority via identity resolver.",
+          "validators": []
+        },
+        {
+          "name": "channel",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Source channel identifier for channel gravity lookup.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single signal event from signal history, containing enough information to compute frequency and velocity sub-metrics."
+    },
+    {
+      "name": "SignalHistory",
+      "kind": "list",
+      "fields": [],
+      "item_type": "SignalRecord",
+      "variants": [],
+      "inner_types": [],
+      "description": "Ordered list of signal records used to compute signal_frequency and engagement_velocity. Should contain signals within the relevant time window."
+    },
+    {
+      "name": "ChannelWeightsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "weights",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Dictionary mapping channel ID strings to learned gravity float values in [0.0, 1.0].",
+          "validators": []
+        },
+        {
+          "name": "default_gravity",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.5",
+          "description": "Default gravity value returned for channels not present in the weights map.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "default_gravity must be in [0.0, 1.0]"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mapping from channel identifier strings to their learned gravity weights (NormalizedScore values). Implemented as dict[str, float] in Python."
+    },
+    {
+      "name": "IdentityResolver",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "resolve_seniority",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Async callable: (author_id: str) -> float. Returns seniority score in [0.0, 1.0] for the given author. This field represents the callable interface, not a string value.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol/interface for the identity resolver dependency. Must provide an async method resolve_seniority(author_id: str) -> float that returns a NormalizedScore. This is a protocol type — implementations are injected."
+    },
+    {
+      "name": "Context",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "business_weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.5",
+          "description": "Mutable business weight field on the context, updated by resolve_business_weight. Default 0.5, range [0.1, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.1 <= value <= 1.0",
+              "error_message": "business_weight must be in [0.1, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier of the context, used for logging and diagnostics.",
+          "validators": []
+        },
+        {
+          "name": "channel",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Source channel identifier of the context, used for channel_gravity lookup.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Minimal representation of the Context/WorkerNode object that holds the mutable business_weight field updated by this component. The actual Context type is defined externally; this captures the relevant interface surface."
+    }
+  ],
+  "functions": [
+    {
+      "name": "compute_business_weight",
+      "description": "Pure synchronous function that computes a BusinessWeightComponents from four raw sub-metric float inputs. Performs clamping of all inputs to [0.0, 1.0], weighted linear combination using the provided MetricWeights, normalization, and flooring at the configured minimum. No I/O, no side effects, fully testable. This is the core scoring logic.",
+      "inputs": [
+        {
+          "name": "signal_frequency",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Raw signal frequency value. Will be clamped to [0.0, 1.0] internally.",
+          "validators": []
+        },
+        {
+          "name": "author_seniority",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Raw author seniority score. Will be clamped to [0.0, 1.0] internally.",
+          "validators": []
+        },
+        {
+          "name": "channel_gravity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Raw channel gravity weight. Will be clamped to [0.0, 1.0] internally.",
+          "validators": []
+        },
+        {
+          "name": "engagement_velocity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Raw engagement velocity value. Will be clamped to [0.0, 1.0] internally.",
+          "validators": []
+        },
+        {
+          "name": "weights",
+          "type_ref": "MetricWeights",
+          "required": false,
+          "default": "MetricWeights()",
+          "description": "Relative weights for the four sub-metrics. Normalized internally so they sum to 1.0. Defaults to MetricWeights() which provides (0.25, 0.30, 0.25, 0.20).",
+          "validators": []
+        },
+        {
+          "name": "floor",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.1",
+          "description": "Minimum composite value. Composite is clamped to max(computed, floor).",
+          "validators": []
+        },
+        {
+          "name": "defaulted_metrics",
+          "type_ref": "FrozenSetStr",
+          "required": false,
+          "default": "frozenset()",
+          "description": "Set of metric names that used fallback values, passed through to the result for observability.",
+          "validators": []
+        }
+      ],
+      "output_type": "BusinessWeightComponents",
+      "error_cases": [
+        {
+          "name": "non_finite_input",
+          "condition": "Any input float is NaN or Inf",
+          "error_type": "ValueError",
+          "error_data": {
+            "field": "name of the non-finite input parameter"
+          }
+        },
+        {
+          "name": "all_zero_weights",
+          "condition": "All four weight values in MetricWeights are 0.0, making normalization impossible",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "All metric weights are zero; cannot normalize"
+          }
+        },
+        {
+          "name": "invalid_floor",
+          "condition": "floor is negative or greater than 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "floor": "the invalid floor value"
+          }
+        }
+      ],
+      "preconditions": [
+        "All input floats are finite (not NaN, not Inf)",
+        "weights has at least one non-zero weight value",
+        "floor is in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "result.signal_frequency is in [0.0, 1.0]",
+        "result.author_seniority is in [0.0, 1.0]",
+        "result.channel_gravity is in [0.0, 1.0]",
+        "result.engagement_velocity is in [0.0, 1.0]",
+        "result.composite is in [max(floor, 0.1), 1.0]",
+        "result.composite == max(floor, weighted_sum / sum_of_weights) where weighted_sum uses clamped inputs",
+        "result.composite >= floor",
+        "result.defaulted_metrics == defaulted_metrics input",
+        "All sub-metric fields are clamped versions of corresponding inputs"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "resolve_business_weight",
+      "description": "Async wrapper that resolves all sub-metric inputs from external dependencies and signal history, then delegates to compute_business_weight(). Fetches author seniority from the identity resolver with a configurable timeout and fallback to default. Computes signal_frequency by counting signals in the time window normalized by frequency_saturation. Computes engagement_velocity from the rate of change of signal volume across window halves. Looks up channel_gravity from learned channel weights map. Returns the full BusinessWeightComponents for observability. Does NOT mutate context.business_weight — the caller (lifecycle check) is responsible for assignment.",
+      "inputs": [
+        {
+          "name": "context",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "The Context/WorkerNode whose business weight is being computed. Provides context_id and channel for lookups.",
+          "validators": []
+        },
+        {
+          "name": "identity_resolver",
+          "type_ref": "IdentityResolver",
+          "required": true,
+          "default": "",
+          "description": "Async identity resolver providing author seniority scores. Called with timeout; falls back to config.default_weight on failure.",
+          "validators": []
+        },
+        {
+          "name": "channel_weights",
+          "type_ref": "ChannelWeightsMap",
+          "required": true,
+          "default": "",
+          "description": "Learned channel gravity weights map. Used to look up gravity for context.channel.",
+          "validators": []
+        },
+        {
+          "name": "signal_history",
+          "type_ref": "SignalHistory",
+          "required": true,
+          "default": "",
+          "description": "List of signal records within the relevant time window. Used to compute signal_frequency and engagement_velocity.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "BusinessWeightConfig",
+          "required": false,
+          "default": "BusinessWeightConfig()",
+          "description": "Configuration controlling weights, time windows, saturation, defaults, floor, and timeout.",
+          "validators": []
+        }
+      ],
+      "output_type": "BusinessWeightComponents",
+      "error_cases": [
+        {
+          "name": "identity_resolver_timeout",
+          "condition": "Identity resolver does not respond within config.seniority_timeout_seconds",
+          "error_type": "TimeoutError",
+          "error_data": {
+            "timeout_seconds": "configured timeout value",
+            "fallback_used": "true"
+          }
+        },
+        {
+          "name": "identity_resolver_error",
+          "condition": "Identity resolver raises an unexpected exception during seniority resolution",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "original_error": "string representation of the original exception",
+            "fallback_used": "true"
+          }
+        },
+        {
+          "name": "invalid_signal_history",
+          "condition": "signal_history contains records with non-finite or negative timestamps",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Signal history contains invalid timestamps"
+          }
+        },
+        {
+          "name": "context_missing_channel",
+          "condition": "context.channel is empty or None",
+          "error_type": "ValueError",
+          "error_data": {
+            "context_id": "the context identifier",
+            "detail": "Context has no channel set"
+          }
+        }
+      ],
+      "preconditions": [
+        "identity_resolver implements the resolve_seniority async protocol",
+        "signal_history timestamps are Unix epoch floats",
+        "config is valid (all validators pass)"
+      ],
+      "postconditions": [
+        "result.composite is in [config.floor, 1.0]",
+        "result.composite >= 0.1",
+        "result.defaulted_metrics contains names of all metrics that used fallback values",
+        "If identity_resolver times out or fails, 'author_seniority' is in result.defaulted_metrics and result.author_seniority == config.default_weight",
+        "If context.channel is not in channel_weights.weights, 'channel_gravity' is in result.defaulted_metrics",
+        "If signal_history is empty, 'signal_frequency' and 'engagement_velocity' are in result.defaulted_metrics"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Calls identity_resolver.resolve_seniority() which may involve network I/O",
+        "May emit observability/logging events for defaulted metrics and timeout fallbacks"
+      ]
+    },
+    {
+      "name": "compute_signal_frequency",
+      "description": "Pure helper function that computes the normalized signal frequency from a signal history and configuration. Counts signals within the time window and divides by frequency_saturation, clamping to [0.0, 1.0].",
+      "inputs": [
+        {
+          "name": "signal_history",
+          "type_ref": "SignalHistory",
+          "required": true,
+          "default": "",
+          "description": "List of signal records to count within the window.",
+          "validators": []
+        },
+        {
+          "name": "window_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Time window in seconds. Only signals within [now - window_seconds, now] are counted.",
+          "validators": []
+        },
+        {
+          "name": "frequency_saturation",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Maximum expected signal count for normalization.",
+          "validators": []
+        },
+        {
+          "name": "now",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Current Unix timestamp for windowing. Allows deterministic testing.",
+          "validators": []
+        }
+      ],
+      "output_type": "NormalizedScore",
+      "error_cases": [
+        {
+          "name": "invalid_window",
+          "condition": "window_seconds <= 0 or frequency_saturation <= 0",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "window_seconds and frequency_saturation must be positive"
+          }
+        }
+      ],
+      "preconditions": [
+        "window_seconds > 0",
+        "frequency_saturation > 0",
+        "now is a valid finite Unix timestamp"
+      ],
+      "postconditions": [
+        "result is in [0.0, 1.0]",
+        "result == min(count_in_window / frequency_saturation, 1.0)",
+        "If signal_history is empty, result == 0.0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "compute_engagement_velocity",
+      "description": "Pure helper function that computes the engagement velocity from signal history. Splits the time window into two halves, counts signals in each half, and computes the rate of change as (recent_count - older_count) / max(older_count, 1), squashed through a sigmoid-like function to [0.0, 1.0].",
+      "inputs": [
+        {
+          "name": "signal_history",
+          "type_ref": "SignalHistory",
+          "required": true,
+          "default": "",
+          "description": "List of signal records for velocity computation.",
+          "validators": []
+        },
+        {
+          "name": "window_seconds",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Total time window in seconds. Split into two equal halves.",
+          "validators": []
+        },
+        {
+          "name": "now",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Current Unix timestamp for windowing. Allows deterministic testing.",
+          "validators": []
+        }
+      ],
+      "output_type": "NormalizedScore",
+      "error_cases": [
+        {
+          "name": "invalid_window",
+          "condition": "window_seconds <= 0",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "window_seconds must be positive"
+          }
+        }
+      ],
+      "preconditions": [
+        "window_seconds > 0",
+        "now is a valid finite Unix timestamp"
+      ],
+      "postconditions": [
+        "result is in [0.0, 1.0]",
+        "If signal_history is empty, result == 0.0",
+        "If signal volume is constant across halves, result == 0.5 (neutral velocity)",
+        "Increasing volume yields result > 0.5, decreasing volume yields result < 0.5"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "lookup_channel_gravity",
+      "description": "Pure helper function that looks up the channel gravity weight from the learned channel weights map. Returns the default gravity if the channel is not found in the map.",
+      "inputs": [
+        {
+          "name": "channel",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Channel identifier to look up.",
+          "validators": []
+        },
+        {
+          "name": "channel_weights",
+          "type_ref": "ChannelWeightsMap",
+          "required": true,
+          "default": "",
+          "description": "Learned channel gravity weights map.",
+          "validators": []
+        }
+      ],
+      "output_type": "NormalizedScore",
+      "error_cases": [
+        {
+          "name": "empty_channel",
+          "condition": "channel is empty or whitespace-only",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Channel identifier must be non-empty"
+          }
+        }
+      ],
+      "preconditions": [
+        "channel is a non-empty string"
+      ],
+      "postconditions": [
+        "result is in [0.0, 1.0]",
+        "If channel is in channel_weights.weights, result == clamp(channel_weights.weights[channel], 0.0, 1.0)",
+        "If channel is not in channel_weights.weights, result == channel_weights.default_gravity"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [
+    "identity_resolver"
+  ],
+  "dependency_contracts": {
+    "identity_resolver": [
+      "Provides async resolve_seniority(author_id: str) -> float returning a NormalizedScore in [0.0, 1.0]",
+      "Must respond within configurable timeout (default 2.0 seconds)",
+      "May raise exceptions on network failures which are caught and handled with fallback"
+    ]
+  },
+  "invariants": [
+    "BusinessWeightComponents is frozen/immutable after construction",
+    "compute_business_weight is a pure function: same inputs always produce the same output, no side effects",
+    "All NormalizedScore values are in [0.0, 1.0]",
+    "All BusinessWeight values are in [0.1, 1.0]",
+    "The composite field is always >= the configured floor (minimum 0.1)",
+    "The composite field is always a weighted linear combination of the four sub-metrics, normalized and floored",
+    "MetricWeights are normalized internally; callers do not need to ensure they sum to 1.0",
+    "resolve_business_weight never raises on identity resolver failures; it falls back to default and records in defaulted_metrics",
+    "The context.business_weight field remains in [0.1, 1.0] at all times after initialization",
+    "Default business weight is 0.5 before first computation",
+    "defaulted_metrics only contains values from the set {'signal_frequency', 'author_seniority', 'channel_gravity', 'engagement_velocity'}"
+  ],
+  "requires": [
+    "identity_resolver must be available at runtime for author seniority resolution",
+    "Signal history must be maintained externally and passed to resolve_business_weight",
+    "Channel weights map must be learned and maintained externally (e.g., from response pattern analysis)",
+    "Lifecycle checks must call resolve_business_weight periodically and assign result.composite to context.business_weight"
+  ]
+}

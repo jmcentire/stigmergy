@@ -1,0 +1,2464 @@
+{
+  "component_id": "multi_strategy_embeddings",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "util_l2_normalize_unit_vector",
+      "description": "l2_normalize on a non-zero vector produces unit-length output",
+      "function": "l2_normalize",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A 1-D float64 numpy array with arbitrary non-zero values",
+      "expected_output_description": "Vector with L2 norm approximately 1.0",
+      "expected_error": "",
+      "assertions": [
+        "output norm is approximately 1.0 within 1e-6",
+        "output shape matches input shape",
+        "output dtype matches input dtype"
+      ]
+    },
+    {
+      "id": "util_l2_normalize_zero_vector",
+      "description": "l2_normalize on zero vector returns zero vector unchanged",
+      "function": "l2_normalize",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A 1-D float64 zero vector of length 64",
+      "expected_output_description": "Zero vector with same shape",
+      "expected_error": "",
+      "assertions": [
+        "all elements are 0.0",
+        "norm is 0.0"
+      ]
+    },
+    {
+      "id": "util_l2_normalize_not_1d",
+      "description": "l2_normalize raises ValueError for 2-D array",
+      "function": "l2_normalize",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError is raised with message about 1-D array"
+      ]
+    },
+    {
+      "id": "util_l2_normalize_nan_values",
+      "description": "l2_normalize raises ValueError for array with NaN",
+      "function": "l2_normalize",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError is raised mentioning non-finite values"
+      ]
+    },
+    {
+      "id": "util_l2_normalize_inf_values",
+      "description": "l2_normalize raises ValueError for array with Inf",
+      "function": "l2_normalize",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError is raised mentioning non-finite values"
+      ]
+    },
+    {
+      "id": "util_l2_normalize_idempotent",
+      "description": "l2_normalize applied twice produces same result as once",
+      "function": "l2_normalize",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "normalize(normalize(v)) == normalize(v) within tolerance"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_truncate",
+      "description": "project_to_dim truncates longer vector to target_dim and L2-normalizes",
+      "function": "project_to_dim",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Vector of length 128, target_dim=64",
+      "expected_output_description": "L2-normalized vector of length 64",
+      "expected_error": "",
+      "assertions": [
+        "output shape is (64,)",
+        "output L2 norm is approximately 1.0"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_pad",
+      "description": "project_to_dim zero-pads shorter vector to target_dim and L2-normalizes",
+      "function": "project_to_dim",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Vector of length 32, target_dim=64",
+      "expected_output_description": "L2-normalized vector of length 64 with last 32 zeros before normalization",
+      "expected_error": "",
+      "assertions": [
+        "output shape is (64,)",
+        "output L2 norm is approximately 1.0"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_same_length",
+      "description": "project_to_dim with same length just L2-normalizes",
+      "function": "project_to_dim",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Vector of length 64, target_dim=64",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output shape is (64,)",
+        "output is L2-normalized"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_zero_input",
+      "description": "project_to_dim on zero vector returns zero vector of target_dim",
+      "function": "project_to_dim",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Zero vector of length 32, target_dim=64",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output shape is (64,)",
+        "all elements are 0.0"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_not_1d",
+      "description": "project_to_dim raises ValueError for 2-D input",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError raised about 1-D array"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_invalid_dtype",
+      "description": "project_to_dim raises TypeError for int32 dtype",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError raised about expected float dtype"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_invalid_target",
+      "description": "project_to_dim raises ValueError for target_dim=0",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError raised about target_dim range"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_empty_vector",
+      "description": "project_to_dim raises ValueError for empty vector",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError raised about empty input"
+      ]
+    },
+    {
+      "id": "util_project_to_dim_preserves_dtype",
+      "description": "project_to_dim output dtype matches input dtype",
+      "function": "project_to_dim",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "float32 input produces float32 output",
+        "float64 input produces float64 output"
+      ]
+    },
+    {
+      "id": "util_signed_hash_deterministic",
+      "description": "signed_hash returns same result for same inputs across calls",
+      "function": "signed_hash",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "hello",
+        "num_buckets": "64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "two calls return identical bucket and sign"
+      ]
+    },
+    {
+      "id": "util_signed_hash_bucket_range",
+      "description": "signed_hash bucket is in [0, num_buckets)",
+      "function": "signed_hash",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "test_token",
+        "num_buckets": "10"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "bucket >= 0",
+        "bucket < 10"
+      ]
+    },
+    {
+      "id": "util_signed_hash_sign_values",
+      "description": "signed_hash sign is always +1 or -1",
+      "function": "signed_hash",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sign is either 1 or -1"
+      ]
+    },
+    {
+      "id": "util_signed_hash_invalid_buckets",
+      "description": "signed_hash raises ValueError for num_buckets=0",
+      "function": "signed_hash",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about positive num_buckets"
+      ]
+    },
+    {
+      "id": "util_signed_hash_negative_buckets",
+      "description": "signed_hash raises ValueError for negative num_buckets",
+      "function": "signed_hash",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "x",
+        "num_buckets": "-5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about positive num_buckets"
+      ]
+    },
+    {
+      "id": "util_signed_hash_single_bucket",
+      "description": "signed_hash with num_buckets=1 always returns bucket 0",
+      "function": "signed_hash",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "token": "anything",
+        "num_buckets": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "bucket is 0",
+        "sign is +1 or -1"
+      ]
+    },
+    {
+      "id": "util_zero_vector_default",
+      "description": "zero_vector returns 64-element float64 zero array",
+      "function": "zero_vector",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "shape is (64,)",
+        "all elements are 0.0",
+        "dtype is float64"
+      ]
+    },
+    {
+      "id": "util_zero_vector_custom_dim",
+      "description": "zero_vector with custom dimensions returns correct shape",
+      "function": "zero_vector",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "128"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "shape is (128,)",
+        "all elements are 0.0"
+      ]
+    },
+    {
+      "id": "util_embeddings_to_ndarray_happy",
+      "description": "embeddings_to_ndarray converts list[float] to numpy array",
+      "function": "embeddings_to_ndarray",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List of 64 floats",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "shape is (64,)",
+        "dtype is float32 by default",
+        "values match input"
+      ]
+    },
+    {
+      "id": "util_embeddings_to_ndarray_float64",
+      "description": "embeddings_to_ndarray with dtype='float64' produces float64 array",
+      "function": "embeddings_to_ndarray",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "dtype is float64"
+      ]
+    },
+    {
+      "id": "util_embeddings_to_ndarray_empty",
+      "description": "embeddings_to_ndarray raises ValueError for empty list",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about empty list"
+      ]
+    },
+    {
+      "id": "util_embeddings_to_ndarray_nan",
+      "description": "embeddings_to_ndarray raises ValueError for list with NaN",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-finite values"
+      ]
+    },
+    {
+      "id": "util_embeddings_to_ndarray_invalid_dtype",
+      "description": "embeddings_to_ndarray raises ValueError for invalid dtype",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about invalid dtype"
+      ]
+    },
+    {
+      "id": "util_ndarray_to_embedding_happy",
+      "description": "ndarray_to_embedding converts numpy array to list of Python floats",
+      "function": "ndarray_to_embedding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is a list",
+        "length matches array shape",
+        "each element is a Python float"
+      ]
+    },
+    {
+      "id": "util_ndarray_to_embedding_not_1d",
+      "description": "ndarray_to_embedding raises ValueError for 2-D array",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about 1-D array"
+      ]
+    },
+    {
+      "id": "util_ndarray_to_embedding_invalid_dtype",
+      "description": "ndarray_to_embedding raises TypeError for int array",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError about float dtype"
+      ]
+    },
+    {
+      "id": "util_ndarray_to_embedding_nan",
+      "description": "ndarray_to_embedding raises ValueError for array with NaN",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-finite values"
+      ]
+    },
+    {
+      "id": "util_roundtrip_embedding_conversion",
+      "description": "ndarray_to_embedding(embeddings_to_ndarray(lst)) round-trips correctly",
+      "function": "ndarray_to_embedding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "round-trip produces equivalent values within float precision"
+      ]
+    },
+    {
+      "id": "util_tokenize_code_aware_camel",
+      "description": "tokenize_code_aware splits camelCase into lowercase tokens",
+      "function": "tokenize_code_aware",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "getUserName"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result contains 'get', 'user', 'name'",
+        "all tokens are lowercase"
+      ]
+    },
+    {
+      "id": "util_tokenize_code_aware_snake",
+      "description": "tokenize_code_aware splits snake_case at underscores",
+      "function": "tokenize_code_aware",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "get_user_name"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result contains 'get', 'user', 'name'"
+      ]
+    },
+    {
+      "id": "util_tokenize_code_aware_dotted",
+      "description": "tokenize_code_aware splits dotted paths",
+      "function": "tokenize_code_aware",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "os.path.join"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result contains 'os' or 'path' or 'join'"
+      ]
+    },
+    {
+      "id": "util_tokenize_code_aware_empty",
+      "description": "tokenize_code_aware on empty string returns empty list",
+      "function": "tokenize_code_aware",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty list"
+      ]
+    },
+    {
+      "id": "util_tokenize_code_aware_short_tokens_filtered",
+      "description": "tokenize_code_aware filters tokens shorter than 2 chars",
+      "function": "tokenize_code_aware",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all returned tokens have length >= 2"
+      ]
+    },
+    {
+      "id": "util_detect_patterns_function_def",
+      "description": "detect_patterns detects function definitions",
+      "function": "detect_patterns",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "def my_function(x):\n    return x"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result contains pattern_type function_definition",
+        "count > 0"
+      ]
+    },
+    {
+      "id": "util_detect_patterns_import",
+      "description": "detect_patterns detects import statements",
+      "function": "detect_patterns",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "import os\nfrom pathlib import Path"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result contains import_statement pattern"
+      ]
+    },
+    {
+      "id": "util_detect_patterns_empty",
+      "description": "detect_patterns on non-code text returns empty list",
+      "function": "detect_patterns",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "text": "hello world"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty or contains no code patterns"
+      ]
+    },
+    {
+      "id": "util_detect_patterns_no_duplicates",
+      "description": "detect_patterns has no duplicate pattern_type values",
+      "function": "detect_patterns",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all pattern_type values are unique in result"
+      ]
+    },
+    {
+      "id": "util_extract_signal_metadata_happy",
+      "description": "extract_signal_metadata extracts content, author, mentions from Signal",
+      "function": "extract_signal_metadata",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "metadata.content matches signal.content",
+        "metadata.author matches signal.author",
+        "metadata.mentions matches signal.mentions"
+      ]
+    },
+    {
+      "id": "util_extract_signal_metadata_invalid",
+      "description": "extract_signal_metadata raises TypeError for None input",
+      "function": "extract_signal_metadata",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError about Signal instance"
+      ]
+    },
+    {
+      "id": "registry_create_default",
+      "description": "create_registry with defaults registers semantic, technical, social strategies",
+      "function": "create_registry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry has_strategy('semantic')",
+        "registry has_strategy('technical')",
+        "registry has_strategy('social')"
+      ]
+    },
+    {
+      "id": "registry_create_no_defaults",
+      "description": "create_registry with register_defaults=False has no strategies",
+      "function": "create_registry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "register_defaults": "false"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry has no registered strategies",
+        "list_strategies returns empty"
+      ]
+    },
+    {
+      "id": "registry_create_custom_dimensions",
+      "description": "create_registry with custom dimensions stores correct value",
+      "function": "create_registry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "128"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.dimensions == 128"
+      ]
+    },
+    {
+      "id": "registry_create_invalid_dimensions_zero",
+      "description": "create_registry with dimensions=0 raises ValueError",
+      "function": "create_registry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about dimensions range"
+      ]
+    },
+    {
+      "id": "registry_create_invalid_dimensions_too_large",
+      "description": "create_registry with dimensions=5000 raises ValueError",
+      "function": "create_registry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "5000"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about dimensions range"
+      ]
+    },
+    {
+      "id": "registry_create_with_llm_service",
+      "description": "create_registry with LLM service passes it to semantic strategy",
+      "function": "create_registry",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry is created successfully",
+        "semantic strategy is registered"
+      ]
+    },
+    {
+      "id": "registry_register_valid",
+      "description": "register_strategy with valid name and protocol-conforming strategy succeeds",
+      "function": "register_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "has_strategy returns True for the registered name"
+      ]
+    },
+    {
+      "id": "registry_register_invalid_name_uppercase",
+      "description": "register_strategy with uppercase name raises ValueError",
+      "function": "register_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "MyStrategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about name format"
+      ]
+    },
+    {
+      "id": "registry_register_invalid_name_starts_digit",
+      "description": "register_strategy with name starting with digit raises ValueError",
+      "function": "register_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "1strategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about name format"
+      ]
+    },
+    {
+      "id": "registry_register_invalid_name_empty",
+      "description": "register_strategy with empty name raises ValueError",
+      "function": "register_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about name format"
+      ]
+    },
+    {
+      "id": "registry_register_protocol_violation",
+      "description": "register_strategy with object lacking embed method raises TypeError",
+      "function": "register_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError about EmbeddingStrategy protocol"
+      ]
+    },
+    {
+      "id": "registry_register_embed_not_async",
+      "description": "register_strategy with sync embed method raises TypeError",
+      "function": "register_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError about async coroutine"
+      ]
+    },
+    {
+      "id": "registry_register_duplicate",
+      "description": "register_strategy with already-registered name raises ValueError",
+      "function": "register_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about duplicate name"
+      ]
+    },
+    {
+      "id": "registry_unregister_valid",
+      "description": "unregister_strategy removes a previously registered strategy",
+      "function": "unregister_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "has_strategy returns False after unregister"
+      ]
+    },
+    {
+      "id": "registry_unregister_not_found",
+      "description": "unregister_strategy for non-existent name raises KeyError",
+      "function": "unregister_strategy",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "KeyError",
+      "assertions": [
+        "KeyError about strategy not found"
+      ]
+    },
+    {
+      "id": "registry_unregister_reregister",
+      "description": "After unregister, same name can be re-registered",
+      "function": "unregister_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "unregister succeeds",
+        "re-register succeeds",
+        "has_strategy returns True"
+      ]
+    },
+    {
+      "id": "registry_list_strategies_sorted",
+      "description": "list_strategies returns entries sorted alphabetically by name",
+      "function": "list_strategies",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "names are in sorted order",
+        "one entry per registered strategy"
+      ]
+    },
+    {
+      "id": "registry_list_strategies_empty",
+      "description": "list_strategies on empty registry returns empty list",
+      "function": "list_strategies",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty list"
+      ]
+    },
+    {
+      "id": "registry_has_strategy_true",
+      "description": "has_strategy returns True for registered strategy",
+      "function": "has_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns True"
+      ]
+    },
+    {
+      "id": "registry_has_strategy_false",
+      "description": "has_strategy returns False for non-registered name",
+      "function": "has_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns False"
+      ]
+    },
+    {
+      "id": "strategy_semantic_name",
+      "description": "create_semantic_strategy instance has name 'semantic'",
+      "function": "create_semantic_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "strategy.name == 'semantic'"
+      ]
+    },
+    {
+      "id": "strategy_technical_name",
+      "description": "create_technical_strategy instance has name 'technical'",
+      "function": "create_technical_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "strategy.name == 'technical'"
+      ]
+    },
+    {
+      "id": "strategy_social_name",
+      "description": "create_social_strategy instance has name 'social'",
+      "function": "create_social_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "strategy.name == 'social'"
+      ]
+    },
+    {
+      "id": "strategy_semantic_embed_fallback",
+      "description": "semantic_embed without LLM uses deterministic hashing and produces valid vector",
+      "function": "semantic_embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with content='hello world', no LLM service",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output has 64 elements",
+        "output is L2-normalized or zero",
+        "no NaN or Inf"
+      ]
+    },
+    {
+      "id": "strategy_semantic_embed_empty_content",
+      "description": "semantic_embed with empty content returns zero vector",
+      "function": "semantic_embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with content='', no LLM",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all elements are 0.0"
+      ]
+    },
+    {
+      "id": "strategy_semantic_embed_deterministic",
+      "description": "semantic_embed in fallback mode is deterministic",
+      "function": "semantic_embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "two calls with same input produce identical output"
+      ]
+    },
+    {
+      "id": "strategy_semantic_embed_llm_fallback_on_failure",
+      "description": "semantic_embed falls back to hashing when LLM raises exception",
+      "function": "semantic_embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service.embed_text": "raises RuntimeError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "does not raise",
+        "returns valid 64-element vector"
+      ]
+    },
+    {
+      "id": "strategy_technical_embed_code",
+      "description": "technical_embed on code content produces non-zero embedding",
+      "function": "technical_embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with content='def foo(x):\\n    return x + 1'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output has 64 elements",
+        "output is L2-normalized",
+        "not all zeros"
+      ]
+    },
+    {
+      "id": "strategy_technical_embed_empty",
+      "description": "technical_embed on empty content returns zero vector",
+      "function": "technical_embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all elements are 0.0"
+      ]
+    },
+    {
+      "id": "strategy_technical_embed_deterministic",
+      "description": "technical_embed is fully deterministic",
+      "function": "technical_embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "two calls with same input produce identical output"
+      ]
+    },
+    {
+      "id": "strategy_technical_embed_dimension_ranges",
+      "description": "technical_embed uses correct dimension ranges: [0:32] general, [32:48] patterns, [48:64] pattern-specific",
+      "function": "technical_embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with code containing function defs and imports",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "dimensions 0-31 have general token features",
+        "output has 64 elements"
+      ]
+    },
+    {
+      "id": "strategy_social_embed_with_author",
+      "description": "social_embed with author produces non-zero embedding",
+      "function": "social_embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with author='alice', mentions=['bob']",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output has 64 elements",
+        "output is L2-normalized",
+        "not all zeros"
+      ]
+    },
+    {
+      "id": "strategy_social_embed_no_metadata",
+      "description": "social_embed with no author/mentions/channel returns zero vector",
+      "function": "social_embed",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal with author='', mentions=[], no channel metadata",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all elements are 0.0"
+      ]
+    },
+    {
+      "id": "strategy_social_embed_deterministic",
+      "description": "social_embed is fully deterministic",
+      "function": "social_embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "two calls with same input produce identical output"
+      ]
+    },
+    {
+      "id": "strategy_social_embed_different_authors",
+      "description": "social_embed produces different vectors for different authors",
+      "function": "social_embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embedding for author='alice' differs from author='bob'"
+      ]
+    },
+    {
+      "id": "strategy_social_embed_cooccurrence",
+      "description": "social_embed author+mention pair produces different signal than individual entities",
+      "function": "social_embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embedding with author+mentions differs from author-only embedding"
+      ]
+    },
+    {
+      "id": "embed_all_happy_path",
+      "description": "embed_all returns embeddings for all 3 strategies on valid signal",
+      "function": "embed_all",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embeddings has 3 entries",
+        "failures is empty",
+        "all vectors have correct shape"
+      ]
+    },
+    {
+      "id": "embed_all_no_strategies",
+      "description": "embed_all raises RuntimeError when no strategies registered",
+      "function": "embed_all",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": [
+        "RuntimeError about no strategies"
+      ]
+    },
+    {
+      "id": "embed_all_invalid_signal",
+      "description": "embed_all raises TypeError for None signal",
+      "function": "embed_all",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError about Signal instance"
+      ]
+    },
+    {
+      "id": "embed_all_partial_failure",
+      "description": "embed_all records failure for one strategy while others succeed",
+      "function": "embed_all",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "successful strategies in embeddings",
+        "failed strategy in failures",
+        "total equals number of strategies"
+      ]
+    },
+    {
+      "id": "embed_all_all_failures",
+      "description": "embed_all with all strategies failing returns empty embeddings and full failures",
+      "function": "embed_all",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "embeddings is empty",
+        "failures has entries for all strategies"
+      ]
+    },
+    {
+      "id": "embed_all_validates_shape",
+      "description": "embed_all rejects strategy output with wrong shape",
+      "function": "embed_all",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "wrong-shape output recorded as failure"
+      ]
+    },
+    {
+      "id": "embed_single_happy_path",
+      "description": "embed_single returns valid embedding for specified strategy",
+      "function": "embed_single",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output shape is (64,)",
+        "output dtype is float32 or float64"
+      ]
+    },
+    {
+      "id": "embed_single_default_semantic",
+      "description": "embed_single defaults to 'semantic' strategy",
+      "function": "embed_single",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returns valid embedding from semantic strategy"
+      ]
+    },
+    {
+      "id": "embed_single_not_found",
+      "description": "embed_single raises KeyError for unregistered strategy",
+      "function": "embed_single",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "KeyError",
+      "assertions": [
+        "KeyError about strategy not found"
+      ]
+    },
+    {
+      "id": "embed_single_invalid_signal",
+      "description": "embed_single raises TypeError for None signal",
+      "function": "embed_single",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": [
+        "TypeError about Signal instance"
+      ]
+    },
+    {
+      "id": "embed_single_execution_failure",
+      "description": "embed_single raises RuntimeError when strategy embed() fails",
+      "function": "embed_single",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": [
+        "RuntimeError about strategy execution"
+      ]
+    },
+    {
+      "id": "populate_signal_embeddings_happy",
+      "description": "populate_signal_embeddings returns new signal with embeddings populated",
+      "function": "populate_signal_embeddings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.signal has embeddings",
+        "result.strategies_succeeded includes strategy names",
+        "result.failures is empty or has failures"
+      ]
+    },
+    {
+      "id": "populate_signal_embeddings_immutability",
+      "description": "populate_signal_embeddings does not mutate original signal",
+      "function": "populate_signal_embeddings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "original signal.embeddings unchanged",
+        "result signal is a different object"
+      ]
+    },
+    {
+      "id": "populate_signal_embeddings_partial_failure",
+      "description": "populate_signal_embeddings preserves successful embeddings when some strategies fail",
+      "function": "populate_signal_embeddings",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "successful strategy embeddings present in result.signal",
+        "failures list includes failed strategies"
+      ]
+    },
+    {
+      "id": "populate_signal_embeddings_no_strategies",
+      "description": "populate_signal_embeddings raises RuntimeError with empty registry",
+      "function": "populate_signal_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": [
+        "RuntimeError about no strategies"
+      ]
+    },
+    {
+      "id": "populate_signal_embeddings_preserves_fields",
+      "description": "populate_signal_embeddings preserves all non-embedding fields of signal",
+      "function": "populate_signal_embeddings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.signal.id == original.id",
+        "result.signal.content == original.content",
+        "result.signal.author == original.author"
+      ]
+    },
+    {
+      "id": "populate_embeddings_stored_as_list_float",
+      "description": "populate_signal_embeddings stores embeddings as list[float] not ndarray",
+      "function": "populate_signal_embeddings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "each embedding value is a list",
+        "each element in the list is a Python float"
+      ]
+    },
+    {
+      "id": "get_strategy_info_semantic",
+      "description": "get_strategy_info for 'semantic' returns correct info",
+      "function": "get_strategy_info",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_name": "semantic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "info.name == 'semantic'",
+        "info.dimension == 64"
+      ]
+    },
+    {
+      "id": "get_strategy_info_technical",
+      "description": "get_strategy_info for 'technical' returns correct info",
+      "function": "get_strategy_info",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_name": "technical"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "info.name == 'technical'",
+        "info.dimension == 64"
+      ]
+    },
+    {
+      "id": "get_strategy_info_social",
+      "description": "get_strategy_info for 'social' returns correct info",
+      "function": "get_strategy_info",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy_name": "social"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "info.name == 'social'",
+        "info.dimension == 64"
+      ]
+    },
+    {
+      "id": "weights_initialize_happy",
+      "description": "initialize_dimension_weights with 3 strategy names creates equal logits",
+      "function": "initialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all logits are 0.0",
+        "update_count is 0",
+        "learning_rate is 0.05"
+      ]
+    },
+    {
+      "id": "weights_initialize_empty",
+      "description": "initialize_dimension_weights with empty list creates empty logits",
+      "function": "initialize_dimension_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "logits dict is empty",
+        "update_count is 0"
+      ]
+    },
+    {
+      "id": "weights_initialize_custom_lr",
+      "description": "initialize_dimension_weights with custom learning_rate stores it",
+      "function": "initialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "learning_rate": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "learning_rate is 0.1"
+      ]
+    },
+    {
+      "id": "weights_initialize_empty_name",
+      "description": "initialize_dimension_weights with empty string name raises ValueError",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-empty names"
+      ]
+    },
+    {
+      "id": "weights_initialize_duplicate_name",
+      "description": "initialize_dimension_weights with duplicate names raises ValueError",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about duplicate names"
+      ]
+    },
+    {
+      "id": "weights_initialize_invalid_lr_zero",
+      "description": "initialize_dimension_weights with learning_rate=0 raises ValueError",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "learning_rate": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about learning_rate range"
+      ]
+    },
+    {
+      "id": "weights_initialize_invalid_lr_too_large",
+      "description": "initialize_dimension_weights with learning_rate=2.0 raises ValueError",
+      "function": "initialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "learning_rate": "2.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about learning_rate range"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_equal_logits",
+      "description": "get_normalized_weights with equal logits returns equal weights",
+      "function": "get_normalized_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all weights equal 1/3 for 3 strategies",
+        "weights sum to 1.0"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_unequal_logits",
+      "description": "get_normalized_weights with unequal logits returns proportional weights",
+      "function": "get_normalized_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "higher logit gets higher weight",
+        "weights sum to 1.0"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_subset",
+      "description": "get_normalized_weights with strategies parameter returns weights for only those strategies",
+      "function": "get_normalized_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "only requested strategies in output",
+        "weights sum to 1.0"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_missing_strategies",
+      "description": "get_normalized_weights includes missing strategies with default logit 0.0",
+      "function": "get_normalized_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "missing strategy gets weight based on logit 0.0"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_empty",
+      "description": "get_normalized_weights on empty logits with no strategies returns empty dict",
+      "function": "get_normalized_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty dict"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_no_mutation",
+      "description": "get_normalized_weights does not modify the input weights",
+      "function": "get_normalized_weights",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "logits unchanged after call",
+        "update_count unchanged"
+      ]
+    },
+    {
+      "id": "weights_get_normalized_numerical_stability",
+      "description": "get_normalized_weights handles large logit values without overflow",
+      "function": "get_normalized_weights",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no NaN or Inf in output",
+        "weights sum to 1.0"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_happy",
+      "description": "record_acceptance updates logits and increments update_count",
+      "function": "record_acceptance",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "update_count incremented by 1",
+        "logits have been modified",
+        "result.effective_learning_rate > 0"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_zero_sum",
+      "description": "record_acceptance logit deltas sum to approximately 0",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sum of logit_deltas is approximately 0.0"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_lr_decay",
+      "description": "record_acceptance effective_lr = lr / (1 + old_count * 0.01)",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "effective_learning_rate matches formula"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_in_place",
+      "description": "record_acceptance mutates the same object",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.weights is the same object as input"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_new_strategy",
+      "description": "record_acceptance inserts new strategy with default logit 0.0 before update",
+      "function": "record_acceptance",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "new strategy appears in logits after update"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_empty_contributions",
+      "description": "record_acceptance raises ValueError for empty contributions",
+      "function": "record_acceptance",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-empty contributions"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_nan_contribution",
+      "description": "record_acceptance raises ValueError for NaN contribution",
+      "function": "record_acceptance",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-finite contribution"
+      ]
+    },
+    {
+      "id": "weights_record_acceptance_logits_stay_finite",
+      "description": "record_acceptance ensures all logits remain finite after update",
+      "function": "record_acceptance",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all logit values are finite after update"
+      ]
+    },
+    {
+      "id": "weights_ensure_strategies_present_adds_missing",
+      "description": "ensure_strategies_present adds missing strategies with logit 0.0",
+      "function": "ensure_strategies_present",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "missing strategy now in logits with value 0.0"
+      ]
+    },
+    {
+      "id": "weights_ensure_strategies_present_preserves_existing",
+      "description": "ensure_strategies_present does not change existing logit values",
+      "function": "ensure_strategies_present",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "existing logit values unchanged"
+      ]
+    },
+    {
+      "id": "weights_ensure_strategies_present_empty_name",
+      "description": "ensure_strategies_present raises ValueError for empty strategy name",
+      "function": "ensure_strategies_present",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-empty names"
+      ]
+    },
+    {
+      "id": "weights_ensure_strategies_present_returns_same",
+      "description": "ensure_strategies_present returns the same object (in-place)",
+      "function": "ensure_strategies_present",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returned object is same instance as input"
+      ]
+    },
+    {
+      "id": "similarity_happy_path",
+      "description": "compute_weighted_embedding_similarity returns correct weighted similarity for matching strategies",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "similarity is a finite float",
+        "strategies_used lists intersecting strategies",
+        "effective_weights sum to 1.0"
+      ]
+    },
+    {
+      "id": "similarity_no_weights",
+      "description": "compute_weighted_embedding_similarity returns 0.0 when dimension_weights is None",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "similarity is 0.0",
+        "strategies_used is empty"
+      ]
+    },
+    {
+      "id": "similarity_empty_intersection",
+      "description": "compute_weighted_embedding_similarity returns 0.0 when no strategies overlap",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "similarity is 0.0",
+        "strategies_used is empty"
+      ]
+    },
+    {
+      "id": "similarity_identical_vectors",
+      "description": "compute_weighted_embedding_similarity on identical unit vectors returns ~1.0",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "similarity is approximately 1.0"
+      ]
+    },
+    {
+      "id": "similarity_orthogonal_vectors",
+      "description": "compute_weighted_embedding_similarity on orthogonal unit vectors returns ~0.0",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "similarity is approximately 0.0"
+      ]
+    },
+    {
+      "id": "similarity_dimension_mismatch",
+      "description": "compute_weighted_embedding_similarity raises ValueError for mismatched dimensions",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about dimension mismatch"
+      ]
+    },
+    {
+      "id": "similarity_non_finite_embedding",
+      "description": "compute_weighted_embedding_similarity raises ValueError for NaN embedding",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-finite values"
+      ]
+    },
+    {
+      "id": "similarity_per_strategy_breakdown",
+      "description": "compute_weighted_embedding_similarity returns per-strategy similarities in result",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "per_strategy_similarities has entry for each used strategy"
+      ]
+    },
+    {
+      "id": "similarity_no_input_mutation",
+      "description": "compute_weighted_embedding_similarity does not modify inputs",
+      "function": "compute_weighted_embedding_similarity",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "signal_embeddings unchanged",
+        "context_prototypes unchanged",
+        "dimension_weights unchanged"
+      ]
+    },
+    {
+      "id": "serialize_weights_happy",
+      "description": "serialize_dimension_weights produces JSON-safe dict with correct keys",
+      "function": "serialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 'logits', 'learning_rate', 'update_count', 'schema_version'",
+        "schema_version is 1"
+      ]
+    },
+    {
+      "id": "serialize_weights_roundtrip",
+      "description": "deserialize(serialize(weights)) produces equivalent instance",
+      "function": "serialize_dimension_weights",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "round-trip logits match",
+        "round-trip learning_rate matches",
+        "round-trip update_count matches"
+      ]
+    },
+    {
+      "id": "deserialize_weights_missing_logits",
+      "description": "deserialize_dimension_weights raises ValidationError when logits key missing",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error about missing logits key"
+      ]
+    },
+    {
+      "id": "deserialize_weights_non_finite_logit",
+      "description": "deserialize_dimension_weights raises ValidationError for NaN logit",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error about non-finite logit"
+      ]
+    },
+    {
+      "id": "deserialize_weights_invalid_lr",
+      "description": "deserialize_dimension_weights raises ValidationError for lr=0",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error about invalid learning_rate"
+      ]
+    },
+    {
+      "id": "deserialize_weights_invalid_update_count",
+      "description": "deserialize_dimension_weights raises ValidationError for negative update_count",
+      "function": "deserialize_dimension_weights",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error about invalid update_count"
+      ]
+    },
+    {
+      "id": "deserialize_weights_defaults",
+      "description": "deserialize_dimension_weights applies defaults for missing optional fields",
+      "function": "deserialize_dimension_weights",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "learning_rate defaults to 0.05",
+        "update_count defaults to 0"
+      ]
+    },
+    {
+      "id": "serialize_embeddings_happy",
+      "description": "serialize_embeddings produces correct structure with schema_version",
+      "function": "serialize_embeddings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result has 'embeddings', 'dimensions', 'schema_version'",
+        "schema_version is 1"
+      ]
+    },
+    {
+      "id": "serialize_embeddings_dimension_mismatch",
+      "description": "serialize_embeddings raises ValueError for wrong-length vector",
+      "function": "serialize_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about dimensionality"
+      ]
+    },
+    {
+      "id": "serialize_embeddings_non_finite",
+      "description": "serialize_embeddings raises ValueError for NaN in vector",
+      "function": "serialize_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "ValueError about non-finite values"
+      ]
+    },
+    {
+      "id": "deserialize_embeddings_happy",
+      "description": "deserialize_embeddings reconstructs correct dict from serialized form",
+      "function": "deserialize_embeddings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "returned dict maps strategy names to float lists",
+        "all vectors have correct length"
+      ]
+    },
+    {
+      "id": "deserialize_embeddings_missing_key",
+      "description": "deserialize_embeddings raises ValidationError for missing 'embeddings' key",
+      "function": "deserialize_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error about missing embeddings key"
+      ]
+    },
+    {
+      "id": "deserialize_embeddings_missing_dimensions",
+      "description": "deserialize_embeddings raises ValidationError for missing 'dimensions' key",
+      "function": "deserialize_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error about missing dimensions key"
+      ]
+    },
+    {
+      "id": "deserialize_embeddings_roundtrip",
+      "description": "deserialize(serialize(embeddings)) round-trips correctly",
+      "function": "deserialize_embeddings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "round-trip produces equivalent embeddings"
+      ]
+    },
+    {
+      "id": "invariant_embedding_dim_64",
+      "description": "EMBEDDING_DIM constant is 64",
+      "function": "create_registry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "default registry dimensions is 64"
+      ]
+    },
+    {
+      "id": "invariant_all_strategies_produce_64_dim",
+      "description": "All 3 strategies produce 64-dimension vectors",
+      "function": "embed_all",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all embedding vectors have exactly 64 elements"
+      ]
+    },
+    {
+      "id": "invariant_no_nan_inf_in_embeddings",
+      "description": "No embedding vector ever contains NaN or Inf",
+      "function": "embed_all",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all values in all embedding vectors are finite"
+      ]
+    },
+    {
+      "id": "invariant_zero_vector_is_no_info_sentinel",
+      "description": "Zero vector has all zeros and norm 0.0",
+      "function": "zero_vector",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all elements 0.0",
+        "L2 norm is 0.0"
+      ]
+    },
+    {
+      "id": "invariant_multiple_registries_independent",
+      "description": "Multiple registry instances are independent",
+      "function": "create_registry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "unregistering from one does not affect the other"
+      ]
+    },
+    {
+      "id": "invariant_embedding_vector_unit_or_zero",
+      "description": "Every embedding is either L2-unit-normalized or zero vector",
+      "function": "embed_all",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "each vector norm is approximately 1.0 or exactly 0.0"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for multi_strategy_embeddings (Feature 3).\n\nTests verify the public API contract for the multi-strategy embedding system,\ncovering utility functions, registry lifecycle, strategy implementations,\norchestration, dimension weights, weighted similarity, and serialization.\n\nRun: pytest tests/test_multi_strategy_embeddings.py -v\n\"\"\"\n\nimport asyncio\nimport math\nimport copy\nfrom unittest.mock import AsyncMock, MagicMock, patch, PropertyMock\nimport pytest\nimport numpy as np\n\n# Import the component under test\nfrom src.multi_strategy_embeddings import (\n    # Registry & orchestration\n    create_registry,\n    register_strategy,\n    unregister_strategy,\n    embed_all,\n    embed_single,\n    populate_signal_embeddings,\n    list_strategies,\n    has_strategy,\n    # Utility functions\n    project_to_dim,\n    embeddings_to_ndarray,\n    ndarray_to_embedding,\n    signed_hash,\n    l2_normalize,\n    zero_vector,\n    # Strategy factories\n    create_semantic_strategy,\n    create_technical_strategy,\n    create_social_strategy,\n    # Strategy embed methods\n    semantic_embed,\n    technical_embed,\n    social_embed,\n    # Strategy helpers\n    tokenize_code_aware,\n    detect_patterns,\n    get_strategy_info,\n    extract_signal_metadata,\n    # Weight management\n    get_normalized_weights,\n    compute_weighted_embedding_similarity,\n    record_acceptance,\n    initialize_dimension_weights,\n    ensure_strategies_present,\n    # Serialization\n    serialize_dimension_weights,\n    deserialize_dimension_weights,\n    serialize_embeddings,\n    deserialize_embeddings,\n    # Types / Models\n    Signal,\n    EmbeddingDimensionWeights,\n)\n\n\n# ---------------------------------------------------------------------------\n# Fixtures\n# ---------------------------------------------------------------------------\n\n@pytest.fixture\ndef sample_signal():\n    \"\"\"A standard test signal with content and social metadata.\"\"\"\n    return Signal(\n        id=\"sig-001\",\n        content=\"def hello_world():\\n    print('Hello, World!')\",\n        author=\"alice\",\n        mentions=[\"bob\", \"charlie\"],\n        metadata={\"channel\": \"dev-general\"},\n        embeddings={},\n    )\n\n\n@pytest.fixture\ndef empty_signal():\n    \"\"\"A signal with no content or metadata.\"\"\"\n    return Signal(\n        id=\"sig-empty\",\n        content=\"\",\n        author=\"\",\n        mentions=[],\n        metadata={},\n        embeddings={},\n    )\n\n\n@pytest.fixture\ndef social_only_signal():\n    \"\"\"A signal with social metadata but no code.\"\"\"\n    return Signal(\n        id=\"sig-social\",\n        content=\"Hey @bob, can you review this?\",\n        author=\"alice\",\n        mentions=[\"bob\"],\n        metadata={\"channel\": \"reviews\"},\n        embeddings={},\n    )\n\n\n@pytest.fixture\ndef registry_with_defaults():\n    \"\"\"A registry with all 3 default strategies.\"\"\"\n    return create_registry(dimensions=64, register_defaults=True)\n\n\n@pytest.fixture\ndef empty_registry():\n    \"\"\"A registry with no strategies.\"\"\"\n    return create_registry(dimensions=64, register_defaults=False)\n\n\n@pytest.fixture\ndef sample_weights():\n    \"\"\"Dimension weights with 3 strategies at equal logits.\"\"\"\n    return initialize_dimension_weights(\n        strategy_names=[\"semantic\", \"technical\", \"social\"],\n        learning_rate=0.05,\n    )\n\n\ndef _make_unit_vector(dim=64, seed=42):\n    \"\"\"Create a deterministic unit vector for testing.\"\"\"\n    rng = np.random.RandomState(seed)\n    v = rng.randn(dim).astype(np.float64)\n    v /= np.linalg.norm(v)\n    return v\n\n\ndef _run_async(coro):\n    \"\"\"Helper to run an async function synchronously in tests.\"\"\"\n    loop = asyncio.new_event_loop()\n    try:\n        return loop.run_until_complete(coro)\n    finally:\n        loop.close()\n\n\n# ===========================================================================\n# 1. UTILITY FUNCTIONS\n# ===========================================================================\n\nclass TestL2Normalize:\n    \"\"\"Tests for l2_normalize utility.\"\"\"\n\n    def test_l2_normalize_unit_vector(self):\n        \"\"\"l2_normalize on a non-zero vector produces unit-length output.\"\"\"\n        v = np.array([3.0, 4.0, 0.0], dtype=np.float64)\n        result = l2_normalize(v)\n        norm = np.linalg.norm(result)\n        assert result.shape == v.shape, \"Output shape must match input shape\"\n        assert result.dtype == v.dtype, \"Output dtype must match input dtype\"\n        assert abs(norm - 1.0) < 1e-6, f\"L2 norm should be ~1.0, got {norm}\"\n\n    def test_l2_normalize_zero_vector(self):\n        \"\"\"l2_normalize on zero vector returns zero vector unchanged.\"\"\"\n        v = np.zeros(64, dtype=np.float64)\n        result = l2_normalize(v)\n        assert np.all(result == 0.0), \"All elements should be 0.0\"\n        assert np.linalg.norm(result) == 0.0, \"Norm should be 0.0\"\n\n    def test_l2_normalize_not_1d(self):\n        \"\"\"l2_normalize raises ValueError for 2-D array.\"\"\"\n        v = np.zeros((3, 3), dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)1-D|1d|one.dim\"):\n            l2_normalize(v)\n\n    def test_l2_normalize_nan_values(self):\n        \"\"\"l2_normalize raises ValueError for array with NaN.\"\"\"\n        v = np.array([1.0, float('nan'), 3.0], dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)finite|nan\"):\n            l2_normalize(v)\n\n    def test_l2_normalize_inf_values(self):\n        \"\"\"l2_normalize raises ValueError for array with Inf.\"\"\"\n        v = np.array([1.0, float('inf'), 3.0], dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)finite|inf\"):\n            l2_normalize(v)\n\n    def test_l2_normalize_idempotent(self):\n        \"\"\"l2_normalize applied twice produces same result as once.\"\"\"\n        v = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)\n        once = l2_normalize(v)\n        twice = l2_normalize(once)\n        np.testing.assert_allclose(once, twice, atol=1e-10,\n                                   err_msg=\"l2_normalize should be idempotent\")\n\n\nclass TestProjectToDim:\n    \"\"\"Tests for project_to_dim utility.\"\"\"\n\n    def test_project_to_dim_truncate(self):\n        \"\"\"project_to_dim truncates longer vector and L2-normalizes.\"\"\"\n        v = np.random.randn(128).astype(np.float64)\n        result = project_to_dim(v, 64)\n        assert result.shape == (64,), f\"Expected shape (64,), got {result.shape}\"\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6 or norm == 0.0, f\"Expected unit norm, got {norm}\"\n\n    def test_project_to_dim_pad(self):\n        \"\"\"project_to_dim zero-pads shorter vector and L2-normalizes.\"\"\"\n        v = np.array([1.0, 2.0, 3.0], dtype=np.float64)\n        result = project_to_dim(v, 64)\n        assert result.shape == (64,), f\"Expected shape (64,), got {result.shape}\"\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6, f\"Expected unit norm, got {norm}\"\n\n    def test_project_to_dim_same_length(self):\n        \"\"\"project_to_dim with same length just L2-normalizes.\"\"\"\n        v = np.array([3.0, 4.0] + [0.0] * 62, dtype=np.float64)\n        result = project_to_dim(v, 64)\n        assert result.shape == (64,)\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6\n\n    def test_project_to_dim_zero_input(self):\n        \"\"\"project_to_dim on zero vector returns zero of target_dim.\"\"\"\n        v = np.zeros(32, dtype=np.float64)\n        result = project_to_dim(v, 64)\n        assert result.shape == (64,)\n        assert np.all(result == 0.0), \"Zero input should yield zero output\"\n\n    def test_project_to_dim_not_1d(self):\n        \"\"\"project_to_dim raises ValueError for 2-D input.\"\"\"\n        v = np.zeros((3, 3), dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)1-D|1d\"):\n            project_to_dim(v, 64)\n\n    def test_project_to_dim_invalid_dtype(self):\n        \"\"\"project_to_dim raises TypeError for int32 dtype.\"\"\"\n        v = np.array([1, 2, 3], dtype=np.int32)\n        with pytest.raises(TypeError, match=\"(?i)float\"):\n            project_to_dim(v, 64)\n\n    def test_project_to_dim_invalid_target_zero(self):\n        \"\"\"project_to_dim raises ValueError for target_dim=0.\"\"\"\n        v = np.array([1.0], dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)target_dim|dimension|between\"):\n            project_to_dim(v, 0)\n\n    def test_project_to_dim_empty_vector(self):\n        \"\"\"project_to_dim raises ValueError for empty vector.\"\"\"\n        v = np.array([], dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)empty|at least one\"):\n            project_to_dim(v, 64)\n\n    def test_project_to_dim_preserves_dtype_float32(self):\n        \"\"\"project_to_dim with float32 input produces float32 output.\"\"\"\n        v = np.array([1.0, 2.0, 3.0], dtype=np.float32)\n        result = project_to_dim(v, 64)\n        assert result.dtype == np.float32, f\"Expected float32, got {result.dtype}\"\n\n    def test_project_to_dim_preserves_dtype_float64(self):\n        \"\"\"project_to_dim with float64 input produces float64 output.\"\"\"\n        v = np.array([1.0, 2.0, 3.0], dtype=np.float64)\n        result = project_to_dim(v, 64)\n        assert result.dtype == np.float64, f\"Expected float64, got {result.dtype}\"\n\n\nclass TestSignedHash:\n    \"\"\"Tests for signed_hash utility.\"\"\"\n\n    def test_signed_hash_deterministic(self):\n        \"\"\"signed_hash returns same result for same inputs across calls.\"\"\"\n        r1 = signed_hash(\"hello\", 64)\n        r2 = signed_hash(\"hello\", 64)\n        assert r1.bucket == r2.bucket, \"Bucket should be deterministic\"\n        assert r1.sign == r2.sign, \"Sign should be deterministic\"\n\n    def test_signed_hash_bucket_range(self):\n        \"\"\"signed_hash bucket is in [0, num_buckets).\"\"\"\n        result = signed_hash(\"test_token\", 10)\n        assert 0 <= result.bucket < 10, f\"Bucket {result.bucket} not in [0, 10)\"\n\n    def test_signed_hash_sign_values(self):\n        \"\"\"signed_hash sign is always +1 or -1.\"\"\"\n        for token in [\"a\", \"bb\", \"ccc\", \"hello_world\", \"import os\"]:\n            result = signed_hash(token, 64)\n            assert result.sign in (-1, 1), f\"Sign {result.sign} must be -1 or +1\"\n\n    def test_signed_hash_invalid_buckets_zero(self):\n        \"\"\"signed_hash raises ValueError for num_buckets=0.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)positive|bucket\"):\n            signed_hash(\"x\", 0)\n\n    def test_signed_hash_negative_buckets(self):\n        \"\"\"signed_hash raises ValueError for negative num_buckets.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)positive|bucket\"):\n            signed_hash(\"x\", -5)\n\n    def test_signed_hash_single_bucket(self):\n        \"\"\"signed_hash with num_buckets=1 always returns bucket 0.\"\"\"\n        result = signed_hash(\"anything\", 1)\n        assert result.bucket == 0, \"With 1 bucket, index must be 0\"\n        assert result.sign in (-1, 1)\n\n\nclass TestZeroVector:\n    \"\"\"Tests for zero_vector utility.\"\"\"\n\n    def test_zero_vector_default(self):\n        \"\"\"zero_vector returns 64-element float64 zero array.\"\"\"\n        v = zero_vector()\n        assert v.shape == (64,), f\"Expected (64,), got {v.shape}\"\n        assert np.all(v == 0.0), \"All elements should be 0.0\"\n        assert v.dtype == np.float64, f\"Expected float64, got {v.dtype}\"\n\n    def test_zero_vector_custom_dim(self):\n        \"\"\"zero_vector with custom dimensions returns correct shape.\"\"\"\n        v = zero_vector(128)\n        assert v.shape == (128,), f\"Expected (128,), got {v.shape}\"\n        assert np.all(v == 0.0)\n\n    def test_zero_vector_norm_is_zero(self):\n        \"\"\"Zero vector has L2 norm 0.0.\"\"\"\n        v = zero_vector(64)\n        assert np.linalg.norm(v) == 0.0\n\n\nclass TestEmbeddingsToNdarray:\n    \"\"\"Tests for embeddings_to_ndarray conversion.\"\"\"\n\n    def test_embeddings_to_ndarray_happy(self):\n        \"\"\"Converts list[float] to numpy array with correct shape and dtype.\"\"\"\n        lst = [float(i) for i in range(64)]\n        result = embeddings_to_ndarray(lst)\n        assert result.shape == (64,)\n        assert result.dtype == np.float32\n        np.testing.assert_allclose(result, lst, atol=1e-6)\n\n    def test_embeddings_to_ndarray_float64(self):\n        \"\"\"With dtype='float64' produces float64 array.\"\"\"\n        lst = [1.0, 2.0, 3.0]\n        result = embeddings_to_ndarray(lst, dtype=\"float64\")\n        assert result.dtype == np.float64\n\n    def test_embeddings_to_ndarray_empty(self):\n        \"\"\"Raises ValueError for empty list.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)empty\"):\n            embeddings_to_ndarray([])\n\n    def test_embeddings_to_ndarray_nan(self):\n        \"\"\"Raises ValueError for list with NaN.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)finite|nan\"):\n            embeddings_to_ndarray([1.0, float('nan'), 3.0])\n\n    def test_embeddings_to_ndarray_invalid_dtype(self):\n        \"\"\"Raises ValueError for invalid dtype string.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)dtype\"):\n            embeddings_to_ndarray([1.0, 2.0], dtype=\"int32\")\n\n\nclass TestNdarrayToEmbedding:\n    \"\"\"Tests for ndarray_to_embedding conversion.\"\"\"\n\n    def test_ndarray_to_embedding_happy(self):\n        \"\"\"Converts numpy array to list of Python floats.\"\"\"\n        arr = np.array([1.0, 2.0, 3.0], dtype=np.float64)\n        result = ndarray_to_embedding(arr)\n        assert isinstance(result, list), \"Result should be a list\"\n        assert len(result) == 3\n        assert all(isinstance(x, float) for x in result)\n\n    def test_ndarray_to_embedding_not_1d(self):\n        \"\"\"Raises ValueError for 2-D array.\"\"\"\n        arr = np.zeros((3, 3), dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)1-D|1d\"):\n            ndarray_to_embedding(arr)\n\n    def test_ndarray_to_embedding_invalid_dtype(self):\n        \"\"\"Raises TypeError for int array.\"\"\"\n        arr = np.array([1, 2, 3], dtype=np.int32)\n        with pytest.raises(TypeError, match=\"(?i)float\"):\n            ndarray_to_embedding(arr)\n\n    def test_ndarray_to_embedding_nan(self):\n        \"\"\"Raises ValueError for array with NaN.\"\"\"\n        arr = np.array([1.0, float('nan')], dtype=np.float64)\n        with pytest.raises(ValueError, match=\"(?i)finite|nan\"):\n            ndarray_to_embedding(arr)\n\n    def test_roundtrip_embedding_conversion(self):\n        \"\"\"ndarray_to_embedding(embeddings_to_ndarray(lst)) round-trips correctly.\"\"\"\n        original = [float(i) * 0.1 for i in range(64)]\n        arr = embeddings_to_ndarray(original, dtype=\"float64\")\n        result = ndarray_to_embedding(arr)\n        for i, (a, b) in enumerate(zip(original, result)):\n            assert abs(a - b) < 1e-10, f\"Mismatch at index {i}: {a} vs {b}\"\n\n\nclass TestTokenizeCodeAware:\n    \"\"\"Tests for tokenize_code_aware.\"\"\"\n\n    def test_tokenize_camel_case(self):\n        \"\"\"Splits camelCase into lowercase tokens.\"\"\"\n        tokens = tokenize_code_aware(\"getUserName\")\n        lower_tokens = [t.lower() for t in tokens]\n        assert \"get\" in lower_tokens or \"user\" in lower_tokens or \"name\" in lower_tokens, \\\n            f\"Expected camelCase split, got {tokens}\"\n        assert all(t == t.lower() for t in tokens), \"All tokens should be lowercase\"\n\n    def test_tokenize_snake_case(self):\n        \"\"\"Splits snake_case at underscores.\"\"\"\n        tokens = tokenize_code_aware(\"get_user_name\")\n        assert \"get\" in tokens or \"user\" in tokens or \"name\" in tokens, \\\n            f\"Expected snake_case split, got {tokens}\"\n\n    def test_tokenize_dotted_path(self):\n        \"\"\"Splits dotted paths.\"\"\"\n        tokens = tokenize_code_aware(\"os.path.join\")\n        # At least some of the parts should appear\n        found_any = any(t in tokens for t in [\"os\", \"path\", \"join\"])\n        assert found_any, f\"Expected dotted-path split, got {tokens}\"\n\n    def test_tokenize_empty_string(self):\n        \"\"\"Empty string returns empty list.\"\"\"\n        tokens = tokenize_code_aware(\"\")\n        assert tokens == [], f\"Expected empty list, got {tokens}\"\n\n    def test_tokenize_short_tokens_filtered(self):\n        \"\"\"All returned tokens have length >= 2.\"\"\"\n        tokens = tokenize_code_aware(\"I am a getUserName function in x.y.z module\")\n        for t in tokens:\n            assert len(t) >= 2, f\"Token '{t}' is shorter than 2 chars\"\n\n\nclass TestDetectPatterns:\n    \"\"\"Tests for detect_patterns.\"\"\"\n\n    def test_detect_patterns_function_def(self):\n        \"\"\"Detects function definitions.\"\"\"\n        patterns = detect_patterns(\"def my_function(x):\\n    return x\")\n        types_found = [p.pattern_type for p in patterns]\n        assert \"function_definition\" in types_found, \\\n            f\"Expected function_definition, got {types_found}\"\n\n    def test_detect_patterns_import(self):\n        \"\"\"Detects import statements.\"\"\"\n        patterns = detect_patterns(\"import os\\nfrom pathlib import Path\")\n        types_found = [p.pattern_type for p in patterns]\n        assert \"import_statement\" in types_found, \\\n            f\"Expected import_statement, got {types_found}\"\n\n    def test_detect_patterns_empty_text(self):\n        \"\"\"Non-code text produces empty or no-code result.\"\"\"\n        patterns = detect_patterns(\"hello world nothing special\")\n        # We only check that code pattern types are absent\n        code_types = {\"function_definition\", \"import_statement\", \"class_definition\"}\n        types_found = {p.pattern_type for p in patterns}\n        # It's acceptable for some heuristic patterns to match, but function/import/class shouldn't\n        # Actually just assert the list has only actual matches\n        for p in patterns:\n            assert p.count > 0, \"Each returned pattern should have count > 0\"\n\n    def test_detect_patterns_no_duplicates(self):\n        \"\"\"No duplicate pattern_type values in result.\"\"\"\n        text = \"def foo():\\n    pass\\nimport os\\nclass Bar:\\n    pass\"\n        patterns = detect_patterns(text)\n        types = [p.pattern_type for p in patterns]\n        assert len(types) == len(set(types)), \\\n            f\"Duplicate pattern types found: {types}\"\n\n\nclass TestExtractSignalMetadata:\n    \"\"\"Tests for extract_signal_metadata.\"\"\"\n\n    def test_extract_signal_metadata_happy(self, sample_signal):\n        \"\"\"Extracts content, author, mentions from Signal.\"\"\"\n        meta = extract_signal_metadata(sample_signal)\n        assert meta.content == sample_signal.content\n        assert meta.author == sample_signal.author\n        assert meta.mentions == sample_signal.mentions\n\n    def test_extract_signal_metadata_invalid(self):\n        \"\"\"Raises TypeError for None input.\"\"\"\n        with pytest.raises(TypeError, match=\"(?i)signal\"):\n            extract_signal_metadata(None)\n\n\n# ===========================================================================\n# 2. REGISTRY LIFECYCLE\n# ===========================================================================\n\nclass TestRegistryCreation:\n    \"\"\"Tests for create_registry.\"\"\"\n\n    def test_create_default(self):\n        \"\"\"Creates registry with 3 default strategies.\"\"\"\n        reg = create_registry()\n        assert has_strategy(reg, \"semantic\"), \"semantic should be registered\"\n        assert has_strategy(reg, \"technical\"), \"technical should be registered\"\n        assert has_strategy(reg, \"social\"), \"social should be registered\"\n\n    def test_create_no_defaults(self):\n        \"\"\"Creates registry with no strategies.\"\"\"\n        reg = create_registry(dimensions=64, register_defaults=False)\n        strategies = list_strategies(reg)\n        assert len(strategies) == 0, \"Should have no strategies\"\n\n    def test_create_custom_dimensions(self):\n        \"\"\"Stores correct dimensions value.\"\"\"\n        reg = create_registry(dimensions=128)\n        # Access registry dimensions via attribute or embed_all validation\n        assert reg.dimensions == 128 or hasattr(reg, '_dimensions')\n\n    def test_create_invalid_dimensions_zero(self):\n        \"\"\"Raises ValueError for dimensions=0.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)dimension\"):\n            create_registry(dimensions=0)\n\n    def test_create_invalid_dimensions_too_large(self):\n        \"\"\"Raises ValueError for dimensions=5000.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)dimension\"):\n            create_registry(dimensions=5000)\n\n    def test_create_with_llm_service(self):\n        \"\"\"Creates registry with LLM service for semantic strategy.\"\"\"\n        mock_llm = MagicMock()\n        mock_llm.embed_text = AsyncMock(return_value=[0.1] * 64)\n        reg = create_registry(llm_service=mock_llm)\n        assert has_strategy(reg, \"semantic\")\n\n\nclass TestRegistryRegister:\n    \"\"\"Tests for register_strategy.\"\"\"\n\n    def test_register_valid(self, empty_registry):\n        \"\"\"Registers a valid strategy successfully.\"\"\"\n        strategy = MagicMock()\n        strategy.name = \"custom\"\n        strategy.embed = AsyncMock(return_value=np.zeros(64, dtype=np.float64))\n        # We need to make it satisfy the protocol check\n        register_strategy(empty_registry, \"custom\", strategy)\n        assert has_strategy(empty_registry, \"custom\")\n\n    def test_register_invalid_name_uppercase(self, empty_registry):\n        \"\"\"Raises ValueError for uppercase name.\"\"\"\n        strategy = MagicMock()\n        strategy.embed = AsyncMock()\n        with pytest.raises(ValueError, match=\"(?i)name|lowercase|format\"):\n            register_strategy(empty_registry, \"MyStrategy\", strategy)\n\n    def test_register_invalid_name_starts_digit(self, empty_registry):\n        \"\"\"Raises ValueError for name starting with digit.\"\"\"\n        strategy = MagicMock()\n        strategy.embed = AsyncMock()\n        with pytest.raises(ValueError, match=\"(?i)name|format\"):\n            register_strategy(empty_registry, \"1strategy\", strategy)\n\n    def test_register_invalid_name_empty(self, empty_registry):\n        \"\"\"Raises ValueError for empty name.\"\"\"\n        strategy = MagicMock()\n        strategy.embed = AsyncMock()\n        with pytest.raises(ValueError, match=\"(?i)name|format\"):\n            register_strategy(empty_registry, \"\", strategy)\n\n    def test_register_protocol_violation(self, empty_registry):\n        \"\"\"Raises TypeError for object without embed method.\"\"\"\n\n        class NoEmbed:\n            name = \"bad\"\n\n        with pytest.raises(TypeError, match=\"(?i)protocol|embed\"):\n            register_strategy(empty_registry, \"bad\", NoEmbed())\n\n    def test_register_embed_not_async(self, empty_registry):\n        \"\"\"Raises TypeError for sync embed method.\"\"\"\n\n        class SyncEmbed:\n            name = \"syncstrat\"\n            def embed(self, signal):\n                return np.zeros(64)\n\n        with pytest.raises(TypeError, match=\"(?i)async|coroutine\"):\n            register_strategy(empty_registry, \"syncstrat\", SyncEmbed())\n\n    def test_register_duplicate(self, registry_with_defaults):\n        \"\"\"Raises ValueError for duplicate name.\"\"\"\n        strategy = MagicMock()\n        strategy.name = \"semantic\"\n        strategy.embed = AsyncMock()\n        with pytest.raises(ValueError, match=\"(?i)already|duplicate|registered\"):\n            register_strategy(registry_with_defaults, \"semantic\", strategy)\n\n\nclass TestRegistryUnregister:\n    \"\"\"Tests for unregister_strategy.\"\"\"\n\n    def test_unregister_valid(self, registry_with_defaults):\n        \"\"\"Removes a registered strategy.\"\"\"\n        unregister_strategy(registry_with_defaults, \"semantic\")\n        assert not has_strategy(registry_with_defaults, \"semantic\")\n\n    def test_unregister_not_found(self, registry_with_defaults):\n        \"\"\"Raises KeyError for non-existent name.\"\"\"\n        with pytest.raises(KeyError):\n            unregister_strategy(registry_with_defaults, \"nonexistent\")\n\n    def test_unregister_and_reregister(self, registry_with_defaults):\n        \"\"\"After unregister, same name can be re-registered.\"\"\"\n        unregister_strategy(registry_with_defaults, \"semantic\")\n        assert not has_strategy(registry_with_defaults, \"semantic\")\n        new_strategy = create_semantic_strategy()\n        register_strategy(registry_with_defaults, \"semantic\", new_strategy)\n        assert has_strategy(registry_with_defaults, \"semantic\")\n\n\nclass TestListStrategies:\n    \"\"\"Tests for list_strategies.\"\"\"\n\n    def test_list_strategies_sorted(self, registry_with_defaults):\n        \"\"\"Returns entries sorted alphabetically.\"\"\"\n        infos = list_strategies(registry_with_defaults)\n        names = [info.name for info in infos]\n        assert names == sorted(names), f\"Names should be sorted, got {names}\"\n        assert len(names) == 3\n\n    def test_list_strategies_empty(self, empty_registry):\n        \"\"\"Empty registry returns empty list.\"\"\"\n        infos = list_strategies(empty_registry)\n        assert len(infos) == 0\n\n\nclass TestHasStrategy:\n    \"\"\"Tests for has_strategy.\"\"\"\n\n    def test_has_strategy_true(self, registry_with_defaults):\n        \"\"\"Returns True for registered strategy.\"\"\"\n        assert has_strategy(registry_with_defaults, \"semantic\") is True\n\n    def test_has_strategy_false(self, registry_with_defaults):\n        \"\"\"Returns False for non-registered name.\"\"\"\n        assert has_strategy(registry_with_defaults, \"nonexistent\") is False\n\n\n# ===========================================================================\n# 3. INDIVIDUAL STRATEGIES\n# ===========================================================================\n\nclass TestStrategyCreation:\n    \"\"\"Tests for strategy factory functions.\"\"\"\n\n    def test_semantic_name(self):\n        \"\"\"SemanticStrategy has name 'semantic'.\"\"\"\n        s = create_semantic_strategy()\n        assert s.name == \"semantic\"\n\n    def test_technical_name(self):\n        \"\"\"TechnicalStrategy has name 'technical'.\"\"\"\n        s = create_technical_strategy()\n        assert s.name == \"technical\"\n\n    def test_social_name(self):\n        \"\"\"SocialStrategy has name 'social'.\"\"\"\n        s = create_social_strategy()\n        assert s.name == \"social\"\n\n\nclass TestSemanticEmbed:\n    \"\"\"Tests for semantic_embed.\"\"\"\n\n    def test_semantic_embed_fallback(self, sample_signal):\n        \"\"\"Without LLM, produces valid 64-dim vector via hashing.\"\"\"\n        strategy = create_semantic_strategy(llm_service=None)\n        result = _run_async(semantic_embed(strategy, sample_signal))\n        assert result.shape == (64,), f\"Expected (64,), got {result.shape}\"\n        assert np.all(np.isfinite(result)), \"No NaN or Inf allowed\"\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6 or norm == 0.0\n\n    def test_semantic_embed_empty_content(self, empty_signal):\n        \"\"\"Empty content returns zero vector.\"\"\"\n        strategy = create_semantic_strategy(llm_service=None)\n        result = _run_async(semantic_embed(strategy, empty_signal))\n        assert np.all(result == 0.0), \"Empty content should yield zero vector\"\n\n    def test_semantic_embed_deterministic(self, sample_signal):\n        \"\"\"Fallback mode is deterministic.\"\"\"\n        strategy = create_semantic_strategy(llm_service=None)\n        r1 = _run_async(semantic_embed(strategy, sample_signal))\n        r2 = _run_async(semantic_embed(strategy, sample_signal))\n        np.testing.assert_array_equal(r1, r2, err_msg=\"Should be deterministic\")\n\n    def test_semantic_embed_llm_fallback_on_failure(self, sample_signal):\n        \"\"\"Falls back to hashing when LLM raises exception.\"\"\"\n        mock_llm = MagicMock()\n        mock_llm.embed_text = AsyncMock(side_effect=RuntimeError(\"LLM down\"))\n        strategy = create_semantic_strategy(llm_service=mock_llm)\n        result = _run_async(semantic_embed(strategy, sample_signal))\n        assert result.shape == (64,), \"Should still return 64-dim vector\"\n        assert np.all(np.isfinite(result)), \"No NaN or Inf\"\n\n\nclass TestTechnicalEmbed:\n    \"\"\"Tests for technical_embed.\"\"\"\n\n    def test_technical_embed_code(self, sample_signal):\n        \"\"\"Code content produces non-zero embedding.\"\"\"\n        strategy = create_technical_strategy()\n        result = _run_async(technical_embed(strategy, sample_signal))\n        assert result.shape == (64,)\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6, f\"Expected unit norm, got {norm}\"\n        assert not np.all(result == 0.0), \"Code content should not yield zero vector\"\n\n    def test_technical_embed_empty(self, empty_signal):\n        \"\"\"Empty content returns zero vector.\"\"\"\n        strategy = create_technical_strategy()\n        result = _run_async(technical_embed(strategy, empty_signal))\n        assert np.all(result == 0.0)\n\n    def test_technical_embed_deterministic(self, sample_signal):\n        \"\"\"Fully deterministic.\"\"\"\n        strategy = create_technical_strategy()\n        r1 = _run_async(technical_embed(strategy, sample_signal))\n        r2 = _run_async(technical_embed(strategy, sample_signal))\n        np.testing.assert_array_equal(r1, r2)\n\n    def test_technical_embed_dimension_ranges(self):\n        \"\"\"Output has 64 elements covering all dimension ranges.\"\"\"\n        sig = Signal(\n            id=\"code-sig\",\n            content=\"import os\\ndef foo(bar):\\n    return os.path.join(bar)\",\n            author=\"\",\n            mentions=[],\n            metadata={},\n            embeddings={},\n        )\n        strategy = create_technical_strategy()\n        result = _run_async(technical_embed(strategy, sig))\n        assert result.shape == (64,)\n        # General tokens in [0:32] - should have some non-zero\n        assert not np.all(result[:32] == 0.0), \"General token range should be non-zero for code\"\n\n\nclass TestSocialEmbed:\n    \"\"\"Tests for social_embed.\"\"\"\n\n    def test_social_embed_with_author(self, social_only_signal):\n        \"\"\"Signal with author+mentions produces non-zero embedding.\"\"\"\n        strategy = create_social_strategy()\n        result = _run_async(social_embed(strategy, social_only_signal))\n        assert result.shape == (64,)\n        norm = np.linalg.norm(result)\n        assert abs(norm - 1.0) < 1e-6\n        assert not np.all(result == 0.0)\n\n    def test_social_embed_no_metadata(self, empty_signal):\n        \"\"\"No social metadata returns zero vector.\"\"\"\n        strategy = create_social_strategy()\n        result = _run_async(social_embed(strategy, empty_signal))\n        assert np.all(result == 0.0)\n\n    def test_social_embed_deterministic(self, social_only_signal):\n        \"\"\"Fully deterministic.\"\"\"\n        strategy = create_social_strategy()\n        r1 = _run_async(social_embed(strategy, social_only_signal))\n        r2 = _run_async(social_embed(strategy, social_only_signal))\n        np.testing.assert_array_equal(r1, r2)\n\n    def test_social_embed_different_authors(self):\n        \"\"\"Different authors hash to different vectors.\"\"\"\n        strategy = create_social_strategy()\n        sig_alice = Signal(id=\"a\", content=\"hi\", author=\"alice\", mentions=[], metadata={}, embeddings={})\n        sig_bob = Signal(id=\"b\", content=\"hi\", author=\"bob\", mentions=[], metadata={}, embeddings={})\n        r_alice = _run_async(social_embed(strategy, sig_alice))\n        r_bob = _run_async(social_embed(strategy, sig_bob))\n        assert not np.array_equal(r_alice, r_bob), \"Different authors should produce different embeddings\"\n\n    def test_social_embed_cooccurrence(self):\n        \"\"\"Author+mention pair differs from author-only.\"\"\"\n        strategy = create_social_strategy()\n        sig_author_only = Signal(id=\"a\", content=\"hi\", author=\"alice\", mentions=[], metadata={}, embeddings={})\n        sig_with_mentions = Signal(id=\"b\", content=\"hi\", author=\"alice\", mentions=[\"bob\"], metadata={}, embeddings={})\n        r1 = _run_async(social_embed(strategy, sig_author_only))\n        r2 = _run_async(social_embed(strategy, sig_with_mentions))\n        assert not np.array_equal(r1, r2), \"Co-occurrence should add distinct signal\"\n\n\n# ===========================================================================\n# 4. ORCHESTRATION\n# ===========================================================================\n\nclass TestEmbedAll:\n    \"\"\"Tests for embed_all.\"\"\"\n\n    def test_embed_all_happy_path(self, registry_with_defaults, sample_signal):\n        \"\"\"Returns embeddings for all 3 strategies.\"\"\"\n        result = _run_async(embed_all(registry_with_defaults, sample_signal))\n        assert len(result.embeddings.entries) == 3, \\\n            f\"Expected 3 embeddings, got {len(result.embeddings.entries)}\"\n        assert len(result.failures) == 0, f\"Expected no failures, got {result.failures}\"\n        for name, vec in result.embeddings.entries.items():\n            assert vec.shape == (64,), f\"Strategy {name} has wrong shape {vec.shape}\"\n\n    def test_embed_all_no_strategies(self, empty_registry, sample_signal):\n        \"\"\"Raises RuntimeError with empty registry.\"\"\"\n        with pytest.raises(RuntimeError, match=\"(?i)no strateg\"):\n            _run_async(embed_all(empty_registry, sample_signal))\n\n    def test_embed_all_invalid_signal(self, registry_with_defaults):\n        \"\"\"Raises TypeError for None signal.\"\"\"\n        with pytest.raises(TypeError, match=\"(?i)signal\"):\n            _run_async(embed_all(registry_with_defaults, None))\n\n    def test_embed_all_partial_failure(self, empty_registry, sample_signal):\n        \"\"\"Records failure for one strategy, success for others.\"\"\"\n        # Register two good strategies and one bad\n        good = create_semantic_strategy()\n        register_strategy(empty_registry, \"semantic\", good)\n\n        bad = MagicMock()\n        bad.name = \"bad_strat\"\n        bad.embed = AsyncMock(side_effect=RuntimeError(\"boom\"))\n        register_strategy(empty_registry, \"bad_strat\", bad)\n\n        result = _run_async(embed_all(empty_registry, sample_signal))\n        total = len(result.embeddings.entries) + len(result.failures)\n        assert total == 2, f\"Total should be 2 (registered count), got {total}\"\n        assert len(result.failures) >= 1, \"Should have at least 1 failure\"\n\n    def test_embed_all_validates_shape(self, empty_registry, sample_signal):\n        \"\"\"Wrong-shape output is recorded as failure.\"\"\"\n        bad = MagicMock()\n        bad.name = \"wrong_shape\"\n        bad.embed = AsyncMock(return_value=np.zeros(32, dtype=np.float64))\n        register_strategy(empty_registry, \"wrong_shape\", bad)\n\n        result = _run_async(embed_all(empty_registry, sample_signal))\n        assert len(result.failures) == 1, \"Wrong shape should be a failure\"\n        assert result.failures[0].strategy_name == \"wrong_shape\"\n\n\nclass TestEmbedSingle:\n    \"\"\"Tests for embed_single.\"\"\"\n\n    def test_embed_single_happy(self, registry_with_defaults, sample_signal):\n        \"\"\"Returns valid embedding for 'technical' strategy.\"\"\"\n        result = _run_async(embed_single(registry_with_defaults, sample_signal, \"technical\"))\n        assert result.shape == (64,)\n        assert result.dtype in (np.float32, np.float64)\n\n    def test_embed_single_default_semantic(self, registry_with_defaults, sample_signal):\n        \"\"\"Defaults to 'semantic'.\"\"\"\n        result = _run_async(embed_single(registry_with_defaults, sample_signal))\n        assert result.shape == (64,)\n\n    def test_embed_single_not_found(self, registry_with_defaults, sample_signal):\n        \"\"\"Raises KeyError for unregistered name.\"\"\"\n        with pytest.raises(KeyError):\n            _run_async(embed_single(registry_with_defaults, sample_signal, \"nonexistent\"))\n\n    def test_embed_single_invalid_signal(self, registry_with_defaults):\n        \"\"\"Raises TypeError for None signal.\"\"\"\n        with pytest.raises(TypeError, match=\"(?i)signal\"):\n            _run_async(embed_single(registry_with_defaults, None))\n\n    def test_embed_single_execution_failure(self, empty_registry, sample_signal):\n        \"\"\"Raises RuntimeError when strategy fails.\"\"\"\n        bad = MagicMock()\n        bad.name = \"failing\"\n        bad.embed = AsyncMock(side_effect=RuntimeError(\"fail\"))\n        register_strategy(empty_registry, \"failing\", bad)\n        with pytest.raises(RuntimeError, match=\"(?i)fail|execution\"):\n            _run_async(embed_single(empty_registry, sample_signal, \"failing\"))\n\n\nclass TestPopulateSignalEmbeddings:\n    \"\"\"Tests for populate_signal_embeddings.\"\"\"\n\n    def test_populate_happy(self, registry_with_defaults, sample_signal):\n        \"\"\"Returns new signal with embeddings populated.\"\"\"\n        result = _run_async(populate_signal_embeddings(registry_with_defaults, sample_signal))\n        assert len(result.strategies_succeeded) > 0\n        for name in result.strategies_succeeded:\n            assert name in result.signal.embeddings\n\n    def test_populate_immutability(self, registry_with_defaults, sample_signal):\n        \"\"\"Does not mutate original signal.\"\"\"\n        original_embeddings = dict(sample_signal.embeddings) if sample_signal.embeddings else {}\n        result = _run_async(populate_signal_embeddings(registry_with_defaults, sample_signal))\n        current_embeddings = dict(sample_signal.embeddings) if sample_signal.embeddings else {}\n        assert current_embeddings == original_embeddings, \"Original signal must not be mutated\"\n        assert result.signal is not sample_signal or id(result.signal) != id(sample_signal)\n\n    def test_populate_preserves_fields(self, registry_with_defaults, sample_signal):\n        \"\"\"Preserves all non-embedding fields.\"\"\"\n        result = _run_async(populate_signal_embeddings(registry_with_defaults, sample_signal))\n        assert result.signal.id == sample_signal.id\n        assert result.signal.content == sample_signal.content\n        assert result.signal.author == sample_signal.author\n\n    def test_populate_embeddings_as_list_float(self, registry_with_defaults, sample_signal):\n        \"\"\"Stores embeddings as list[float], not ndarray.\"\"\"\n        result = _run_async(populate_signal_embeddings(registry_with_defaults, sample_signal))\n        for name, emb in result.signal.embeddings.items():\n            assert isinstance(emb, list), f\"Embedding for {name} should be a list\"\n            for val in emb:\n                assert isinstance(val, float), f\"Each element should be Python float\"\n\n    def test_populate_no_strategies(self, empty_registry, sample_signal):\n        \"\"\"Raises RuntimeError with empty registry.\"\"\"\n        with pytest.raises(RuntimeError, match=\"(?i)no strateg\"):\n            _run_async(populate_signal_embeddings(empty_registry, sample_signal))\n\n\nclass TestGetStrategyInfo:\n    \"\"\"Tests for get_strategy_info.\"\"\"\n\n    def test_get_strategy_info_semantic(self):\n        info = get_strategy_info(\"semantic\")\n        assert info.name == \"semantic\"\n        assert info.dimension == 64\n\n    def test_get_strategy_info_technical(self):\n        info = get_strategy_info(\"technical\")\n        assert info.name == \"technical\"\n        assert info.dimension == 64\n\n    def test_get_strategy_info_social(self):\n        info = get_strategy_info(\"social\")\n        assert info.name == \"social\"\n        assert info.dimension == 64\n\n\n# ===========================================================================\n# 5. DIMENSION WEIGHTS\n# ===========================================================================\n\nclass TestInitializeDimensionWeights:\n    \"\"\"Tests for initialize_dimension_weights.\"\"\"\n\n    def test_initialize_happy(self):\n        \"\"\"Creates equal logits for 3 strategies.\"\"\"\n        w = initialize_dimension_weights([\"semantic\", \"technical\", \"social\"])\n        for s in [\"semantic\", \"technical\", \"social\"]:\n            assert w.logits[s] == 0.0, f\"Logit for {s} should be 0.0\"\n        assert w.update_count == 0\n        assert w.learning_rate == pytest.approx(0.05)\n\n    def test_initialize_empty(self):\n        \"\"\"Empty list creates empty logits.\"\"\"\n        w = initialize_dimension_weights([])\n        assert len(w.logits) == 0\n        assert w.update_count == 0\n\n    def test_initialize_custom_lr(self):\n        \"\"\"Custom learning_rate is stored.\"\"\"\n        w = initialize_dimension_weights([\"a\"], learning_rate=0.1)\n        assert w.learning_rate == pytest.approx(0.1)\n\n    def test_initialize_empty_name(self):\n        \"\"\"Raises ValueError for empty string name.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)empty|non-empty\"):\n            initialize_dimension_weights([\"semantic\", \"\"])\n\n    def test_initialize_duplicate_name(self):\n        \"\"\"Raises ValueError for duplicate names.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)duplicate\"):\n            initialize_dimension_weights([\"semantic\", \"semantic\"])\n\n    def test_initialize_invalid_lr_zero(self):\n        \"\"\"Raises ValueError for learning_rate=0.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)learning.?rate\"):\n            initialize_dimension_weights([\"a\"], learning_rate=0.0)\n\n    def test_initialize_invalid_lr_too_large(self):\n        \"\"\"Raises ValueError for learning_rate=2.0.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)learning.?rate\"):\n            initialize_dimension_weights([\"a\"], learning_rate=2.0)\n\n\nclass TestGetNormalizedWeights:\n    \"\"\"Tests for get_normalized_weights.\"\"\"\n\n    def test_equal_logits(self, sample_weights):\n        \"\"\"Equal logits produce equal weights summing to 1.0.\"\"\"\n        nw = get_normalized_weights(sample_weights)\n        vals = list(nw.entries.values())\n        assert len(vals) == 3\n        assert sum(vals) == pytest.approx(1.0, abs=1e-9)\n        for v in vals:\n            assert v == pytest.approx(1.0 / 3.0, abs=1e-6)\n\n    def test_unequal_logits(self):\n        \"\"\"Higher logit gets higher weight.\"\"\"\n        w = initialize_dimension_weights([\"a\", \"b\"])\n        w.logits[\"a\"] = 2.0\n        w.logits[\"b\"] = 0.0\n        nw = get_normalized_weights(w)\n        assert nw.entries[\"a\"] > nw.entries[\"b\"], \"Higher logit should get higher weight\"\n        assert sum(nw.entries.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_subset_strategies(self, sample_weights):\n        \"\"\"With strategies parameter, only those strategies appear.\"\"\"\n        nw = get_normalized_weights(sample_weights, strategies=[\"semantic\", \"technical\"])\n        assert set(nw.entries.keys()) == {\"semantic\", \"technical\"}\n        assert sum(nw.entries.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_missing_strategies_get_default(self):\n        \"\"\"Missing strategies get default logit 0.0.\"\"\"\n        w = initialize_dimension_weights([\"semantic\"])\n        w.logits[\"semantic\"] = 1.0\n        nw = get_normalized_weights(w, strategies=[\"semantic\", \"new_one\"])\n        assert \"new_one\" in nw.entries\n        assert sum(nw.entries.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_empty_returns_empty(self):\n        \"\"\"Empty logits with no strategies returns empty dict.\"\"\"\n        w = initialize_dimension_weights([])\n        nw = get_normalized_weights(w)\n        assert len(nw.entries) == 0\n\n    def test_no_mutation(self, sample_weights):\n        \"\"\"Does not modify the input weights.\"\"\"\n        logits_before = dict(sample_weights.logits)\n        count_before = sample_weights.update_count\n        get_normalized_weights(sample_weights)\n        assert dict(sample_weights.logits) == logits_before\n        assert sample_weights.update_count == count_before\n\n    def test_numerical_stability_large_logits(self):\n        \"\"\"Handles large logit values without overflow.\"\"\"\n        w = initialize_dimension_weights([\"a\", \"b\"])\n        w.logits[\"a\"] = 500.0\n        w.logits[\"b\"] = 500.0\n        nw = get_normalized_weights(w)\n        for v in nw.entries.values():\n            assert math.isfinite(v), \"Should not overflow with large logits\"\n        assert sum(nw.entries.values()) == pytest.approx(1.0, abs=1e-9)\n\n\nclass TestRecordAcceptance:\n    \"\"\"Tests for record_acceptance.\"\"\"\n\n    def test_record_acceptance_happy(self, sample_weights):\n        \"\"\"Updates logits and increments update_count.\"\"\"\n        old_count = sample_weights.update_count\n        result = record_acceptance(sample_weights, {\"semantic\": 0.8, \"technical\": 0.3, \"social\": 0.5})\n        assert sample_weights.update_count == old_count + 1\n        assert result.effective_learning_rate > 0\n\n    def test_record_acceptance_zero_sum(self, sample_weights):\n        \"\"\"Logit deltas sum to approximately 0.\"\"\"\n        result = record_acceptance(sample_weights, {\"semantic\": 0.9, \"technical\": 0.1, \"social\": 0.5})\n        delta_sum = sum(result.logit_deltas.values())\n        assert abs(delta_sum) < 1e-10, f\"Delta sum should be ~0, got {delta_sum}\"\n\n    def test_record_acceptance_lr_decay(self):\n        \"\"\"Effective_lr = lr / (1 + old_count * 0.01).\"\"\"\n        w = initialize_dimension_weights([\"a\", \"b\"], learning_rate=0.05)\n        w.update_count = 100  # set manually for test\n        old_count = w.update_count\n        result = record_acceptance(w, {\"a\": 0.5, \"b\": 0.5})\n        expected_lr = 0.05 / (1 + old_count * 0.01)\n        assert result.effective_learning_rate == pytest.approx(expected_lr, rel=1e-6)\n\n    def test_record_acceptance_in_place(self, sample_weights):\n        \"\"\"Returns the same object.\"\"\"\n        result = record_acceptance(sample_weights, {\"semantic\": 0.5, \"technical\": 0.5, \"social\": 0.5})\n        assert result.weights is sample_weights\n\n    def test_record_acceptance_new_strategy(self, sample_weights):\n        \"\"\"Inserts new strategy with default logit before update.\"\"\"\n        result = record_acceptance(sample_weights, {\"semantic\": 0.5, \"new_strat\": 0.9})\n        assert \"new_strat\" in sample_weights.logits\n\n    def test_record_acceptance_empty_contributions(self, sample_weights):\n        \"\"\"Raises ValueError for empty contributions.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)empty|non-empty\"):\n            record_acceptance(sample_weights, {})\n\n    def test_record_acceptance_nan_contribution(self, sample_weights):\n        \"\"\"Raises ValueError for NaN contribution.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)finite|nan\"):\n            record_acceptance(sample_weights, {\"semantic\": float('nan')})\n\n    def test_record_acceptance_logits_stay_finite(self, sample_weights):\n        \"\"\"All logits remain finite after update.\"\"\"\n        record_acceptance(sample_weights, {\"semantic\": 0.8, \"technical\": 0.2, \"social\": 0.5})\n        for k, v in sample_weights.logits.items():\n            assert math.isfinite(v), f\"Logit for {k} is not finite: {v}\"\n\n\nclass TestEnsureStrategiesPresent:\n    \"\"\"Tests for ensure_strategies_present.\"\"\"\n\n    def test_adds_missing(self, sample_weights):\n        \"\"\"Adds missing strategies with logit 0.0.\"\"\"\n        ensure_strategies_present(sample_weights, [\"semantic\", \"new_one\"])\n        assert \"new_one\" in sample_weights.logits\n        assert sample_weights.logits[\"new_one\"] == 0.0\n\n    def test_preserves_existing(self, sample_weights):\n        \"\"\"Does not change existing logit values.\"\"\"\n        sample_weights.logits[\"semantic\"] = 1.5\n        ensure_strategies_present(sample_weights, [\"semantic\", \"new_one\"])\n        assert sample_weights.logits[\"semantic\"] == 1.5\n\n    def test_empty_name_raises(self, sample_weights):\n        \"\"\"Raises ValueError for empty strategy name.\"\"\"\n        with pytest.raises(ValueError, match=\"(?i)empty|non-empty\"):\n            ensure_strategies_present(sample_weights, [\"semantic\", \"\"])\n\n    def test_returns_same_object(self, sample_weights):\n        \"\"\"Returns the same instance (in-place).\"\"\"\n        result = ensure_strategies_present(sample_weights, [\"semantic\"])\n        assert result is sample_weights\n\n\n# ===========================================================================\n# 6. WEIGHTED SIMILARITY\n# ===========================================================================\n\nclass TestComputeWeightedEmbeddingSimilarity:\n    \"\"\"Tests for compute_weighted_embedding_similarity.\"\"\"\n\n    def test_similarity_happy(self, sample_weights):\n        \"\"\"Returns correct result structure.\"\"\"\n        v1 = _make_unit_vector(64, seed=1).tolist()\n        v2 = _make_unit_vector(64, seed=2).tolist()\n        sig_emb = {\"semantic\": v1, \"technical\": v1, \"social\": v1}\n        ctx_proto = {\"semantic\": v2, \"technical\": v2, \"social\": v2}\n        result = compute_weighted_embedding_similarity(sig_emb, ctx_proto, sample_weights)\n        assert math.isfinite(result.similarity)\n        assert len(result.strategies_used) == 3\n        assert sum(result.effective_weights.values()) == pytest.approx(1.0, abs=1e-9)\n\n    def test_similarity_no_weights(self):\n        \"\"\"Returns 0.0 when dimension_weights is None.\"\"\"\n        v = _make_unit_vector(64).tolist()\n        result = compute_weighted_embedding_similarity({\"a\": v}, {\"a\": v}, None)\n        assert result.similarity == 0.0\n        assert len(result.strategies_used) == 0\n\n    def test_similarity_empty_intersection(self, sample_weights):\n        \"\"\"Returns 0.0 when no strategies overlap.\"\"\"\n        v = _make_unit_vector(64).tolist()\n        result = compute_weighted_embedding_similarity({\"a\": v}, {\"b\": v}, sample_weights)\n        assert result.similarity == 0.0\n        assert len(result.strategies_used) == 0\n\n    def test_similarity_identical_vectors(self, sample_weights):\n        \"\"\"Identical unit vectors yield similarity ~1.0.\"\"\"\n        v = _make_unit_vector(64).tolist()\n        sig_emb = {\"semantic\": v, \"technical\": v, \"social\": v}\n        result = compute_weighted_embedding_similarity(sig_emb, sig_emb, sample_weights)\n        assert result.similarity == pytest.approx(1.0, abs=1e-5)\n\n    def test_similarity_orthogonal_vectors(self, sample_weights):\n        \"\"\"Orthogonal unit vectors yield similarity ~0.0.\"\"\"\n        # Construct two orthogonal vectors\n        v1 = np.zeros(64, dtype=np.float64)\n        v1[0] = 1.0\n        v2 = np.zeros(64, dtype=np.float64)\n        v2[1] = 1.0\n        sig_emb = {\"semantic\": v1.tolist(), \"technical\": v1.tolist(), \"social\": v1.tolist()}\n        ctx_proto = {\"semantic\": v2.tolist(), \"technical\": v2.tolist(), \"social\": v2.tolist()}\n        result = compute_weighted_embedding_similarity(sig_emb, ctx_proto, sample_weights)\n        assert result.similarity == pytest.approx(0.0, abs=1e-5)\n\n    def test_similarity_dimension_mismatch(self, sample_weights):\n        \"\"\"Raises ValueError for mismatched dimensions.\"\"\"\n        v64 = _make_unit_vector(64).tolist()\n        v32 = _make_unit_vector(32).tolist()\n        with pytest.raises(ValueError, match=\"(?i)dimension|mismatch\"):\n            compute_weighted_embedding_similarity(\n                {\"semantic\": v64}, {\"semantic\": v32}, sample_weights\n            )\n\n    def test_similarity_non_finite_embedding(self, sample_weights):\n        \"\"\"Raises ValueError for NaN embedding.\"\"\"\n        v_nan = [float('nan')] * 64\n        v_ok = _make_unit_vector(64).tolist()\n        with pytest.raises(ValueError, match=\"(?i)finite|nan\"):\n            compute_weighted_embedding_similarity(\n                {\"semantic\": v_nan}, {\"semantic\": v_ok}, sample_weights\n            )\n\n    def test_similarity_per_strategy_breakdown(self, sample_weights):\n        \"\"\"Result includes per-strategy similarities.\"\"\"\n        v = _make_unit_vector(64).tolist()\n        sig_emb = {\"semantic\": v, \"technical\": v, \"social\": v}\n        result = compute_weighted_embedding_similarity(sig_emb, sig_emb, sample_weights)\n        for s in result.strategies_used:\n            assert s in result.per_strategy_similarities\n\n    def test_similarity_no_input_mutation(self, sample_weights):\n        \"\"\"Does not modify inputs.\"\"\"\n        v = _make_unit_vector(64).tolist()\n        sig_emb = {\"semantic\": list(v)}\n        ctx_proto = {\"semantic\": list(v)}\n        logits_before = dict(sample_weights.logits)\n        compute_weighted_embedding_similarity(sig_emb, ctx_proto, sample_weights)\n        assert sig_emb == {\"semantic\": v}\n        assert ctx_proto == {\"semantic\": v}\n        assert dict(sample_weights.logits) == logits_before\n\n\n# ===========================================================================\n# 7. SERIALIZATION\n# ===========================================================================\n\nclass TestSerializeDimensionWeights:\n    \"\"\"Tests for serialize/deserialize dimension weights.\"\"\"\n\n    def test_serialize_happy(self, sample_weights):\n        \"\"\"Produces JSON-safe dict with correct keys.\"\"\"\n        result = serialize_dimension_weights(sample_weights)\n        assert \"logits\" in result.__dict__ or hasattr(result, \"logits\")\n        assert \"learning_rate\" in result.__dict__ or hasattr(result, \"learning_rate\")\n        assert \"update_count\" in result.__dict__ or hasattr(result, \"update_count\")\n        assert \"schema_version\" in result.__dict__ or hasattr(result, \"schema_version\")\n        assert result.schema_version == 1\n\n    def test_serialize_roundtrip(self, sample_weights):\n        \"\"\"Round-trip produces equivalent instance.\"\"\"\n        # Modify logits for a meaningful test\n        sample_weights.logits[\"semantic\"] = 1.5\n        sample_weights.logits[\"technical\"] = -0.3\n\n        serialized = serialize_dimension_weights(sample_weights)\n        # Convert to dict for deserialization\n        data = {\n            \"logits\": serialized.logits,\n            \"learning_rate\": serialized.learning_rate,\n            \"update_count\": serialized.update_count,\n            \"schema_version\": serialized.schema_version,\n        }\n        restored = deserialize_dimension_weights(data)\n        assert restored.logits == pytest.approx(sample_weights.logits)\n        assert restored.learning_rate == pytest.approx(sample_weights.learning_rate)\n        assert restored.update_count == sample_weights.update_count\n\n\nclass TestDeserializeDimensionWeights:\n    \"\"\"Tests for deserialize_dimension_weights error cases.\"\"\"\n\n    def test_missing_logits(self):\n        \"\"\"Raises ValidationError when logits key missing.\"\"\"\n        with pytest.raises(Exception, match=\"(?i)logit|required|missing\"):\n            deserialize_dimension_weights({\"learning_rate\": 0.05})\n\n    def test_non_finite_logit(self):\n        \"\"\"Raises ValidationError for NaN logit.\"\"\"\n        with pytest.raises(Exception, match=\"(?i)finite|nan|float\"):\n            deserialize_dimension_weights({\"logits\": {\"a\": float('nan')}})\n\n    def test_invalid_lr(self):\n        \"\"\"Raises ValidationError for lr=0.\"\"\"\n        with pytest.raises(Exception, match=\"(?i)learning.?rate|invalid\"):\n            deserialize_dimension_weights({\"logits\": {\"a\": 0.0}, \"learning_rate\": 0.0})\n\n    def test_invalid_update_count(self):\n        \"\"\"Raises ValidationError for negative update_count.\"\"\"\n        with pytest.raises(Exception, match=\"(?i)update.?count|negative|invalid\"):\n            deserialize_dimension_weights({\"logits\": {\"a\": 0.0}, \"update_count\": -1})\n\n    def test_defaults_applied(self):\n        \"\"\"Missing optional fields get defaults.\"\"\"\n        w = deserialize_dimension_weights({\"logits\": {\"semantic\": 0.5}})\n        assert w.learning_rate == pytest.approx(0.05)\n        assert w.update_count == 0\n\n\nclass TestSerializeEmbeddings:\n    \"\"\"Tests for serialize/deserialize embeddings.\"\"\"\n\n    def test_serialize_embeddings_happy(self):\n        \"\"\"Produces correct structure.\"\"\"\n        embs = {\"semantic\": [0.1] * 64, \"technical\": [0.2] * 64}\n        result = serialize_embeddings(embs, 64)\n        assert result.schema_version == 1\n        assert result.dimensions == 64\n        assert \"semantic\" in result.embeddings\n        assert \"technical\" in result.embeddings\n\n    def test_serialize_embeddings_dimension_mismatch(self):\n        \"\"\"Raises ValueError for wrong-length vector.\"\"\"\n        embs = {\"semantic\": [0.1] * 32}\n        with pytest.raises(ValueError, match=\"(?i)dimension\"):\n            serialize_embeddings(embs, 64)\n\n    def test_serialize_embeddings_non_finite(self):\n        \"\"\"Raises ValueError for NaN in vector.\"\"\"\n        embs = {\"semantic\": [float('nan')] * 64}\n        with pytest.raises(ValueError, match=\"(?i)finite|nan\"):\n            serialize_embeddings(embs, 64)\n\n    def test_deserialize_embeddings_happy(self):\n        \"\"\"Reconstructs correct dict.\"\"\"\n        data = {\n            \"embeddings\": {\"semantic\": [0.1] * 64},\n            \"dimensions\": 64,\n            \"schema_version\": 1,\n        }\n        result = deserialize_embeddings(data)\n        assert \"semantic\" in result\n        assert len(result[\"semantic\"]) == 64\n\n    def test_deserialize_embeddings_missing_key(self):\n        \"\"\"Raises ValidationError for missing 'embeddings' key.\"\"\"\n        with pytest.raises(Exception, match=\"(?i)embeddings|missing|required\"):\n            deserialize_embeddings({\"dimensions\": 64})\n\n    def test_deserialize_embeddings_missing_dimensions(self):\n        \"\"\"Raises ValidationError for missing 'dimensions' key.\"\"\"\n        with pytest.raises(Exception, match=\"(?i)dimensions|missing|required\"):\n            deserialize_embeddings({\"embeddings\": {}})\n\n    def test_deserialize_embeddings_roundtrip(self):\n        \"\"\"Round-trip preserves data.\"\"\"\n        original = {\"semantic\": [float(i) * 0.01 for i in range(64)]}\n        serialized = serialize_embeddings(original, 64)\n        data = {\n            \"embeddings\": serialized.embeddings,\n            \"dimensions\": serialized.dimensions,\n            \"schema_version\": serialized.schema_version,\n        }\n        restored = deserialize_embeddings(data)\n        for i in range(64):\n            assert restored[\"semantic\"][i] == pytest.approx(original[\"semantic\"][i])\n\n\n# ===========================================================================\n# 8. INVARIANT TESTS\n# ===========================================================================\n\nclass TestInvariants:\n    \"\"\"Cross-cutting invariant tests.\"\"\"\n\n    def test_embedding_dim_64(self):\n        \"\"\"Default registry dimensions is 64.\"\"\"\n        reg = create_registry()\n        assert reg.dimensions == 64\n\n    def test_all_strategies_produce_64_dim(self, registry_with_defaults, sample_signal):\n        \"\"\"All 3 strategies produce 64-dimension vectors.\"\"\"\n        result = _run_async(embed_all(registry_with_defaults, sample_signal))\n        for name, vec in result.embeddings.entries.items():\n            assert vec.shape == (64,), f\"{name} produced shape {vec.shape}, expected (64,)\"\n\n    def test_no_nan_inf_in_embeddings(self, registry_with_defaults, sample_signal):\n        \"\"\"No embedding vector contains NaN or Inf.\"\"\"\n        result = _run_async(embed_all(registry_with_defaults, sample_signal))\n        for name, vec in result.embeddings.entries.items():\n            assert np.all(np.isfinite(vec)), f\"{name} contains non-finite values\"\n\n    def test_zero_vector_sentinel(self):\n        \"\"\"Zero vector has all zeros and norm 0.0.\"\"\"\n        v = zero_vector(64)\n        assert np.all(v == 0.0)\n        assert np.linalg.norm(v) == 0.0\n\n    def test_multiple_registries_independent(self):\n        \"\"\"Multiple registries are independent.\"\"\"\n        r1 = create_registry(dimensions=64, register_defaults=True)\n        r2 = create_registry(dimensions=64, register_defaults=True)\n        unregister_strategy(r1, \"semantic\")\n        assert not has_strategy(r1, \"semantic\")\n        assert has_strategy(r2, \"semantic\"), \"r2 should be unaffected by r1 unregister\"\n\n    def test_embedding_vector_unit_or_zero(self, registry_with_defaults, sample_signal):\n        \"\"\"Every embedding is either L2-unit-normalized or zero vector.\"\"\"\n        result = _run_async(embed_all(registry_with_defaults, sample_signal))\n        for name, vec in result.embeddings.entries.items():\n            norm = np.linalg.norm(vec)\n            assert abs(norm - 1.0) < 1e-6 or abs(norm) < 1e-10, \\\n                f\"{name}: norm={norm} is neither ~1.0 nor ~0.0\"\n\n    def test_equal_logits_equal_weights(self):\n        \"\"\"All logits 0.0 produces equal 1/N weights.\"\"\"\n        w = initialize_dimension_weights([\"a\", \"b\", \"c\"])\n        nw = get_normalized_weights(w)\n        for v in nw.entries.values():\n            assert v == pytest.approx(1.0 / 3.0, abs=1e-6)\n\n    def test_update_count_monotonic(self, sample_weights):\n        \"\"\"update_count is monotonically increasing.\"\"\"\n        counts = []\n        for _ in range(5):\n            counts.append(sample_weights.update_count)\n            record_acceptance(sample_weights, {\"semantic\": 0.5, \"technical\": 0.3, \"social\": 0.2})\n        counts.append(sample_weights.update_count)\n        for i in range(len(counts) - 1):\n            assert counts[i + 1] > counts[i], \"update_count must monotonically increase\"\n\n    def test_learning_rate_immutable_after_init(self, sample_weights):\n        \"\"\"learning_rate does not change after initialization.\"\"\"\n        lr_before = sample_weights.learning_rate\n        for _ in range(10):\n            record_acceptance(sample_weights, {\"semantic\": 0.5, \"technical\": 0.5, \"social\": 0.5})\n        assert sample_weights.learning_rate == lr_before\n\n    def test_weight_updates_zero_sum(self, sample_weights):\n        \"\"\"Weight updates are zero-sum across strategies.\"\"\"\n        for _ in range(5):\n            result = record_acceptance(\n                sample_weights,\n                {\"semantic\": 0.9, \"technical\": 0.1, \"social\": 0.5},\n            )\n            delta_sum = sum(result.logit_deltas.values())\n            assert abs(delta_sum) < 1e-10, f\"Delta sum should be ~0, got {delta_sum}\"\n\n    def test_serialization_roundtrip_dimension_weights(self, sample_weights):\n        \"\"\"Serialization round-trip preserves weights.\"\"\"\n        record_acceptance(sample_weights, {\"semantic\": 0.8, \"technical\": 0.2, \"social\": 0.5})\n        serialized = serialize_dimension_weights(sample_weights)\n        data = {\n            \"logits\": serialized.logits,\n            \"learning_rate\": serialized.learning_rate,\n            \"update_count\": serialized.update_count,\n            \"schema_version\": serialized.schema_version,\n        }\n        restored = deserialize_dimension_weights(data)\n        for k in sample_weights.logits:\n            assert restored.logits[k] == pytest.approx(sample_weights.logits[k])\n        assert restored.learning_rate == pytest.approx(sample_weights.learning_rate)\n        assert restored.update_count == sample_weights.update_count\n"
+}

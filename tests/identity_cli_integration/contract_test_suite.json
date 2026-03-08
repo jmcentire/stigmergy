@@ -1,0 +1,894 @@
+{
+  "component_id": "identity_cli_integration",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "TC001",
+      "description": "Register all identity CLI flags on a fresh ArgumentParser and verify all four flags are accepted",
+      "function": "register_identity_cli_flags",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "A fresh argparse.ArgumentParser instance",
+      "expected_output_description": "The same parser is returned with --resolve-identities, --auto-confirm-above, --unknown-threshold, --identity-output-path registered",
+      "expected_error": "",
+      "assertions": [
+        "parser returned is the same object passed in",
+        "--resolve-identities defaults to False",
+        "--auto-confirm-above defaults to None",
+        "--unknown-threshold defaults to None",
+        "--identity-output-path defaults to None"
+      ]
+    },
+    {
+      "id": "TC002",
+      "description": "Registering flags on a parser that already has conflicting --resolve-identities flag raises config_invalid error",
+      "function": "register_identity_cli_flags",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Parser with --resolve-identities already registered",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=config_invalid",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'config_invalid'"
+      ]
+    },
+    {
+      "id": "TC003",
+      "description": "Calling register_identity_cli_flags twice on the same parser (idempotent claim) — second call should raise or be harmless",
+      "function": "register_identity_cli_flags",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Parser that already had flags registered by a previous call",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Either succeeds silently or raises config_invalid"
+      ]
+    },
+    {
+      "id": "TC004",
+      "description": "Parse a namespace with all flags set to valid values",
+      "function": "parse_cli_flags_to_struct",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "resolve_identities": "True",
+        "auto_confirm_above": "0.85",
+        "unknown_threshold": "10",
+        "identity_output_path": "/tmp/out.yaml"
+      },
+      "input_description": "",
+      "expected_output_description": "CLIFlags with all fields populated from namespace",
+      "expected_error": "",
+      "assertions": [
+        "result.resolve_identities is True",
+        "result.auto_confirm_above == 0.85",
+        "result.unknown_threshold == 10",
+        "result.output_path == Path('/tmp/out.yaml')"
+      ]
+    },
+    {
+      "id": "TC005",
+      "description": "Parse a namespace with all flags at defaults (None/False)",
+      "function": "parse_cli_flags_to_struct",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "resolve_identities": "False",
+        "auto_confirm_above": "None",
+        "unknown_threshold": "None",
+        "identity_output_path": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "CLIFlags with defaults",
+      "expected_error": "",
+      "assertions": [
+        "result.resolve_identities is False",
+        "result.auto_confirm_above is None",
+        "result.unknown_threshold is None",
+        "result.output_path is None"
+      ]
+    },
+    {
+      "id": "TC006",
+      "description": "Parse namespace with auto_confirm_above > 1.0 raises config_invalid",
+      "function": "parse_cli_flags_to_struct",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "auto_confirm_above": "1.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=config_invalid",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'config_invalid'"
+      ]
+    },
+    {
+      "id": "TC007",
+      "description": "Parse namespace with auto_confirm_above < 0.0 raises config_invalid",
+      "function": "parse_cli_flags_to_struct",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "auto_confirm_above": "-0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=config_invalid",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'config_invalid'"
+      ]
+    },
+    {
+      "id": "TC008",
+      "description": "Parse namespace with unknown_threshold < 1 raises config_invalid",
+      "function": "parse_cli_flags_to_struct",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_threshold": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=config_invalid",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'config_invalid'"
+      ]
+    },
+    {
+      "id": "TC009",
+      "description": "Build config with interactive=True, is_tty=True, CLI overrides applied",
+      "function": "build_config_from_cli",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "CLIFlags with auto_confirm_above=0.8, unknown_threshold=3, output_path set, is_tty=True",
+      "expected_output_description": "IdentityResolutionConfig with interactive=True, thresholds from CLI flags",
+      "expected_error": "",
+      "assertions": [
+        "config.interactive is True",
+        "config.auto_confirm_threshold == 0.8",
+        "config.unknown_count_threshold == 3",
+        "config.output_path matches CLI flag"
+      ]
+    },
+    {
+      "id": "TC010",
+      "description": "Build config with no CLI overrides — uses defaults",
+      "function": "build_config_from_cli",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "CLIFlags with all optional fields as None, is_tty=False, default_output_path provided",
+      "expected_output_description": "IdentityResolutionConfig with default values",
+      "expected_error": "",
+      "assertions": [
+        "config.interactive is False",
+        "config.auto_confirm_threshold == 0.95",
+        "config.unknown_count_threshold == 5",
+        "config.output_path == default_output_path"
+      ]
+    },
+    {
+      "id": "TC011",
+      "description": "Build config with interactive requested but is_tty=False forces non-interactive",
+      "function": "build_config_from_cli",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "CLIFlags with resolve_identities=True (interactive implied), is_tty=False",
+      "expected_output_description": "Config with interactive=False despite flag",
+      "expected_error": "",
+      "assertions": [
+        "config.interactive is False"
+      ]
+    },
+    {
+      "id": "TC012",
+      "description": "CLI output_path overrides default_output_path",
+      "function": "build_config_from_cli",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "CLIFlags with output_path='/custom/path.yaml', default_output_path='/default/path.yaml'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.output_path == Path('/custom/path.yaml')"
+      ]
+    },
+    {
+      "id": "TC013",
+      "description": "CLI output_path is None, default_output_path is used",
+      "function": "build_config_from_cli",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "CLIFlags with output_path=None, default_output_path='/default/path.yaml'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "config.output_path == Path('/default/path.yaml')"
+      ]
+    },
+    {
+      "id": "TC014",
+      "description": "Build config with auto_confirm_above out of range raises config_invalid",
+      "function": "build_config_from_cli",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "auto_confirm_above": "2.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=config_invalid",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'config_invalid'"
+      ]
+    },
+    {
+      "id": "TC015",
+      "description": "Unknown count above threshold with TTY returns True",
+      "function": "should_auto_trigger_interactive",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "10",
+        "unknown_count_threshold": "5",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "TC016",
+      "description": "Unknown count exactly at threshold with TTY returns False (must exceed, not equal)",
+      "function": "should_auto_trigger_interactive",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "5",
+        "unknown_count_threshold": "5",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "TC017",
+      "description": "Unknown count above threshold but no TTY returns False",
+      "function": "should_auto_trigger_interactive",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "10",
+        "unknown_count_threshold": "5",
+        "is_tty": "False"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "TC018",
+      "description": "Zero unknowns returns False regardless of TTY",
+      "function": "should_auto_trigger_interactive",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "0",
+        "unknown_count_threshold": "5",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "TC019",
+      "description": "Unknown count below threshold with TTY returns False",
+      "function": "should_auto_trigger_interactive",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "3",
+        "unknown_count_threshold": "5",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "TC020",
+      "description": "Unknown count of 1 above threshold of 1 with TTY returns False (1 is not > 1)",
+      "function": "should_auto_trigger_interactive",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "1",
+        "unknown_count_threshold": "1",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "TC021",
+      "description": "Unknown count of 2 above threshold of 1 with TTY returns True",
+      "function": "should_auto_trigger_interactive",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknown_count": "2",
+        "unknown_count_threshold": "1",
+        "is_tty": "True"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "TC022",
+      "description": "Serialize a valid ResolutionReport with decisions and unresolved items to YAML",
+      "function": "serialize_report_to_yaml",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Valid YAML string with schema_version key, sorted keys, block style",
+      "expected_error": "",
+      "assertions": [
+        "output is a non-empty string",
+        "output contains 'schema_version'",
+        "YAML is parseable",
+        "schema_version value matches report"
+      ]
+    },
+    {
+      "id": "TC023",
+      "description": "Serialize empty report (zero decisions, zero unresolved)",
+      "function": "serialize_report_to_yaml",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Valid YAML with empty lists",
+      "expected_error": "",
+      "assertions": [
+        "output contains 'schema_version'",
+        "output is valid YAML",
+        "decisions list is empty in parsed output"
+      ]
+    },
+    {
+      "id": "TC024",
+      "description": "Deterministic serialization: same input produces identical output on two calls",
+      "function": "serialize_report_to_yaml",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "first_output == second_output"
+      ]
+    },
+    {
+      "id": "TC025",
+      "description": "Serialize report with unicode handles and YAML-special characters",
+      "function": "serialize_report_to_yaml",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Report with handles containing unicode, colons, newlines",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output is valid YAML",
+        "round-trip preserves unicode handles"
+      ]
+    },
+    {
+      "id": "TC026",
+      "description": "Deserialize valid YAML string into ResolutionReport",
+      "function": "deserialize_report_from_yaml",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is a ResolutionReport",
+        "All fields are correctly hydrated"
+      ]
+    },
+    {
+      "id": "TC027",
+      "description": "Round-trip: serialize then deserialize produces equivalent report",
+      "function": "deserialize_report_from_yaml",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "deserialized report equals original report"
+      ]
+    },
+    {
+      "id": "TC028",
+      "description": "Deserialize malformed YAML raises yaml_deserialization_failed",
+      "function": "deserialize_report_from_yaml",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "yaml_content": "not: [valid: yaml: {{"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=yaml_deserialization_failed",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'yaml_deserialization_failed'"
+      ]
+    },
+    {
+      "id": "TC029",
+      "description": "Deserialize empty string raises yaml_deserialization_failed",
+      "function": "deserialize_report_from_yaml",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "yaml_content": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=yaml_deserialization_failed",
+      "assertions": [
+        "IdentityResolutionError is raised"
+      ]
+    },
+    {
+      "id": "TC030",
+      "description": "Deserialize YAML without schema_version key raises yaml_deserialization_failed",
+      "function": "deserialize_report_from_yaml",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "yaml_content": "foo: bar\nbaz: 42"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=yaml_deserialization_failed",
+      "assertions": [
+        "IdentityResolutionError is raised"
+      ]
+    },
+    {
+      "id": "TC031",
+      "description": "Non-interactive mode: all unknowns skipped, YAML written, report correct",
+      "function": "resolve_identity_unknowns",
+      "category": "happy_path",
+      "setup_description": "Mock suggestion_fn, alias_store, non-interactive prompter mode, tmp_path for output",
+      "mock_dependencies": {
+        "suggestion_fn": "returns [MatchSuggestion(candidate_person_id='john.smith', confidence=0.87, evidence=['email match'])]",
+        "alias_store": "mock with add_alias method"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "report.total_processed == len(unknowns)",
+        "report.interrupted is False",
+        "report.started_at <= report.completed_at",
+        "YAML file exists at config.output_path"
+      ]
+    },
+    {
+      "id": "TC032",
+      "description": "Interactive mode: user confirms suggestion, alias persisted, report counts correct",
+      "function": "resolve_identity_unknowns",
+      "category": "happy_path",
+      "setup_description": "Mock suggestion_fn with high-confidence match, mock prompter returns confirm decision",
+      "mock_dependencies": {
+        "suggestion_fn": "returns high confidence match",
+        "alias_store": "mock add_alias succeeds",
+        "prompter": "returns confirm decision"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "alias_store.add_alias called with correct args",
+        "report.user_confirmed >= 1",
+        "report.total_processed == len(unknowns)"
+      ]
+    },
+    {
+      "id": "TC033",
+      "description": "Auto-confirm: suggestion above auto_confirm_threshold is auto-confirmed without prompting",
+      "function": "resolve_identity_unknowns",
+      "category": "happy_path",
+      "setup_description": "Config with auto_confirm_threshold=0.9, suggestion at 0.95 confidence",
+      "mock_dependencies": {
+        "suggestion_fn": "returns match with confidence=0.95",
+        "alias_store": "mock add_alias succeeds"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "report.auto_confirmed >= 1",
+        "alias_store.add_alias was called",
+        "prompter was NOT called for auto-confirmed unknowns"
+      ]
+    },
+    {
+      "id": "TC034",
+      "description": "Interrupted: Ctrl+C during prompting persists partial progress and sets report.interrupted=True",
+      "function": "resolve_identity_unknowns",
+      "category": "edge_case",
+      "setup_description": "Mock prompter raises IdentityResolutionError(kind=interrupted) on second unknown",
+      "mock_dependencies": {
+        "suggestion_fn": "returns suggestions",
+        "alias_store": "mock add_alias succeeds"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "report.interrupted is True",
+        "partial progress was persisted",
+        "report.started_at <= report.completed_at"
+      ]
+    },
+    {
+      "id": "TC035",
+      "description": "Store write failure raises store_write_failed error",
+      "function": "resolve_identity_unknowns",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store": "add_alias raises Exception",
+        "suggestion_fn": "returns valid suggestions"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=store_write_failed",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'store_write_failed'"
+      ]
+    },
+    {
+      "id": "TC036",
+      "description": "Suggestion function failure raises resolver_unavailable error",
+      "function": "resolve_identity_unknowns",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "suggestion_fn": "raises Exception",
+        "alias_store": "mock"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=resolver_unavailable",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'resolver_unavailable'"
+      ]
+    },
+    {
+      "id": "TC037",
+      "description": "File write failure in non-interactive mode raises file_write_failed",
+      "function": "resolve_identity_unknowns",
+      "category": "error_case",
+      "setup_description": "Config output_path points to non-writable location",
+      "mock_dependencies": {
+        "suggestion_fn": "returns suggestions",
+        "alias_store": "mock"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=file_write_failed",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'file_write_failed'"
+      ]
+    },
+    {
+      "id": "TC038",
+      "description": "Report invariant: len(decisions) + len(unresolved) == total_processed when not interrupted",
+      "function": "resolve_identity_unknowns",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(report.decisions) + len(report.unresolved) == report.total_processed",
+        "report.interrupted is False"
+      ]
+    },
+    {
+      "id": "TC039",
+      "description": "Report invariant: auto_confirmed + user_confirmed <= total_processed",
+      "function": "resolve_identity_unknowns",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "report.auto_confirmed + report.user_confirmed <= report.total_processed"
+      ]
+    },
+    {
+      "id": "TC040",
+      "description": "Persist partial progress successfully: store written, YAML file written, returns True",
+      "function": "persist_partial_progress",
+      "category": "happy_path",
+      "setup_description": "Mock alias_store succeeds, tmp_path for YAML output",
+      "mock_dependencies": {
+        "alias_store": "add_alias succeeds"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True",
+        "alias_store.add_alias called for each confirm/manual decision",
+        "YAML file exists at config.output_path"
+      ]
+    },
+    {
+      "id": "TC041",
+      "description": "Store write fails during partial progress — returns False, best-effort",
+      "function": "persist_partial_progress",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store": "add_alias raises Exception"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False",
+        "No exception raised (best-effort)"
+      ]
+    },
+    {
+      "id": "TC042",
+      "description": "YAML file write fails during partial progress — returns False, best-effort",
+      "function": "persist_partial_progress",
+      "category": "error_case",
+      "setup_description": "Config output_path is non-writable",
+      "mock_dependencies": {
+        "alias_store": "add_alias succeeds"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False",
+        "No exception raised (best-effort)"
+      ]
+    },
+    {
+      "id": "TC043",
+      "description": "Non-interactive prompter returns skip decision for any unknown",
+      "function": "prompt",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UnknownIdentifier and MatchSuggestionList",
+      "expected_output_description": "ResolutionDecision with action=skip, resolved_person_id=None",
+      "expected_error": "",
+      "assertions": [
+        "decision.action == 'skip'",
+        "decision.resolved_person_id is None",
+        "decision.unknown == input unknown"
+      ]
+    },
+    {
+      "id": "TC044",
+      "description": "Interactive prompter: user types 'y' to confirm best match",
+      "function": "prompt",
+      "category": "happy_path",
+      "setup_description": "Mock stdin to return 'y'",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "decision.action == 'confirm'",
+        "decision.resolved_person_id == best_suggestion.candidate_person_id",
+        "decision.matched_suggestion is not None"
+      ]
+    },
+    {
+      "id": "TC045",
+      "description": "Interactive prompter: user types 'n' to reject suggestion",
+      "function": "prompt",
+      "category": "edge_case",
+      "setup_description": "Mock stdin to return 'n'",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "decision.action == 'reject'",
+        "decision.resolved_person_id is None"
+      ]
+    },
+    {
+      "id": "TC046",
+      "description": "Interactive prompter: user types a custom person_id (manual resolution)",
+      "function": "prompt",
+      "category": "edge_case",
+      "setup_description": "Mock stdin to return 'jane.doe'",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "decision.action == 'manual'",
+        "decision.resolved_person_id == 'jane.doe'"
+      ]
+    },
+    {
+      "id": "TC047",
+      "description": "Prompt with empty suggestions list — interactive mode shows 'no suggestions'",
+      "function": "prompt",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UnknownIdentifier with empty MatchSuggestionList",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "decision is returned successfully",
+        "decision.action in ('skip', 'manual', 'reject')"
+      ]
+    },
+    {
+      "id": "TC048",
+      "description": "Interactive prompt IO failure raises prompt_io_error",
+      "function": "prompt",
+      "category": "error_case",
+      "setup_description": "Mock stdin/stdout to raise IOError",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=prompt_io_error",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'prompt_io_error'"
+      ]
+    },
+    {
+      "id": "TC049",
+      "description": "Interactive prompt Ctrl+C raises interrupted error",
+      "function": "prompt",
+      "category": "error_case",
+      "setup_description": "Mock input to raise KeyboardInterrupt",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with kind=interrupted",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "error.kind == 'interrupted'"
+      ]
+    },
+    {
+      "id": "TC050",
+      "description": "Confirmed decisions have non-null resolved_person_id; skip/reject have null",
+      "function": "resolve_identity_unknowns",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All decisions with action confirm/manual have non-empty resolved_person_id",
+        "All decisions with action reject/skip have resolved_person_id is None"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for identity_cli_integration component.\nVerifies behavior of Identity Prompting CLI Integration per contract v1.\n\nRun with: pytest contract_test.py -v\n\"\"\"\n\nimport argparse\nimport asyncio\nfrom datetime import datetime, timezone\nfrom pathlib import Path\nfrom unittest.mock import AsyncMock, MagicMock, Mock, patch, PropertyMock\nimport pytest\n\n# Import component under test\nfrom src.identity_cli_integration import (\n    register_identity_cli_flags,\n    parse_cli_flags_to_struct,\n    build_config_from_cli,\n    should_auto_trigger_interactive,\n    serialize_report_to_yaml,\n    deserialize_report_from_yaml,\n    resolve_identity_unknowns,\n    persist_partial_progress,\n    prompt,\n    # Types\n    UnknownIdentifier,\n    MatchSuggestion,\n    ResolutionDecision,\n    ResolutionReport,\n    IdentityResolutionConfig,\n    IdentityResolutionError,\n    CLIFlags,\n    PartialProgress,\n)\n\n\n# ============================================================================\n# Helpers & Fixtures\n# ============================================================================\n\ndef _utc_now():\n    return datetime.now(timezone.utc)\n\n\ndef _make_unknown(handle=\"@jsmith\", source=\"git_log\", occurrence_count=3):\n    return UnknownIdentifier(\n        handle=handle,\n        source=source,\n        first_seen=_utc_now(),\n        occurrence_count=occurrence_count,\n    )\n\n\ndef _make_suggestion(candidate_person_id=\"john.smith\", confidence=0.87, evidence=None):\n    return MatchSuggestion(\n        candidate_person_id=candidate_person_id,\n        confidence=confidence,\n        evidence=evidence or [\"email prefix matches\"],\n    )\n\n\ndef _make_config(tmp_path, auto_confirm_threshold=0.95, unknown_count_threshold=5,\n                 interactive=False):\n    return IdentityResolutionConfig(\n        auto_confirm_threshold=auto_confirm_threshold,\n        unknown_count_threshold=unknown_count_threshold,\n        output_path=tmp_path / \"unresolved.yaml\",\n        interactive=interactive,\n    )\n\n\ndef _make_report(decisions=None, unresolved=None, auto_confirmed=0,\n                 user_confirmed=0, total_processed=0, interrupted=False):\n    now = _utc_now()\n    return ResolutionReport(\n        schema_version=1,\n        decisions=decisions or [],\n        unresolved=unresolved or [],\n        auto_confirmed=auto_confirmed,\n        user_confirmed=user_confirmed,\n        total_processed=total_processed,\n        interrupted=interrupted,\n        started_at=now,\n        completed_at=now,\n    )\n\n\ndef _make_decision(unknown=None, action=\"confirm\", resolved_person_id=\"john.smith\",\n                   matched_suggestion=None):\n    unknown = unknown or _make_unknown()\n    if action in (\"confirm\",) and matched_suggestion is None:\n        matched_suggestion = _make_suggestion(candidate_person_id=resolved_person_id)\n    return ResolutionDecision(\n        unknown=unknown,\n        action=action,\n        resolved_person_id=resolved_person_id if action in (\"confirm\", \"manual\") else None,\n        matched_suggestion=matched_suggestion if action == \"confirm\" else None,\n        decided_at=_utc_now(),\n    )\n\n\ndef _make_cli_flags(resolve_identities=False, auto_confirm_above=None,\n                    unknown_threshold=None, output_path=None):\n    return CLIFlags(\n        resolve_identities=resolve_identities,\n        auto_confirm_above=auto_confirm_above,\n        unknown_threshold=unknown_threshold,\n        output_path=output_path,\n    )\n\n\ndef _make_namespace(**kwargs):\n    \"\"\"Create an argparse.Namespace mimicking parsed identity CLI flags.\"\"\"\n    defaults = {\n        \"resolve_identities\": False,\n        \"auto_confirm_above\": None,\n        \"unknown_threshold\": None,\n        \"identity_output_path\": None,\n    }\n    defaults.update(kwargs)\n    return argparse.Namespace(**defaults)\n\n\n# ============================================================================\n# Section 1: Flag Parsing & Config Construction\n# ============================================================================\n\nclass TestRegisterIdentityCLIFlags:\n    \"\"\"Tests for register_identity_cli_flags.\"\"\"\n\n    def test_registers_all_flags_on_fresh_parser(self):\n        \"\"\"TC001: Register all identity CLI flags on a fresh ArgumentParser.\"\"\"\n        parser = argparse.ArgumentParser()\n        result = register_identity_cli_flags(parser)\n\n        # Returns the same parser for chaining\n        assert result is parser, \"Should return the same parser instance for chaining\"\n\n        # Verify flags are accepted by parsing known args\n        args = parser.parse_args([])\n        assert hasattr(args, \"resolve_identities\"), \\\n            \"Parser should have --resolve-identities flag\"\n        assert args.resolve_identities is False, \\\n            \"--resolve-identities should default to False\"\n\n        # Verify optional flags default to None\n        assert getattr(args, \"auto_confirm_above\", \"MISSING\") is None, \\\n            \"--auto-confirm-above should default to None\"\n        assert getattr(args, \"unknown_threshold\", \"MISSING\") is None, \\\n            \"--unknown-threshold should default to None\"\n        assert getattr(args, \"identity_output_path\", \"MISSING\") is None, \\\n            \"--identity-output-path should default to None\"\n\n    def test_resolve_identities_flag_true(self):\n        \"\"\"Verify --resolve-identities sets the flag to True.\"\"\"\n        parser = argparse.ArgumentParser()\n        register_identity_cli_flags(parser)\n        args = parser.parse_args([\"--resolve-identities\"])\n        assert args.resolve_identities is True\n\n    def test_no_resolve_identities_flag(self):\n        \"\"\"Verify --no-resolve-identities sets the flag to False.\"\"\"\n        parser = argparse.ArgumentParser()\n        register_identity_cli_flags(parser)\n        args = parser.parse_args([\"--no-resolve-identities\"])\n        assert args.resolve_identities is False\n\n    def test_auto_confirm_above_flag(self):\n        \"\"\"Verify --auto-confirm-above accepts a float value.\"\"\"\n        parser = argparse.ArgumentParser()\n        register_identity_cli_flags(parser)\n        args = parser.parse_args([\"--auto-confirm-above\", \"0.85\"])\n        assert args.auto_confirm_above == 0.85\n\n    def test_unknown_threshold_flag(self):\n        \"\"\"Verify --unknown-threshold accepts an int value.\"\"\"\n        parser = argparse.ArgumentParser()\n        register_identity_cli_flags(parser)\n        args = parser.parse_args([\"--unknown-threshold\", \"10\"])\n        assert args.unknown_threshold == 10\n\n    def test_identity_output_path_flag(self):\n        \"\"\"Verify --identity-output-path accepts a path value.\"\"\"\n        parser = argparse.ArgumentParser()\n        register_identity_cli_flags(parser)\n        args = parser.parse_args([\"--identity-output-path\", \"/tmp/out.yaml\"])\n        # Should be a string or Path\n        assert str(args.identity_output_path) == \"/tmp/out.yaml\"\n\n    def test_conflicting_flags_raises_config_invalid(self):\n        \"\"\"TC002: Registering on parser with conflicting flag raises config_invalid.\"\"\"\n        parser = argparse.ArgumentParser()\n        parser.add_argument(\"--resolve-identities\", action=\"store_true\")\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            register_identity_cli_flags(parser)\n        assert exc_info.value.kind == \"config_invalid\", \\\n            \"Should raise config_invalid for conflicting flags\"\n\n    def test_double_registration_raises_or_is_harmless(self):\n        \"\"\"TC003: Calling register twice should raise config_invalid or be harmless.\"\"\"\n        parser = argparse.ArgumentParser()\n        register_identity_cli_flags(parser)\n        try:\n            register_identity_cli_flags(parser)\n            # If no error, idempotent behavior is acceptable\n            args = parser.parse_args([])\n            assert hasattr(args, \"resolve_identities\")\n        except IdentityResolutionError as e:\n            assert e.kind == \"config_invalid\"\n\n\nclass TestParseCLIFlagsToStruct:\n    \"\"\"Tests for parse_cli_flags_to_struct.\"\"\"\n\n    def test_all_flags_set_valid(self):\n        \"\"\"TC004: Parse namespace with all flags set to valid values.\"\"\"\n        ns = _make_namespace(\n            resolve_identities=True,\n            auto_confirm_above=0.85,\n            unknown_threshold=10,\n            identity_output_path=\"/tmp/out.yaml\",\n        )\n        result = parse_cli_flags_to_struct(ns)\n        assert result.resolve_identities is True, \"resolve_identities should be True\"\n        assert result.auto_confirm_above == 0.85, \"auto_confirm_above should be 0.85\"\n        assert result.unknown_threshold == 10, \"unknown_threshold should be 10\"\n        assert result.output_path == Path(\"/tmp/out.yaml\"), \\\n            \"output_path should match\"\n\n    def test_all_flags_defaults(self):\n        \"\"\"TC005: Parse namespace with all flags at defaults.\"\"\"\n        ns = _make_namespace()\n        result = parse_cli_flags_to_struct(ns)\n        assert result.resolve_identities is False\n        assert result.auto_confirm_above is None\n        assert result.unknown_threshold is None\n        assert result.output_path is None\n\n    @pytest.mark.parametrize(\"bad_value,field\", [\n        (1.5, \"auto_confirm_above\"),\n        (-0.1, \"auto_confirm_above\"),\n        (2.0, \"auto_confirm_above\"),\n    ])\n    def test_auto_confirm_above_out_of_range_raises_config_invalid(self, bad_value, field):\n        \"\"\"TC006/TC007: auto_confirm_above outside [0.0, 1.0] raises config_invalid.\"\"\"\n        ns = _make_namespace(**{field: bad_value})\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            parse_cli_flags_to_struct(ns)\n        assert exc_info.value.kind == \"config_invalid\", \\\n            f\"Should raise config_invalid for {field}={bad_value}\"\n\n    @pytest.mark.parametrize(\"bad_value\", [0, -1, -100])\n    def test_unknown_threshold_less_than_1_raises_config_invalid(self, bad_value):\n        \"\"\"TC008: unknown_threshold < 1 raises config_invalid.\"\"\"\n        ns = _make_namespace(unknown_threshold=bad_value)\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            parse_cli_flags_to_struct(ns)\n        assert exc_info.value.kind == \"config_invalid\", \\\n            f\"Should raise config_invalid for unknown_threshold={bad_value}\"\n\n\nclass TestBuildConfigFromCLI:\n    \"\"\"Tests for build_config_from_cli.\"\"\"\n\n    def test_happy_path_interactive_with_tty(self, tmp_path):\n        \"\"\"TC009: Build config with interactive=True, is_tty=True, CLI overrides.\"\"\"\n        cli_flags = _make_cli_flags(\n            resolve_identities=True,\n            auto_confirm_above=0.8,\n            unknown_threshold=3,\n            output_path=tmp_path / \"custom.yaml\",\n        )\n        config = build_config_from_cli(\n            cli_flags=cli_flags,\n            is_tty=True,\n            default_output_path=tmp_path / \"default.yaml\",\n        )\n        assert config.interactive is True, \"Should be interactive when TTY available\"\n        assert config.auto_confirm_threshold == 0.8, \\\n            \"auto_confirm_threshold should match CLI flag\"\n        assert config.unknown_count_threshold == 3, \\\n            \"unknown_count_threshold should match CLI flag\"\n        assert config.output_path == tmp_path / \"custom.yaml\", \\\n            \"output_path should match CLI flag\"\n\n    def test_defaults_no_overrides(self, tmp_path):\n        \"\"\"TC010: Build config with no CLI overrides — uses defaults.\"\"\"\n        cli_flags = _make_cli_flags()\n        default_path = tmp_path / \"default.yaml\"\n        config = build_config_from_cli(\n            cli_flags=cli_flags,\n            is_tty=False,\n            default_output_path=default_path,\n        )\n        assert config.interactive is False\n        assert config.auto_confirm_threshold == 0.95, \\\n            \"Should use default auto_confirm_threshold\"\n        assert config.unknown_count_threshold == 5, \\\n            \"Should use default unknown_count_threshold\"\n        assert config.output_path == default_path, \\\n            \"Should use default_output_path\"\n\n    def test_interactive_forced_off_when_no_tty(self, tmp_path):\n        \"\"\"TC011: Interactive requested but no TTY forces non-interactive.\"\"\"\n        cli_flags = _make_cli_flags(resolve_identities=True)\n        config = build_config_from_cli(\n            cli_flags=cli_flags,\n            is_tty=False,\n            default_output_path=tmp_path / \"default.yaml\",\n        )\n        assert config.interactive is False, \\\n            \"Should force non-interactive when is_tty=False\"\n\n    def test_cli_output_path_overrides_default(self, tmp_path):\n        \"\"\"TC012: CLI output_path overrides default_output_path.\"\"\"\n        custom_path = tmp_path / \"custom.yaml\"\n        cli_flags = _make_cli_flags(output_path=custom_path)\n        config = build_config_from_cli(\n            cli_flags=cli_flags,\n            is_tty=False,\n            default_output_path=tmp_path / \"default.yaml\",\n        )\n        assert config.output_path == custom_path\n\n    def test_no_cli_output_path_uses_default(self, tmp_path):\n        \"\"\"TC013: CLI output_path is None, default is used.\"\"\"\n        default_path = tmp_path / \"default.yaml\"\n        cli_flags = _make_cli_flags(output_path=None)\n        config = build_config_from_cli(\n            cli_flags=cli_flags,\n            is_tty=False,\n            default_output_path=default_path,\n        )\n        assert config.output_path == default_path\n\n    def test_invalid_auto_confirm_above_raises_config_invalid(self, tmp_path):\n        \"\"\"TC014: auto_confirm_above out of range raises config_invalid.\"\"\"\n        cli_flags = _make_cli_flags(auto_confirm_above=2.0)\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            build_config_from_cli(\n                cli_flags=cli_flags,\n                is_tty=True,\n                default_output_path=tmp_path / \"default.yaml\",\n            )\n        assert exc_info.value.kind == \"config_invalid\"\n\n\n# ============================================================================\n# Section 2: Interactive Trigger Logic\n# ============================================================================\n\nclass TestShouldAutoTriggerInteractive:\n    \"\"\"Decision-table tests for should_auto_trigger_interactive.\"\"\"\n\n    @pytest.mark.parametrize(\n        \"unknown_count, threshold, is_tty, expected\",\n        [\n            # Above threshold + TTY = True\n            (10, 5, True, True),\n            (6, 5, True, True),\n            (2, 1, True, True),\n            (100, 5, True, True),\n            # At threshold = False (must strictly exceed)\n            (5, 5, True, False),\n            (1, 1, True, False),\n            # Below threshold = False\n            (3, 5, True, False),\n            (0, 5, True, False),\n            (4, 5, True, False),\n            # Above threshold but no TTY = False\n            (10, 5, False, False),\n            (6, 5, False, False),\n            (100, 1, False, False),\n            # Zero unknowns always False\n            (0, 5, True, False),\n            (0, 5, False, False),\n            (0, 1, True, False),\n        ],\n        ids=[\n            \"above_threshold_tty\",\n            \"one_above_threshold_tty\",\n            \"two_above_one_tty\",\n            \"far_above_threshold_tty\",\n            \"at_threshold_tty\",\n            \"at_threshold_one_tty\",\n            \"below_threshold_tty\",\n            \"zero_unknowns_tty\",\n            \"one_below_threshold_tty\",\n            \"above_threshold_no_tty\",\n            \"one_above_no_tty\",\n            \"far_above_no_tty\",\n            \"zero_unknowns_tty_2\",\n            \"zero_unknowns_no_tty\",\n            \"zero_unknowns_threshold_one_tty\",\n        ],\n    )\n    def test_decision_table(self, unknown_count, threshold, is_tty, expected, tmp_path):\n        \"\"\"TC015-TC021: Exhaustive decision table for should_auto_trigger_interactive.\"\"\"\n        config = _make_config(tmp_path, unknown_count_threshold=threshold)\n        result = should_auto_trigger_interactive(\n            unknown_count=unknown_count,\n            config=config,\n            is_tty=is_tty,\n        )\n        assert result is expected, (\n            f\"should_auto_trigger_interactive(\"\n            f\"unknown_count={unknown_count}, threshold={threshold}, \"\n            f\"is_tty={is_tty}) should be {expected}, got {result}\"\n        )\n\n\n# ============================================================================\n# Section 3: YAML Serialization\n# ============================================================================\n\nclass TestSerializeReportToYaml:\n    \"\"\"Tests for serialize_report_to_yaml.\"\"\"\n\n    def test_serialize_valid_report(self):\n        \"\"\"TC022: Serialize a valid ResolutionReport to YAML.\"\"\"\n        unknown = _make_unknown()\n        decision = _make_decision(unknown=unknown, action=\"confirm\",\n                                  resolved_person_id=\"john.smith\")\n        report = _make_report(\n            decisions=[decision],\n            unresolved=[_make_unknown(handle=\"@unknown2\")],\n            auto_confirmed=0,\n            user_confirmed=1,\n            total_processed=2,\n        )\n        result = serialize_report_to_yaml(report)\n\n        assert isinstance(result, str), \"Output should be a string\"\n        assert len(result) > 0, \"Output should not be empty\"\n        assert \"schema_version\" in result, \"Output should contain 'schema_version'\"\n\n        # Verify it's valid YAML by attempting to parse\n        import yaml\n        parsed = yaml.safe_load(result)\n        assert parsed is not None, \"Output should be parseable YAML\"\n        assert parsed.get(\"schema_version\") == 1, \\\n            \"schema_version should match report\"\n\n    def test_serialize_empty_report(self):\n        \"\"\"TC023: Serialize empty report with zero decisions and unresolved.\"\"\"\n        report = _make_report(\n            decisions=[],\n            unresolved=[],\n            auto_confirmed=0,\n            user_confirmed=0,\n            total_processed=0,\n        )\n        result = serialize_report_to_yaml(report)\n\n        assert \"schema_version\" in result\n        import yaml\n        parsed = yaml.safe_load(result)\n        assert parsed is not None\n        # Decisions should be empty\n        decisions = parsed.get(\"decisions\", [])\n        assert decisions is None or len(decisions) == 0, \\\n            \"Decisions list should be empty\"\n\n    def test_deterministic_serialization(self):\n        \"\"\"TC024: Same input produces identical output (deterministic).\"\"\"\n        report = _make_report(\n            decisions=[_make_decision()],\n            unresolved=[_make_unknown(handle=\"@another\")],\n            auto_confirmed=0,\n            user_confirmed=1,\n            total_processed=2,\n        )\n        first = serialize_report_to_yaml(report)\n        second = serialize_report_to_yaml(report)\n        assert first == second, \\\n            \"Deterministic serialization: same input must produce identical output\"\n\n    def test_serialize_unicode_and_special_characters(self):\n        \"\"\"TC025: Serialize report with unicode handles and YAML-special chars.\"\"\"\n        unknown = _make_unknown(handle=\"@用户: test\\nnewline\")\n        report = _make_report(\n            decisions=[],\n            unresolved=[unknown],\n            total_processed=1,\n        )\n        result = serialize_report_to_yaml(report)\n\n        assert isinstance(result, str)\n        import yaml\n        parsed = yaml.safe_load(result)\n        assert parsed is not None, \"YAML with unicode/special chars should be parseable\"\n\n        # Verify the handle survived round-trip\n        unresolved_list = parsed.get(\"unresolved\", [])\n        assert len(unresolved_list) == 1\n        assert \"用户\" in str(unresolved_list[0].get(\"handle\", \"\")), \\\n            \"Unicode handle should survive serialization\"\n\n\nclass TestDeserializeReportFromYaml:\n    \"\"\"Tests for deserialize_report_from_yaml.\"\"\"\n\n    def test_deserialize_valid_yaml(self):\n        \"\"\"TC026: Deserialize valid YAML into ResolutionReport.\"\"\"\n        report = _make_report(\n            decisions=[_make_decision()],\n            unresolved=[_make_unknown(handle=\"@unknown2\")],\n            auto_confirmed=0,\n            user_confirmed=1,\n            total_processed=2,\n        )\n        yaml_str = serialize_report_to_yaml(report)\n        result = deserialize_report_from_yaml(yaml_str)\n\n        assert isinstance(result, ResolutionReport), \"Should return a ResolutionReport\"\n        assert result.schema_version >= 1\n        assert result.total_processed == 2\n        assert result.user_confirmed == 1\n\n    def test_roundtrip_serialization(self):\n        \"\"\"TC027: Serialize then deserialize produces equivalent report.\"\"\"\n        unknown = _make_unknown()\n        decision = _make_decision(unknown=unknown, action=\"confirm\",\n                                  resolved_person_id=\"john.smith\")\n        original = _make_report(\n            decisions=[decision],\n            unresolved=[_make_unknown(handle=\"@other\")],\n            auto_confirmed=0,\n            user_confirmed=1,\n            total_processed=2,\n        )\n        yaml_str = serialize_report_to_yaml(original)\n        restored = deserialize_report_from_yaml(yaml_str)\n\n        assert restored.schema_version == original.schema_version\n        assert restored.total_processed == original.total_processed\n        assert restored.auto_confirmed == original.auto_confirmed\n        assert restored.user_confirmed == original.user_confirmed\n        assert restored.interrupted == original.interrupted\n        assert len(restored.decisions) == len(original.decisions)\n        assert len(restored.unresolved) == len(original.unresolved)\n\n    def test_malformed_yaml_raises_deserialization_failed(self):\n        \"\"\"TC028: Malformed YAML raises yaml_deserialization_failed.\"\"\"\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            deserialize_report_from_yaml(\"not: [valid: yaml: {{\")\n        assert exc_info.value.kind == \"yaml_deserialization_failed\"\n\n    def test_empty_string_raises_deserialization_failed(self):\n        \"\"\"TC029: Empty string raises yaml_deserialization_failed.\"\"\"\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            deserialize_report_from_yaml(\"\")\n        assert exc_info.value.kind == \"yaml_deserialization_failed\"\n\n    def test_missing_schema_version_raises_deserialization_failed(self):\n        \"\"\"TC030: YAML without schema_version raises yaml_deserialization_failed.\"\"\"\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            deserialize_report_from_yaml(\"foo: bar\\nbaz: 42\\n\")\n        assert exc_info.value.kind == \"yaml_deserialization_failed\"\n\n\n# ============================================================================\n# Section 4: Resolution Orchestration\n# ============================================================================\n\nclass TestResolveIdentityUnknowns:\n    \"\"\"Tests for resolve_identity_unknowns (async orchestrator).\"\"\"\n\n    def _run(self, coro):\n        \"\"\"Helper to run async coroutine.\"\"\"\n        return asyncio.get_event_loop().run_until_complete(coro)\n\n    def test_non_interactive_happy_path(self, tmp_path):\n        \"\"\"TC031: Non-interactive mode skips all unknowns, writes YAML, correct report.\"\"\"\n        unknowns = [_make_unknown(handle=\"@user1\"), _make_unknown(handle=\"@user2\")]\n        suggestion = _make_suggestion()\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path, interactive=False)\n\n        report = self._run(resolve_identity_unknowns(\n            unknowns=unknowns,\n            suggestion_fn=suggestion_fn,\n            prompter_mode=\"non_interactive\",\n            alias_store=alias_store,\n            config=config,\n        ))\n\n        assert isinstance(report, ResolutionReport)\n        assert report.total_processed == len(unknowns), \\\n            f\"total_processed should be {len(unknowns)}, got {report.total_processed}\"\n        assert report.interrupted is False, \"Should not be interrupted\"\n        assert report.started_at <= report.completed_at, \\\n            \"started_at should be <= completed_at\"\n        # YAML file should exist\n        assert config.output_path.exists(), \\\n            f\"YAML file should be written at {config.output_path}\"\n\n    def test_interactive_user_confirms(self, tmp_path):\n        \"\"\"TC032: Interactive mode, user confirms suggestion, alias persisted.\"\"\"\n        unknown = _make_unknown(handle=\"@jsmith\")\n        suggestion = _make_suggestion(candidate_person_id=\"john.smith\", confidence=0.87)\n\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path, interactive=True, auto_confirm_threshold=0.95)\n\n        # Mock the prompt to return a confirm decision\n        confirm_decision = _make_decision(\n            unknown=unknown,\n            action=\"confirm\",\n            resolved_person_id=\"john.smith\",\n            matched_suggestion=suggestion,\n        )\n\n        with patch(\"src.identity_cli_integration.prompt\", return_value=confirm_decision):\n            report = self._run(resolve_identity_unknowns(\n                unknowns=[unknown],\n                suggestion_fn=suggestion_fn,\n                prompter_mode=\"interactive\",\n                alias_store=alias_store,\n                config=config,\n            ))\n\n        assert report.total_processed == 1\n        assert report.user_confirmed >= 1, \"At least one user_confirmed expected\"\n        alias_store.add_alias.assert_called(), \\\n            \"alias_store.add_alias should be called for confirmed mapping\"\n\n    def test_auto_confirm_high_confidence(self, tmp_path):\n        \"\"\"TC033: Suggestion above auto_confirm_threshold is auto-confirmed.\"\"\"\n        unknown = _make_unknown(handle=\"@jsmith\")\n        high_conf_suggestion = _make_suggestion(\n            candidate_person_id=\"john.smith\", confidence=0.98\n        )\n\n        suggestion_fn = Mock(return_value=[high_conf_suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(\n            tmp_path, interactive=True, auto_confirm_threshold=0.95\n        )\n\n        # The prompt should NOT be called for auto-confirmed items\n        with patch(\"src.identity_cli_integration.prompt\") as mock_prompt:\n            report = self._run(resolve_identity_unknowns(\n                unknowns=[unknown],\n                suggestion_fn=suggestion_fn,\n                prompter_mode=\"interactive\",\n                alias_store=alias_store,\n                config=config,\n            ))\n\n            # Prompt should not have been invoked for the auto-confirmed unknown\n            # (or if the implementation passes through prompt, it should still auto-confirm)\n            assert report.auto_confirmed >= 1, \\\n                \"At least one auto_confirmed expected for confidence 0.98 >= 0.95\"\n\n        alias_store.add_alias.assert_called(), \\\n            \"alias_store.add_alias should be called for auto-confirmed mapping\"\n\n    def test_interrupted_persists_partial_progress(self, tmp_path):\n        \"\"\"TC034: Ctrl+C during prompting sets report.interrupted and persists partial.\"\"\"\n        unknowns = [\n            _make_unknown(handle=\"@user1\"),\n            _make_unknown(handle=\"@user2\"),\n            _make_unknown(handle=\"@user3\"),\n        ]\n        suggestion = _make_suggestion(confidence=0.5)\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path, interactive=True, auto_confirm_threshold=0.99)\n\n        # First call succeeds, second raises interrupted\n        first_decision = _make_decision(\n            unknown=unknowns[0], action=\"skip\"\n        )\n        call_count = [0]\n\n        def mock_prompt_side_effect(unknown, suggestions):\n            call_count[0] += 1\n            if call_count[0] == 1:\n                return first_decision\n            raise IdentityResolutionError(kind=\"interrupted\", message=\"Ctrl+C\")\n\n        with patch(\"src.identity_cli_integration.prompt\",\n                   side_effect=mock_prompt_side_effect):\n            report = self._run(resolve_identity_unknowns(\n                unknowns=unknowns,\n                suggestion_fn=suggestion_fn,\n                prompter_mode=\"interactive\",\n                alias_store=alias_store,\n                config=config,\n            ))\n\n        assert report.interrupted is True, \"Report should be marked as interrupted\"\n        assert report.started_at <= report.completed_at\n\n    def test_store_write_failed_raises_error(self, tmp_path):\n        \"\"\"TC035: AliasStore write failure raises store_write_failed.\"\"\"\n        unknown = _make_unknown()\n        suggestion = _make_suggestion(confidence=0.98)\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock(side_effect=Exception(\"DB connection failed\"))\n        config = _make_config(tmp_path, interactive=True, auto_confirm_threshold=0.95)\n\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            self._run(resolve_identity_unknowns(\n                unknowns=[unknown],\n                suggestion_fn=suggestion_fn,\n                prompter_mode=\"interactive\",\n                alias_store=alias_store,\n                config=config,\n            ))\n        assert exc_info.value.kind == \"store_write_failed\"\n\n    def test_resolver_unavailable_raises_error(self, tmp_path):\n        \"\"\"TC036: suggestion_fn failure raises resolver_unavailable.\"\"\"\n        unknown = _make_unknown()\n        suggestion_fn = Mock(side_effect=Exception(\"Resolver service down\"))\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path, interactive=False)\n\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            self._run(resolve_identity_unknowns(\n                unknowns=[unknown],\n                suggestion_fn=suggestion_fn,\n                prompter_mode=\"non_interactive\",\n                alias_store=alias_store,\n                config=config,\n            ))\n        assert exc_info.value.kind == \"resolver_unavailable\"\n\n    def test_file_write_failed_non_interactive(self, tmp_path):\n        \"\"\"TC037: File write failure in non-interactive mode raises file_write_failed.\"\"\"\n        unknown = _make_unknown()\n        suggestion = _make_suggestion()\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n\n        # Use a path that doesn't exist (parent dir missing)\n        bad_path = tmp_path / \"nonexistent_dir\" / \"subdir\" / \"out.yaml\"\n        config = IdentityResolutionConfig(\n            auto_confirm_threshold=0.95,\n            unknown_count_threshold=5,\n            output_path=bad_path,\n            interactive=False,\n        )\n\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            self._run(resolve_identity_unknowns(\n                unknowns=[unknown],\n                suggestion_fn=suggestion_fn,\n                prompter_mode=\"non_interactive\",\n                alias_store=alias_store,\n                config=config,\n            ))\n        assert exc_info.value.kind in (\"file_write_failed\", \"config_invalid\"), \\\n            f\"Expected file_write_failed or config_invalid, got {exc_info.value.kind}\"\n\n    def test_report_invariant_decisions_plus_unresolved_eq_total(self, tmp_path):\n        \"\"\"TC038: len(decisions) + len(unresolved) == total_processed when not interrupted.\"\"\"\n        unknowns = [\n            _make_unknown(handle=\"@a\"),\n            _make_unknown(handle=\"@b\"),\n            _make_unknown(handle=\"@c\"),\n        ]\n        suggestion = _make_suggestion(confidence=0.5)\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path, interactive=False)\n\n        report = self._run(resolve_identity_unknowns(\n            unknowns=unknowns,\n            suggestion_fn=suggestion_fn,\n            prompter_mode=\"non_interactive\",\n            alias_store=alias_store,\n            config=config,\n        ))\n\n        if not report.interrupted:\n            assert len(report.decisions) + len(report.unresolved) == report.total_processed, (\n                f\"Invariant violated: {len(report.decisions)} decisions + \"\n                f\"{len(report.unresolved)} unresolved != {report.total_processed} total\"\n            )\n\n    def test_report_invariant_confirmed_lte_total(self, tmp_path):\n        \"\"\"TC039: auto_confirmed + user_confirmed <= total_processed.\"\"\"\n        unknowns = [_make_unknown(handle=\"@x\"), _make_unknown(handle=\"@y\")]\n        suggestion = _make_suggestion(confidence=0.5)\n        suggestion_fn = Mock(return_value=[suggestion])\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path, interactive=False)\n\n        report = self._run(resolve_identity_unknowns(\n            unknowns=unknowns,\n            suggestion_fn=suggestion_fn,\n            prompter_mode=\"non_interactive\",\n            alias_store=alias_store,\n            config=config,\n        ))\n\n        assert report.auto_confirmed + report.user_confirmed <= report.total_processed, (\n            f\"Invariant violated: {report.auto_confirmed} auto + \"\n            f\"{report.user_confirmed} user > {report.total_processed} total\"\n        )\n\n    def test_decision_invariant_confirm_has_person_id(self, tmp_path):\n        \"\"\"TC050: Confirmed decisions have non-null resolved_person_id; skip/reject have null.\"\"\"\n        unknowns = [\n            _make_unknown(handle=\"@auto\"),\n            _make_unknown(handle=\"@low\"),\n        ]\n        # First unknown gets high confidence (auto-confirm), second gets low\n        high_suggestion = _make_suggestion(confidence=0.98)\n        low_suggestion = _make_suggestion(confidence=0.3)\n\n        call_count = [0]\n\n        def suggestion_fn(handle):\n            call_count[0] += 1\n            if call_count[0] == 1:\n                return [high_suggestion]\n            return [low_suggestion]\n\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(\n            tmp_path, interactive=False, auto_confirm_threshold=0.95\n        )\n\n        report = self._run(resolve_identity_unknowns(\n            unknowns=unknowns,\n            suggestion_fn=suggestion_fn,\n            prompter_mode=\"non_interactive\",\n            alias_store=alias_store,\n            config=config,\n        ))\n\n        for decision in report.decisions:\n            if decision.action in (\"confirm\", \"manual\"):\n                assert decision.resolved_person_id is not None, (\n                    f\"Decision with action={decision.action} must have \"\n                    f\"non-null resolved_person_id\"\n                )\n                assert len(decision.resolved_person_id) > 0, (\n                    f\"Decision with action={decision.action} must have \"\n                    f\"non-empty resolved_person_id\"\n                )\n            elif decision.action in (\"reject\", \"skip\"):\n                assert decision.resolved_person_id is None, (\n                    f\"Decision with action={decision.action} must have \"\n                    f\"null resolved_person_id, got {decision.resolved_person_id}\"\n                )\n\n\n# ============================================================================\n# Section 5: Partial Progress & Prompt\n# ============================================================================\n\nclass TestPersistPartialProgress:\n    \"\"\"Tests for persist_partial_progress.\"\"\"\n\n    def test_persist_success(self, tmp_path):\n        \"\"\"TC040: Persist partial progress successfully, returns True.\"\"\"\n        unknown = _make_unknown()\n        decision = _make_decision(unknown=unknown, action=\"confirm\",\n                                  resolved_person_id=\"john.smith\")\n        remaining = [_make_unknown(handle=\"@remaining\")]\n        progress = PartialProgress(\n            completed_decisions=[decision],\n            remaining_unknowns=remaining,\n            persisted_to_store=False,\n        )\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n        config = _make_config(tmp_path)\n\n        result = persist_partial_progress(\n            progress=progress,\n            alias_store=alias_store,\n            config=config,\n        )\n\n        assert result is True, \"Should return True when all persistence succeeds\"\n        alias_store.add_alias.assert_called(), \\\n            \"add_alias should be called for confirm decisions\"\n        assert config.output_path.exists(), \\\n            \"YAML file should be written at output_path\"\n\n    def test_store_write_failure_returns_false(self, tmp_path):\n        \"\"\"TC041: Store write fails — returns False, best-effort, no exception.\"\"\"\n        decision = _make_decision(action=\"confirm\", resolved_person_id=\"john.smith\")\n        progress = PartialProgress(\n            completed_decisions=[decision],\n            remaining_unknowns=[],\n            persisted_to_store=False,\n        )\n        alias_store = Mock()\n        alias_store.add_alias = Mock(side_effect=Exception(\"Store unavailable\"))\n        config = _make_config(tmp_path)\n\n        # Should NOT raise — best-effort\n        result = persist_partial_progress(\n            progress=progress,\n            alias_store=alias_store,\n            config=config,\n        )\n\n        assert result is False, \\\n            \"Should return False when store write fails (best-effort)\"\n\n    def test_file_write_failure_returns_false(self, tmp_path):\n        \"\"\"TC042: YAML file write fails — returns False, best-effort, no exception.\"\"\"\n        decision = _make_decision(action=\"skip\")\n        remaining = [_make_unknown()]\n        progress = PartialProgress(\n            completed_decisions=[decision],\n            remaining_unknowns=remaining,\n            persisted_to_store=False,\n        )\n        alias_store = Mock()\n        alias_store.add_alias = Mock()\n\n        # Use unwritable path\n        bad_path = Path(\"/nonexistent_root_dir/impossible/path.yaml\")\n        config = IdentityResolutionConfig(\n            auto_confirm_threshold=0.95,\n            unknown_count_threshold=5,\n            output_path=bad_path,\n            interactive=False,\n        )\n\n        result = persist_partial_progress(\n            progress=progress,\n            alias_store=alias_store,\n            config=config,\n        )\n\n        assert result is False, \\\n            \"Should return False when file write fails (best-effort)\"\n\n\nclass TestPrompt:\n    \"\"\"Tests for prompt function.\"\"\"\n\n    def test_non_interactive_returns_skip(self):\n        \"\"\"TC043: Non-interactive prompter returns skip decision.\"\"\"\n        unknown = _make_unknown()\n        suggestions = [_make_suggestion()]\n\n        # Mock for non-interactive mode (implementation detail: may use prompter_mode)\n        with patch(\"src.identity_cli_integration._is_interactive\", return_value=False):\n            decision = prompt(unknown=unknown, suggestions=suggestions)\n\n        assert isinstance(decision, ResolutionDecision)\n        assert decision.action == \"skip\", \\\n            f\"Non-interactive prompt should return skip, got {decision.action}\"\n        assert decision.resolved_person_id is None, \\\n            \"Skip decision should have null resolved_person_id\"\n        assert decision.unknown.handle == unknown.handle, \\\n            \"Decision should reference the input unknown\"\n\n    def test_interactive_user_confirms_with_y(self):\n        \"\"\"TC044: Interactive prompt, user types 'y' to confirm best match.\"\"\"\n        unknown = _make_unknown(handle=\"@jsmith\")\n        suggestion = _make_suggestion(candidate_person_id=\"john.smith\", confidence=0.87)\n        suggestions = [suggestion]\n\n        with patch(\"builtins.input\", return_value=\"y\"):\n            decision = prompt(unknown=unknown, suggestions=suggestions)\n\n        assert decision.action == \"confirm\", \\\n            f\"Expected 'confirm' action, got '{decision.action}'\"\n        assert decision.resolved_person_id == \"john.smith\", \\\n            f\"resolved_person_id should be 'john.smith', got '{decision.resolved_person_id}'\"\n        assert decision.matched_suggestion is not None, \\\n            \"Confirmed decision should include the matched suggestion\"\n\n    def test_interactive_user_rejects_with_n(self):\n        \"\"\"TC045: Interactive prompt, user types 'n' to reject.\"\"\"\n        unknown = _make_unknown(handle=\"@jsmith\")\n        suggestions = [_make_suggestion()]\n\n        with patch(\"builtins.input\", return_value=\"n\"):\n            decision = prompt(unknown=unknown, suggestions=suggestions)\n\n        assert decision.action == \"reject\", \\\n            f\"Expected 'reject' action, got '{decision.action}'\"\n        assert decision.resolved_person_id is None, \\\n            \"Rejected decision should have null resolved_person_id\"\n\n    def test_interactive_user_provides_manual_id(self):\n        \"\"\"TC046: Interactive prompt, user types a custom person_id.\"\"\"\n        unknown = _make_unknown(handle=\"@jsmith\")\n        suggestions = [_make_suggestion()]\n\n        with patch(\"builtins.input\", return_value=\"jane.doe\"):\n            decision = prompt(unknown=unknown, suggestions=suggestions)\n\n        assert decision.action == \"manual\", \\\n            f\"Expected 'manual' action, got '{decision.action}'\"\n        assert decision.resolved_person_id == \"jane.doe\", \\\n            f\"Manual resolved_person_id should be 'jane.doe', got '{decision.resolved_person_id}'\"\n\n    def test_prompt_with_empty_suggestions(self):\n        \"\"\"TC047: Prompt with empty suggestions list.\"\"\"\n        unknown = _make_unknown(handle=\"@nobody\")\n        suggestions = []\n\n        # Non-interactive should handle gracefully\n        with patch(\"src.identity_cli_integration._is_interactive\", return_value=False):\n            decision = prompt(unknown=unknown, suggestions=suggestions)\n\n        assert isinstance(decision, ResolutionDecision)\n        assert decision.action in (\"skip\", \"manual\", \"reject\"), \\\n            f\"With no suggestions, action should be skip/manual/reject, got {decision.action}\"\n\n    def test_prompt_io_error(self):\n        \"\"\"TC048: Interactive prompt IO failure raises prompt_io_error.\"\"\"\n        unknown = _make_unknown()\n        suggestions = [_make_suggestion()]\n\n        with patch(\"builtins.input\", side_effect=IOError(\"Broken pipe\")):\n            with pytest.raises(IdentityResolutionError) as exc_info:\n                prompt(unknown=unknown, suggestions=suggestions)\n            assert exc_info.value.kind == \"prompt_io_error\", \\\n                f\"Expected prompt_io_error, got {exc_info.value.kind}\"\n\n    def test_prompt_keyboard_interrupt(self):\n        \"\"\"TC049: Ctrl+C during prompt raises interrupted error.\"\"\"\n        unknown = _make_unknown()\n        suggestions = [_make_suggestion()]\n\n        with patch(\"builtins.input\", side_effect=KeyboardInterrupt()):\n            with pytest.raises(IdentityResolutionError) as exc_info:\n                prompt(unknown=unknown, suggestions=suggestions)\n            assert exc_info.value.kind == \"interrupted\", \\\n                f\"Expected interrupted, got {exc_info.value.kind}\"\n\n\n# ============================================================================\n# Cross-cutting Invariant Tests\n# ============================================================================\n\nclass TestResolutionDecisionInvariants:\n    \"\"\"Invariant tests for ResolutionDecision model.\"\"\"\n\n    def test_confirm_requires_person_id(self):\n        \"\"\"Confirm action must have non-empty resolved_person_id.\"\"\"\n        decision = _make_decision(action=\"confirm\", resolved_person_id=\"john.smith\")\n        assert decision.resolved_person_id is not None\n        assert len(decision.resolved_person_id) > 0\n\n    def test_manual_requires_person_id(self):\n        \"\"\"Manual action must have non-empty resolved_person_id.\"\"\"\n        decision = _make_decision(action=\"manual\", resolved_person_id=\"custom.id\")\n        assert decision.resolved_person_id is not None\n        assert len(decision.resolved_person_id) > 0\n\n    def test_reject_has_null_person_id(self):\n        \"\"\"Reject action must have null resolved_person_id.\"\"\"\n        decision = _make_decision(action=\"reject\")\n        assert decision.resolved_person_id is None\n\n    def test_skip_has_null_person_id(self):\n        \"\"\"Skip action must have null resolved_person_id.\"\"\"\n        decision = _make_decision(action=\"skip\")\n        assert decision.resolved_person_id is None\n\n    def test_confirm_has_matched_suggestion(self):\n        \"\"\"Confirm action must have matched_suggestion with matching person_id.\"\"\"\n        suggestion = _make_suggestion(candidate_person_id=\"john.smith\")\n        decision = _make_decision(\n            action=\"confirm\",\n            resolved_person_id=\"john.smith\",\n            matched_suggestion=suggestion,\n        )\n        assert decision.matched_suggestion is not None\n        assert decision.matched_suggestion.candidate_person_id == decision.resolved_person_id\n\n\nclass TestUnknownIdentifierInvariants:\n    \"\"\"Invariant tests for UnknownIdentifier model.\"\"\"\n\n    def test_occurrence_count_at_least_1(self):\n        \"\"\"occurrence_count must be >= 1.\"\"\"\n        unknown = _make_unknown(occurrence_count=1)\n        assert unknown.occurrence_count >= 1\n\n    def test_occurrence_count_zero_rejected(self):\n        \"\"\"occurrence_count of 0 should be rejected by validation.\"\"\"\n        with pytest.raises(Exception):\n            _make_unknown(occurrence_count=0)\n\n    def test_handle_non_empty(self):\n        \"\"\"handle must be non-empty.\"\"\"\n        with pytest.raises(Exception):\n            _make_unknown(handle=\"\")\n\n    def test_source_non_empty(self):\n        \"\"\"source must be non-empty.\"\"\"\n        with pytest.raises(Exception):\n            _make_unknown(source=\"\")\n\n\nclass TestMatchSuggestionInvariants:\n    \"\"\"Invariant tests for MatchSuggestion model.\"\"\"\n\n    def test_confidence_in_range(self):\n        \"\"\"confidence must be in [0.0, 1.0].\"\"\"\n        suggestion = _make_suggestion(confidence=0.5)\n        assert 0.0 <= suggestion.confidence <= 1.0\n\n    def test_confidence_below_zero_rejected(self):\n        \"\"\"confidence < 0.0 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            _make_suggestion(confidence=-0.1)\n\n    def test_confidence_above_one_rejected(self):\n        \"\"\"confidence > 1.0 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            _make_suggestion(confidence=1.1)\n\n    def test_candidate_person_id_non_empty(self):\n        \"\"\"candidate_person_id must be non-empty.\"\"\"\n        with pytest.raises(Exception):\n            _make_suggestion(candidate_person_id=\"\")\n\n\nclass TestFrozenModelInvariants:\n    \"\"\"Verify that Pydantic frozen models reject attribute mutation.\"\"\"\n\n    def test_unknown_identifier_is_frozen(self):\n        \"\"\"UnknownIdentifier should reject attribute assignment.\"\"\"\n        unknown = _make_unknown()\n        with pytest.raises(Exception):\n            unknown.handle = \"changed\"\n\n    def test_match_suggestion_is_frozen(self):\n        \"\"\"MatchSuggestion should reject attribute assignment.\"\"\"\n        suggestion = _make_suggestion()\n        with pytest.raises(Exception):\n            suggestion.confidence = 0.99\n\n    def test_resolution_decision_is_frozen(self):\n        \"\"\"ResolutionDecision should reject attribute assignment.\"\"\"\n        decision = _make_decision()\n        with pytest.raises(Exception):\n            decision.action = \"reject\"\n\n    def test_resolution_report_is_frozen(self):\n        \"\"\"ResolutionReport should reject attribute assignment.\"\"\"\n        report = _make_report()\n        with pytest.raises(Exception):\n            report.total_processed = 999\n\n    def test_identity_resolution_config_is_frozen(self, tmp_path):\n        \"\"\"IdentityResolutionConfig should reject attribute assignment.\"\"\"\n        config = _make_config(tmp_path)\n        with pytest.raises(Exception):\n            config.auto_confirm_threshold = 0.5\n\n\nclass TestResolutionReportInvariants:\n    \"\"\"Invariant tests for ResolutionReport.\"\"\"\n\n    def test_schema_version_at_least_1(self):\n        \"\"\"schema_version must be >= 1.\"\"\"\n        report = _make_report()\n        assert report.schema_version >= 1\n\n    def test_schema_version_zero_rejected(self):\n        \"\"\"schema_version of 0 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            _make_report()\n            ResolutionReport(\n                schema_version=0,\n                decisions=[],\n                unresolved=[],\n                auto_confirmed=0,\n                user_confirmed=0,\n                total_processed=0,\n                interrupted=False,\n                started_at=_utc_now(),\n                completed_at=_utc_now(),\n            )\n\n    def test_auto_confirmed_non_negative(self):\n        \"\"\"auto_confirmed must be >= 0.\"\"\"\n        report = _make_report(auto_confirmed=0)\n        assert report.auto_confirmed >= 0\n\n    def test_auto_confirmed_negative_rejected(self):\n        \"\"\"auto_confirmed < 0 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            ResolutionReport(\n                schema_version=1,\n                decisions=[],\n                unresolved=[],\n                auto_confirmed=-1,\n                user_confirmed=0,\n                total_processed=0,\n                interrupted=False,\n                started_at=_utc_now(),\n                completed_at=_utc_now(),\n            )\n\n    def test_started_at_before_completed_at(self):\n        \"\"\"started_at should be <= completed_at.\"\"\"\n        report = _make_report()\n        assert report.started_at <= report.completed_at\n\n\nclass TestIdentityResolutionConfigInvariants:\n    \"\"\"Invariant tests for IdentityResolutionConfig.\"\"\"\n\n    def test_auto_confirm_threshold_in_range(self, tmp_path):\n        \"\"\"auto_confirm_threshold must be in [0.0, 1.0].\"\"\"\n        config = _make_config(tmp_path, auto_confirm_threshold=0.5)\n        assert 0.0 <= config.auto_confirm_threshold <= 1.0\n\n    def test_auto_confirm_threshold_above_1_rejected(self, tmp_path):\n        \"\"\"auto_confirm_threshold > 1.0 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            IdentityResolutionConfig(\n                auto_confirm_threshold=1.5,\n                unknown_count_threshold=5,\n                output_path=tmp_path / \"out.yaml\",\n                interactive=False,\n            )\n\n    def test_auto_confirm_threshold_below_0_rejected(self, tmp_path):\n        \"\"\"auto_confirm_threshold < 0.0 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            IdentityResolutionConfig(\n                auto_confirm_threshold=-0.1,\n                unknown_count_threshold=5,\n                output_path=tmp_path / \"out.yaml\",\n                interactive=False,\n            )\n\n    def test_unknown_count_threshold_at_least_1(self, tmp_path):\n        \"\"\"unknown_count_threshold must be >= 1.\"\"\"\n        config = _make_config(tmp_path, unknown_count_threshold=1)\n        assert config.unknown_count_threshold >= 1\n\n    def test_unknown_count_threshold_zero_rejected(self, tmp_path):\n        \"\"\"unknown_count_threshold < 1 should be rejected.\"\"\"\n        with pytest.raises(Exception):\n            IdentityResolutionConfig(\n                auto_confirm_threshold=0.95,\n                unknown_count_threshold=0,\n                output_path=tmp_path / \"out.yaml\",\n                interactive=False,\n            )\n"
+}

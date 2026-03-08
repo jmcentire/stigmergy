@@ -1,0 +1,395 @@
+{
+  "component_id": "temporal_state_management",
+  "name": "Temporal State Management",
+  "description": "Manage last-run timestamps in .stigmergy/state.yaml. Read/write last_run_timestamp. CLI flag parsing: --since accepts ISO 8601 strings, '--since all' for full reprocess, omitted means use stored timestamp (or process all if no state). Convert all timestamps to UTC datetime objects. Update state.yaml after successful run completion. Handle missing/corrupt state file gracefully. Three-layer architecture: pure frozen types, pure functions (no I/O), and async I/O shell. Located at src/stigmergy/cli/temporal_state.py with tests at tests/test_temporal_state.py.",
+  "version": 1,
+  "types": [
+    {
+      "name": "SincePolicy",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "ALL",
+        "STORED",
+        "EXPLICIT"
+      ],
+      "inner_types": [],
+      "description": "Enumeration representing the three semantic states of the --since CLI flag. ALL means full reprocessing (--since all). STORED means use the stored last-run timestamp from state.yaml (--since omitted). EXPLICIT means a user-provided ISO 8601 timestamp was given."
+    },
+    {
+      "name": "SinceSpec",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "policy",
+          "type_ref": "SincePolicy",
+          "required": true,
+          "default": "",
+          "description": "The semantic interpretation of the --since flag value.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "OptionalDatetime",
+          "required": true,
+          "default": "None",
+          "description": "The explicit UTC-aware datetime when policy is EXPLICIT; None otherwise.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the parsed --since CLI argument. Combines the policy enum with an optional explicit timestamp. The timestamp field is non-None only when policy is EXPLICIT, and None otherwise. This is a pure value type with no I/O behavior."
+    },
+    {
+      "name": "RunState",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "version",
+          "type_ref": "int",
+          "required": true,
+          "default": "1",
+          "description": "Schema version for forward compatibility. Always the literal value 1 in this version.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value == 1",
+              "error_message": "RunState version must be exactly 1"
+            }
+          ]
+        },
+        {
+          "name": "last_run_timestamp",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "The UTC-aware datetime of the last successful run completion.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value.tzinfo is not None and value.utcoffset() == timedelta(0)",
+              "error_message": "last_run_timestamp must be a UTC-aware datetime (tzinfo=datetime.UTC)"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the persisted state in .stigmergy/state.yaml. Contains a schema version (always 1) and the last successful run timestamp. All datetime values are UTC-aware."
+    },
+    {
+      "name": "datetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Python stdlib datetime.datetime object. In this contract, always UTC-aware (tzinfo=datetime.UTC)."
+    },
+    {
+      "name": "OptionalDatetime",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "datetime",
+      "variants": [],
+      "inner_types": [],
+      "description": "An optional UTC-aware datetime. None or a datetime with tzinfo=datetime.UTC."
+    },
+    {
+      "name": "OptionalRunState",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "RunState",
+      "variants": [],
+      "inner_types": [],
+      "description": "An optional RunState. None when state.yaml is missing or corrupt."
+    },
+    {
+      "name": "OptionalStr",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "An optional string. Represents the raw --since CLI argument: None when the flag is omitted, a string otherwise."
+    },
+    {
+      "name": "Path",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Python pathlib.Path representing a filesystem path. For this contract, typically the project root or .stigmergy directory."
+    }
+  ],
+  "functions": [
+    {
+      "name": "parse_since_argument",
+      "description": "Pure function (no I/O). Converts the raw CLI --since argument string into a typed SinceSpec. None input (flag omitted) maps to STORED policy. The string 'all' (case-insensitive) maps to ALL policy. Any other string is parsed as ISO 8601 and mapped to EXPLICIT policy with a UTC-normalized datetime. This function performs no file or network I/O and is fully deterministic for a given input.",
+      "inputs": [
+        {
+          "name": "raw",
+          "type_ref": "OptionalStr",
+          "required": true,
+          "default": "",
+          "description": "The raw value of the --since CLI flag. None if the flag was omitted. 'all' (case-insensitive) for full reprocessing. Otherwise an ISO 8601 datetime string.",
+          "validators": []
+        }
+      ],
+      "output_type": "SinceSpec",
+      "error_cases": [
+        {
+          "name": "invalid_iso8601",
+          "condition": "raw is not None, raw.lower() != 'all', and raw cannot be parsed as a valid ISO 8601 datetime string",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Cannot parse '{raw}' as ISO 8601 datetime. Expected format: YYYY-MM-DDTHH:MM:SS[+HH:MM] or 'all'."
+          }
+        },
+        {
+          "name": "empty_string",
+          "condition": "raw is an empty string",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "--since value must not be an empty string. Use 'all' for full reprocessing or provide an ISO 8601 datetime."
+          }
+        }
+      ],
+      "preconditions": [
+        "raw is None, or raw is a non-empty string"
+      ],
+      "postconditions": [
+        "If raw is None, result.policy == SincePolicy.STORED and result.timestamp is None",
+        "If raw.lower() == 'all', result.policy == SincePolicy.ALL and result.timestamp is None",
+        "If raw is a valid ISO 8601 string (not 'all'), result.policy == SincePolicy.EXPLICIT and result.timestamp is a UTC-aware datetime",
+        "When policy is EXPLICIT, result.timestamp.tzinfo is datetime.UTC (offset-aware inputs are converted to UTC; naive inputs are assumed UTC)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "resolve_effective_since",
+      "description": "Pure function (no I/O). Combines a SinceSpec (parsed CLI input) with the stored last-run timestamp (from state.yaml) to produce the effective cutoff datetime for filtering signals. Returns None to mean 'process all signals' (no cutoff), or a UTC-aware datetime cutoff. This function encodes the core business logic: ALL → None (process everything), STORED with a stored timestamp → that timestamp, STORED with no stored timestamp → None (process everything, first run), EXPLICIT → the explicit timestamp.",
+      "inputs": [
+        {
+          "name": "spec",
+          "type_ref": "SinceSpec",
+          "required": true,
+          "default": "",
+          "description": "The parsed --since specification from parse_since_argument.",
+          "validators": []
+        },
+        {
+          "name": "stored",
+          "type_ref": "OptionalDatetime",
+          "required": true,
+          "default": "",
+          "description": "The stored last_run_timestamp from state.yaml, or None if no state file exists or it was corrupt.",
+          "validators": []
+        }
+      ],
+      "output_type": "OptionalDatetime",
+      "error_cases": [],
+      "preconditions": [
+        "spec is a valid SinceSpec (invariant: timestamp is non-None iff policy is EXPLICIT)",
+        "If stored is not None, stored.tzinfo is datetime.UTC"
+      ],
+      "postconditions": [
+        "If spec.policy == SincePolicy.ALL, result is None",
+        "If spec.policy == SincePolicy.STORED and stored is not None, result == stored",
+        "If spec.policy == SincePolicy.STORED and stored is None, result is None",
+        "If spec.policy == SincePolicy.EXPLICIT, result == spec.timestamp",
+        "If result is not None, result.tzinfo is datetime.UTC"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "load_state",
+      "description": "Async I/O function. Reads and parses .stigmergy/state.yaml from the given state_dir. Returns a validated RunState on success, or None if the file is missing, unreadable, or contains invalid/corrupt data. On corruption or validation failure, emits a warning log and returns None (graceful degradation). Uses asyncio.to_thread to wrap blocking file reads. Uses yaml.safe_load for parsing and Pydantic for validation.",
+      "inputs": [
+        {
+          "name": "state_dir",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "The project root directory containing the .stigmergy/ subdirectory. The function reads state_dir / '.stigmergy' / 'state.yaml'.",
+          "validators": []
+        }
+      ],
+      "output_type": "OptionalRunState",
+      "error_cases": [
+        {
+          "name": "file_not_found",
+          "condition": "state_dir / '.stigmergy' / 'state.yaml' does not exist",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Returns None silently. No error raised. This is the expected first-run case."
+          }
+        },
+        {
+          "name": "corrupt_yaml",
+          "condition": "state.yaml exists but yaml.safe_load raises yaml.YAMLError",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Returns None. Emits a warning log: 'Corrupt state file at {path}, ignoring: {error}'."
+          }
+        },
+        {
+          "name": "invalid_schema",
+          "condition": "YAML is valid but does not conform to RunState schema (e.g., missing last_run_timestamp, wrong version, non-UTC datetime)",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Returns None. Emits a warning log: 'Invalid state file at {path}, ignoring: {validation_error}'."
+          }
+        },
+        {
+          "name": "permission_denied",
+          "condition": "state.yaml exists but is not readable due to filesystem permissions",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Returns None. Emits a warning log: 'Cannot read state file at {path}: {error}'."
+          }
+        },
+        {
+          "name": "unexpected_os_error",
+          "condition": "An unexpected OSError occurs during file read (e.g., disk failure)",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Returns None. Emits a warning log: 'Unexpected error reading state file at {path}: {error}'."
+          }
+        }
+      ],
+      "preconditions": [
+        "state_dir is a valid Path object (may or may not exist on disk)"
+      ],
+      "postconditions": [
+        "If state.yaml exists, is valid YAML, and passes RunState Pydantic validation, returns a RunState with last_run_timestamp as UTC-aware datetime",
+        "If state.yaml does not exist, returns None without error",
+        "If state.yaml exists but contains invalid YAML or fails RunState validation, returns None and emits a warning log",
+        "If state.yaml exists but is not readable (permissions), returns None and emits a warning log",
+        "The function does not modify any files on disk"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Reads from filesystem: state_dir / '.stigmergy' / 'state.yaml'",
+        "May emit warning-level log messages via Python logging"
+      ]
+    },
+    {
+      "name": "save_state",
+      "description": "Async I/O function. Atomically writes a RunState to .stigmergy/state.yaml. Creates the .stigmergy/ directory if it does not exist (equivalent to mkdir -p). Serializes the timestamp as an ISO 8601 string (not PyYAML implicit timestamp) using yaml.safe_dump. Performs an atomic write: writes to a temporary file in the same directory, then uses os.replace() to atomically move it to the final path. Uses asyncio.to_thread to wrap blocking file writes.",
+      "inputs": [
+        {
+          "name": "state_dir",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "The project root directory. The function writes to state_dir / '.stigmergy' / 'state.yaml'.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "The UTC-aware datetime of the completed run to persist as last_run_timestamp.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "timestamp.tzinfo is not None and timestamp.utcoffset() == timedelta(0)",
+              "error_message": "timestamp must be a UTC-aware datetime (tzinfo=datetime.UTC)"
+            }
+          ]
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "not_utc_timestamp",
+          "condition": "timestamp is naive (no tzinfo) or has a non-UTC timezone offset",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "timestamp must be UTC-aware (tzinfo=datetime.UTC), got: {timestamp.tzinfo}"
+          }
+        },
+        {
+          "name": "permission_denied_mkdir",
+          "condition": "Cannot create .stigmergy/ directory due to filesystem permissions",
+          "error_type": "OSError",
+          "error_data": {
+            "message": "Cannot create state directory at {path}: {error}"
+          }
+        },
+        {
+          "name": "permission_denied_write",
+          "condition": "Cannot write to .stigmergy/ directory due to filesystem permissions",
+          "error_type": "OSError",
+          "error_data": {
+            "message": "Cannot write state file to {path}: {error}"
+          }
+        },
+        {
+          "name": "disk_full",
+          "condition": "Disk is full; tempfile write or os.replace fails",
+          "error_type": "OSError",
+          "error_data": {
+            "message": "Failed to write state file at {path}: {error}"
+          }
+        },
+        {
+          "name": "atomic_replace_failure",
+          "condition": "os.replace() fails after tempfile write (e.g., cross-device rename)",
+          "error_type": "OSError",
+          "error_data": {
+            "message": "Atomic replace failed for state file at {path}: {error}. Temporary file may remain."
+          }
+        }
+      ],
+      "preconditions": [
+        "timestamp is a UTC-aware datetime (tzinfo=datetime.UTC)",
+        "state_dir is a valid Path object pointing to a writable location (or a location where directories can be created)"
+      ],
+      "postconditions": [
+        "state_dir / '.stigmergy' directory exists on disk",
+        "state_dir / '.stigmergy' / 'state.yaml' exists and contains valid YAML",
+        "The YAML content has keys 'version' (int 1) and 'last_run_timestamp' (ISO 8601 string)",
+        "The last_run_timestamp value in YAML is the ISO 8601 representation of the input timestamp",
+        "The file write was atomic: either the complete new file is present or the previous file (if any) is unchanged",
+        "No temporary files remain in the .stigmergy/ directory after successful completion"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Creates directory state_dir / '.stigmergy' if it does not exist",
+        "Writes a temporary file in state_dir / '.stigmergy/'",
+        "Atomically replaces state_dir / '.stigmergy' / 'state.yaml' via os.replace()",
+        "Removes temporary file on success (via os.replace atomicity)"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All datetime values stored internally MUST have tzinfo=datetime.UTC (UTC-aware); naive datetimes are never permitted",
+    "SinceSpec.timestamp is non-None if and only if SinceSpec.policy is SincePolicy.EXPLICIT",
+    "SinceSpec.timestamp is None if and only if SinceSpec.policy is SincePolicy.ALL or SincePolicy.STORED",
+    "RunState.version is always the literal integer 1",
+    "RunState.last_run_timestamp is always a UTC-aware datetime",
+    "state.yaml is serialized using yaml.safe_dump only; timestamps are written as ISO 8601 strings, never as PyYAML implicit timestamp objects",
+    "state.yaml is read using yaml.safe_load only",
+    "All file writes to state.yaml are atomic: write to tempfile in same directory then os.replace() to final path",
+    "The .stigmergy/ directory is created (mkdir -p equivalent) if it does not exist before writing state.yaml",
+    "SincePolicy, SinceSpec, and RunState are frozen (immutable) Pydantic models / enums",
+    "load_state and save_state use asyncio.to_thread to wrap blocking file I/O"
+  ],
+  "requires": [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "python>=3.12"
+  ]
+}

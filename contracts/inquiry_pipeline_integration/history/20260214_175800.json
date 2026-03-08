@@ -1,0 +1,671 @@
+{
+  "component_id": "inquiry_pipeline_integration",
+  "name": "Inquiry Pipeline Integration",
+  "description": "Wire the inquiry step into the mesh routing pipeline in mesh/mesh.py. After a worker accepts a signal (stop-on-first-accept) and before consensus, call inquire() on the accepting worker. Thread the InquiryResult through to wherever assessment/consensus uses it. Ensure existing routing behavior is unchanged when inquiry produces no results. All existing tests must continue to pass.",
+  "version": 1,
+  "types": [
+    {
+      "name": "InquiryConnection",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "dimension",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The inquiry dimension this connection belongs to (e.g. 'people', 'projects', 'tickets', 'keywords', 'sentiment').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "dimension must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "matched_item",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The item from the worker's context knowledge base that matched the signal dimension.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "matched_item must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Relevance score of this connection, in the range [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "score must be between 0.0 and 1.0 inclusive"
+            }
+          ]
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Optional provenance label indicating where the matched_item was found (e.g. 'llm', 'embedding', 'keyword_overlap').",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single connection discovered during inquiry — links a matched item in a specific dimension back to a source in the worker's context knowledge base."
+    },
+    {
+      "name": "InquiryConnectionTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "InquiryConnection",
+      "variants": [],
+      "inner_types": [],
+      "description": "An immutable tuple of InquiryConnection items. Represented as a frozen tuple in the Pydantic model."
+    },
+    {
+      "name": "StringTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "An immutable tuple of strings. Used for people, projects, tickets, keywords dimensions."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "float"
+      ],
+      "description": "An optional float value. None means no value was produced."
+    },
+    {
+      "name": "OptionalInquiryResult",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "InquiryResult"
+      ],
+      "description": "An optional InquiryResult. None means inquiry was not performed or not applicable."
+    },
+    {
+      "name": "InquiryResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "people",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "People entities extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "projects",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "Project identifiers extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "tickets",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "Ticket/issue identifiers extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "keywords",
+          "type_ref": "StringTuple",
+          "required": false,
+          "default": "()",
+          "description": "Keywords extracted and matched from the signal.",
+          "validators": []
+        },
+        {
+          "name": "sentiment",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "None",
+          "description": "Sentiment score derived from the signal, in the range [-1.0, 1.0]. None if sentiment analysis was not performed.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value is None or -1.0 <= value <= 1.0",
+              "error_message": "sentiment must be None or between -1.0 and 1.0 inclusive"
+            }
+          ]
+        },
+        {
+          "name": "connections",
+          "type_ref": "InquiryConnectionTuple",
+          "required": false,
+          "default": "()",
+          "description": "All connections discovered across dimensions during inquiry.",
+          "validators": []
+        },
+        {
+          "name": "confidence",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.0",
+          "description": "Overall confidence of the inquiry result, in range [0.0, 1.0]. 0.0 means no confidence / empty result.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "confidence must be between 0.0 and 1.0 inclusive"
+            }
+          ]
+        },
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Identifier of the worker that produced this inquiry result.",
+          "validators": []
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Identifier of the signal that was inquired upon.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 BaseModel capturing the full result of an inquiry step. Produced by a single accepting worker after signal decomposition and knowledge-base querying. All collection fields default to empty tuples, numeric fields to zero/None, and string fields to empty — so a default-constructed InquiryResult represents 'no findings'."
+    },
+    {
+      "name": "Signal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this signal.",
+          "validators": []
+        },
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content / payload of the signal.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary metadata associated with the signal.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "External type representing a routed signal in the mesh pipeline. Defined in mesh primitives; referenced here as an opaque input to inquiry functions."
+    },
+    {
+      "name": "AcceptResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the worker that accepted the signal.",
+          "validators": []
+        },
+        {
+          "name": "score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The acceptance score that exceeded the threshold.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "accept score must be between 0.0 and 1.0"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The result of the stop-on-first-accept phase: identifies the winning worker and its accept score."
+    },
+    {
+      "name": "RoutingResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The signal that was routed.",
+          "validators": []
+        },
+        {
+          "name": "accepted_by",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Worker ID of the accepting worker.",
+          "validators": []
+        },
+        {
+          "name": "inquiry_result",
+          "type_ref": "OptionalInquiryResult",
+          "required": false,
+          "default": "None",
+          "description": "The InquiryResult produced by the accepting worker, or None if inquiry was skipped or produced no results.",
+          "validators": []
+        },
+        {
+          "name": "consensus",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "The consensus/assessment outcome, potentially enriched by inquiry_result.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The full result of routing a signal through the mesh pipeline, now augmented with an optional InquiryResult."
+    },
+    {
+      "name": "InquiryStrategy",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "LLM",
+        "EMBEDDING_SIMILARITY",
+        "KEYWORD_OVERLAP",
+        "FALLBACK_CHAIN"
+      ],
+      "inner_types": [],
+      "description": "The strategy used by inquire() to decompose and match signal dimensions."
+    }
+  ],
+  "functions": [
+    {
+      "name": "inquire",
+      "description": "Decompose the given signal into dimensions (people, projects, tickets, keywords, sentiment) and query the accepting worker's context knowledge base for relevant connections. Uses LLM when available, falls back to embedding similarity + keyword overlap. All errors are handled internally — this function NEVER raises. On any failure, returns a default-constructed (empty) InquiryResult with worker_id and signal_id populated.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal that was accepted by this worker in the stop-on-first-accept phase.",
+          "validators": []
+        }
+      ],
+      "output_type": "InquiryResult",
+      "error_cases": [
+        {
+          "name": "llm_unavailable",
+          "condition": "LLM backend is not configured or unreachable",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Falls back to embedding similarity + keyword overlap. No exception propagated."
+          }
+        },
+        {
+          "name": "knowledge_base_empty",
+          "condition": "The worker's context knowledge base contains no entries",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Returns empty InquiryResult with confidence 0.0. No exception propagated."
+          }
+        },
+        {
+          "name": "signal_decomposition_failure",
+          "condition": "Signal content cannot be decomposed into any dimensions",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Returns empty InquiryResult with confidence 0.0. Logs warning. No exception propagated."
+          }
+        },
+        {
+          "name": "unexpected_error",
+          "condition": "Any unexpected exception during inquiry processing",
+          "error_type": "InternallyHandled",
+          "error_data": {
+            "behavior": "Catches all exceptions, logs error, returns default InquiryResult with worker_id and signal_id set."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is a non-empty string",
+        "signal.content is a non-empty string",
+        "The worker has already accepted this signal (score above threshold) in the stop-on-first-accept phase",
+        "This method is called on the single accepting worker only"
+      ],
+      "postconditions": [
+        "Returned InquiryResult is a frozen Pydantic v2 model (immutable)",
+        "Returned InquiryResult.worker_id equals the calling worker's identifier",
+        "Returned InquiryResult.signal_id equals signal.id",
+        "Returned InquiryResult.confidence is in [0.0, 1.0]",
+        "Returned InquiryResult.sentiment is None or in [-1.0, 1.0]",
+        "All InquiryConnection.score values in connections are in [0.0, 1.0]",
+        "On any internal error, returns a default-constructed InquiryResult with worker_id and signal_id set and confidence == 0.0",
+        "Function never raises an exception"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke LLM API calls (network I/O) when LLM backend is available",
+        "May compute embedding vectors (CPU/GPU) for similarity matching",
+        "Logs inquiry execution details at DEBUG level",
+        "Logs errors/warnings for internal failures at WARNING/ERROR level"
+      ]
+    },
+    {
+      "name": "route_signal",
+      "description": "Route a signal through the mesh pipeline: broadcast to workers, stop on first accept, run inquiry on the accepting worker, then pass the optional InquiryResult into consensus/assessment. This is the modified top-level pipeline entry point in mesh/mesh.py. When inquiry_result is None or empty, downstream consensus/assessment behaves identically to the pre-inquiry implementation.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to route through the mesh.",
+          "validators": []
+        }
+      ],
+      "output_type": "RoutingResult",
+      "error_cases": [
+        {
+          "name": "no_worker_accepts",
+          "condition": "No worker scores above the acceptance threshold for this signal",
+          "error_type": "NoAcceptError",
+          "error_data": {
+            "signal_id": "The signal ID that no worker accepted"
+          }
+        },
+        {
+          "name": "no_workers_registered",
+          "condition": "The mesh has no registered workers",
+          "error_type": "MeshConfigurationError",
+          "error_data": {
+            "detail": "Cannot route signal: no workers registered in the mesh"
+          }
+        },
+        {
+          "name": "consensus_failure",
+          "condition": "Consensus/assessment phase fails after accept and inquiry",
+          "error_type": "ConsensusError",
+          "error_data": {
+            "signal_id": "The signal ID",
+            "worker_id": "The accepting worker ID"
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is a non-empty string",
+        "signal.content is a non-empty string",
+        "At least one worker is registered in the mesh"
+      ],
+      "postconditions": [
+        "Returned RoutingResult.signal_id equals signal.id",
+        "Returned RoutingResult.accepted_by is a valid registered worker ID",
+        "If inquiry was performed, RoutingResult.inquiry_result is a frozen InquiryResult with matching signal_id and worker_id",
+        "If inquiry was not performed or failed, RoutingResult.inquiry_result is None",
+        "Consensus output is present in RoutingResult.consensus",
+        "Existing routing behavior (stop-on-first-accept, consensus) is unchanged when inquiry_result is None",
+        "All existing tests continue to pass without modification"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Broadcasts signal to all registered workers for scoring",
+        "Calls inquire() on the single accepting worker (after accept, before consensus)",
+        "Invokes consensus/assessment with optional inquiry_result parameter",
+        "Logs routing lifecycle events at INFO level"
+      ]
+    },
+    {
+      "name": "run_consensus",
+      "description": "Execute the consensus/assessment phase, now accepting an optional InquiryResult. When inquiry_result is None, behavior is identical to the pre-inquiry implementation. When present, the inquiry data enriches the consensus assessment.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The original signal being routed.",
+          "validators": []
+        },
+        {
+          "name": "accept_result",
+          "type_ref": "AcceptResult",
+          "required": true,
+          "default": "",
+          "description": "The result of the stop-on-first-accept phase.",
+          "validators": []
+        },
+        {
+          "name": "inquiry_result",
+          "type_ref": "OptionalInquiryResult",
+          "required": false,
+          "default": "None",
+          "description": "Optional InquiryResult from the accepting worker. When None, consensus proceeds exactly as before the inquiry feature was added.",
+          "validators": []
+        }
+      ],
+      "output_type": "dict",
+      "error_cases": [
+        {
+          "name": "consensus_timeout",
+          "condition": "Consensus computation exceeds configured timeout",
+          "error_type": "ConsensusError",
+          "error_data": {
+            "detail": "Consensus timed out"
+          }
+        },
+        {
+          "name": "invalid_accept_result",
+          "condition": "accept_result references a worker not registered in the mesh",
+          "error_type": "ConsensusError",
+          "error_data": {
+            "detail": "Accepting worker not found in mesh"
+          }
+        }
+      ],
+      "preconditions": [
+        "signal.id is a non-empty string",
+        "accept_result.worker_id is a non-empty string referencing a valid worker",
+        "If inquiry_result is not None, inquiry_result.signal_id == signal.id",
+        "If inquiry_result is not None, inquiry_result.worker_id == accept_result.worker_id"
+      ],
+      "postconditions": [
+        "Returned dict contains consensus assessment data",
+        "When inquiry_result is None, output is identical to pre-inquiry consensus behavior",
+        "When inquiry_result is provided, output may include enriched assessment data derived from inquiry connections",
+        "Function does not mutate any of its inputs"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke assessment logic that reads worker state",
+        "Logs consensus computation details at DEBUG level"
+      ]
+    },
+    {
+      "name": "create_empty_inquiry_result",
+      "description": "Factory function to create a default-constructed (empty) InquiryResult with only worker_id and signal_id populated. Used as the safe fallback when inquiry fails or is not applicable.",
+      "inputs": [
+        {
+          "name": "worker_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The identifier of the worker.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 0",
+              "error_message": "worker_id must be a string (may be empty for unknown worker)"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The identifier of the signal.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 0",
+              "error_message": "signal_id must be a string (may be empty for unknown signal)"
+            }
+          ]
+        }
+      ],
+      "output_type": "InquiryResult",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned InquiryResult.worker_id == worker_id",
+        "Returned InquiryResult.signal_id == signal_id",
+        "Returned InquiryResult.people == ()",
+        "Returned InquiryResult.projects == ()",
+        "Returned InquiryResult.tickets == ()",
+        "Returned InquiryResult.keywords == ()",
+        "Returned InquiryResult.sentiment is None",
+        "Returned InquiryResult.connections == ()",
+        "Returned InquiryResult.confidence == 0.0",
+        "Returned InquiryResult is frozen (immutable)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_inquiry_result_frozen",
+      "description": "Contract test helper: verify that an InquiryResult instance is truly frozen (immutable). Attempts to set any field and confirms TypeError is raised. Used in contract tests to ensure the frozen invariant holds.",
+      "inputs": [
+        {
+          "name": "result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult instance to validate for immutability.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "not_frozen",
+          "condition": "The InquiryResult allows field mutation (not properly frozen)",
+          "error_type": "ContractViolation",
+          "error_data": {
+            "detail": "InquiryResult is not frozen — field mutation did not raise TypeError"
+          }
+        }
+      ],
+      "preconditions": [
+        "result is a valid InquiryResult instance"
+      ],
+      "postconditions": [
+        "Returns true if and only if the InquiryResult is frozen (all field mutations raise TypeError)",
+        "Does not mutate the input result"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_inquiry_result_serializable",
+      "description": "Contract test helper: verify that an InquiryResult instance can be serialized to JSON and deserialized back to an equivalent instance. Confirms round-trip fidelity.",
+      "inputs": [
+        {
+          "name": "result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult instance to validate for JSON serializability.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "serialization_failure",
+          "condition": "InquiryResult cannot be serialized to JSON",
+          "error_type": "ContractViolation",
+          "error_data": {
+            "detail": "InquiryResult failed JSON serialization"
+          }
+        },
+        {
+          "name": "deserialization_mismatch",
+          "condition": "Deserialized InquiryResult does not equal the original",
+          "error_type": "ContractViolation",
+          "error_data": {
+            "detail": "InquiryResult JSON round-trip produced a non-equivalent instance"
+          }
+        }
+      ],
+      "preconditions": [
+        "result is a valid InquiryResult instance"
+      ],
+      "postconditions": [
+        "Returns true if and only if JSON round-trip produces an equivalent InquiryResult",
+        "Does not mutate the input result"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "InquiryResult is always a frozen Pydantic v2 BaseModel — no field may be mutated after construction",
+    "InquiryConnection is always a frozen Pydantic v2 BaseModel — no field may be mutated after construction",
+    "inquire() NEVER raises an exception — all errors are caught internally and result in an empty InquiryResult",
+    "When inquiry_result is None, all downstream consensus/assessment behavior is identical to the pre-inquiry implementation",
+    "inquire() is called on exactly one worker: the single worker that accepted the signal in the stop-on-first-accept phase",
+    "inquire() is called AFTER stop-on-first-accept and BEFORE consensus/assessment",
+    "All existing mesh routing tests pass without modification after this integration",
+    "InquiryResult.confidence is always in [0.0, 1.0]",
+    "InquiryResult.sentiment is always None or in [-1.0, 1.0]",
+    "All InquiryConnection.score values are always in [0.0, 1.0]",
+    "InquiryResult is JSON-serializable and supports lossless round-trip serialization/deserialization",
+    "The inquiry_result parameter in consensus/assessment functions always defaults to None for backward compatibility"
+  ],
+  "requires": []
+}

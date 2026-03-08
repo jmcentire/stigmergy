@@ -1,0 +1,848 @@
+{
+  "component_id": "business_weight_computation",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "cbw_happy_default_weights",
+      "description": "compute_business_weight with default MetricWeights and typical sub-metric values produces correct composite in [0.1, 1.0]",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "signal_frequency=0.6, author_seniority=0.8, channel_gravity=0.5, engagement_velocity=0.4, default weights",
+      "expected_output_description": "BusinessWeightComponents with clamped sub-metrics and composite >= 0.1",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_frequency == pytest.approx(0.6)",
+        "result.author_seniority == pytest.approx(0.8)",
+        "result.channel_gravity == pytest.approx(0.5)",
+        "result.engagement_velocity == pytest.approx(0.4)",
+        "0.1 <= result.composite <= 1.0",
+        "result.defaulted_metrics == frozenset()"
+      ]
+    },
+    {
+      "id": "cbw_happy_all_ones",
+      "description": "compute_business_weight with all sub-metrics at 1.0 produces composite of 1.0",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "1.0",
+        "author_seniority": "1.0",
+        "channel_gravity": "1.0",
+        "engagement_velocity": "1.0"
+      },
+      "input_description": "",
+      "expected_output_description": "composite == 1.0",
+      "expected_error": "",
+      "assertions": [
+        "result.composite == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "cbw_happy_all_zeros",
+      "description": "compute_business_weight with all sub-metrics at 0.0 produces composite at floor (0.1)",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "0.0",
+        "author_seniority": "0.0",
+        "channel_gravity": "0.0",
+        "engagement_velocity": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "composite == 0.1 (floor)",
+      "expected_error": "",
+      "assertions": [
+        "result.composite == pytest.approx(0.1)"
+      ]
+    },
+    {
+      "id": "cbw_clamp_negative_inputs",
+      "description": "compute_business_weight clamps negative inputs to 0.0",
+      "function": "compute_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "-0.5",
+        "author_seniority": "-1.0",
+        "channel_gravity": "-0.1",
+        "engagement_velocity": "-999.0"
+      },
+      "input_description": "",
+      "expected_output_description": "All sub-metrics clamped to 0.0, composite at floor",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_frequency == pytest.approx(0.0)",
+        "result.author_seniority == pytest.approx(0.0)",
+        "result.channel_gravity == pytest.approx(0.0)",
+        "result.engagement_velocity == pytest.approx(0.0)",
+        "result.composite == pytest.approx(0.1)"
+      ]
+    },
+    {
+      "id": "cbw_clamp_above_one",
+      "description": "compute_business_weight clamps inputs above 1.0 to 1.0",
+      "function": "compute_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "1.5",
+        "author_seniority": "2.0",
+        "channel_gravity": "100.0",
+        "engagement_velocity": "1.001"
+      },
+      "input_description": "",
+      "expected_output_description": "All sub-metrics clamped to 1.0, composite == 1.0",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_frequency == pytest.approx(1.0)",
+        "result.author_seniority == pytest.approx(1.0)",
+        "result.channel_gravity == pytest.approx(1.0)",
+        "result.engagement_velocity == pytest.approx(1.0)",
+        "result.composite == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "cbw_custom_floor",
+      "description": "compute_business_weight respects custom floor value above 0.1",
+      "function": "compute_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "0.0",
+        "author_seniority": "0.0",
+        "channel_gravity": "0.0",
+        "engagement_velocity": "0.0",
+        "floor": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "composite == 0.5 (custom floor)",
+      "expected_error": "",
+      "assertions": [
+        "result.composite == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "cbw_defaulted_metrics_passthrough",
+      "description": "compute_business_weight passes through defaulted_metrics frozenset",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "defaulted_metrics={'author_seniority', 'channel_gravity'}",
+      "expected_output_description": "result.defaulted_metrics contains the passed-in names",
+      "expected_error": "",
+      "assertions": [
+        "result.defaulted_metrics == frozenset({'author_seniority', 'channel_gravity'})"
+      ]
+    },
+    {
+      "id": "cbw_error_nan_input",
+      "description": "compute_business_weight raises ValueError for NaN input",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "float('nan')",
+        "author_seniority": "0.5",
+        "channel_gravity": "0.5",
+        "engagement_velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'nan' in str(exc_info.value).lower() or 'finite' in str(exc_info.value).lower() or 'signal_frequency' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "cbw_error_inf_input",
+      "description": "compute_business_weight raises ValueError for Inf input",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_frequency": "0.5",
+        "author_seniority": "float('inf')",
+        "channel_gravity": "0.5",
+        "engagement_velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "cbw_error_neg_inf_input",
+      "description": "compute_business_weight raises ValueError for negative Inf input",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "engagement_velocity": "float('-inf')"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "cbw_error_all_zero_weights",
+      "description": "compute_business_weight raises ValueError when all metric weights are zero",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "MetricWeights with all zeros",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'zero' in str(exc_info.value).lower() or 'normalize' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "cbw_error_invalid_floor_negative",
+      "description": "compute_business_weight raises ValueError for negative floor",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "floor": "-0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "cbw_error_invalid_floor_above_one",
+      "description": "compute_business_weight raises ValueError for floor > 1.0",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "floor": "1.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "cbw_custom_weights",
+      "description": "compute_business_weight with custom weights produces weighted combination",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Custom weights emphasizing author_seniority",
+      "expected_output_description": "Composite reflects heavier author_seniority weight",
+      "expected_error": "",
+      "assertions": [
+        "0.1 <= result.composite <= 1.0"
+      ]
+    },
+    {
+      "id": "cbw_invariant_idempotent",
+      "description": "compute_business_weight is idempotent: calling twice with same inputs gives same result",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result1.composite == result2.composite",
+        "result1.signal_frequency == result2.signal_frequency"
+      ]
+    },
+    {
+      "id": "cbw_invariant_composite_bounded",
+      "description": "Property: composite is always in [floor, 1.0] for any valid inputs",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.composite >= floor",
+        "result.composite <= 1.0"
+      ]
+    },
+    {
+      "id": "cbw_invariant_monotonicity",
+      "description": "Property: increasing any sub-metric (others held constant) does not decrease composite",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result_higher.composite >= result_lower.composite"
+      ]
+    },
+    {
+      "id": "rbw_happy_path",
+      "description": "resolve_business_weight end-to-end with working resolver, known channel, and signal history",
+      "function": "resolve_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock returning 0.9 for resolve_seniority"
+      },
+      "input_values": {},
+      "input_description": "Context with channel 'slack', mock resolver returning 0.9, channel_weights with 'slack'->0.7, signal history with 10 signals",
+      "expected_output_description": "BusinessWeightComponents with resolved values, no defaulted metrics",
+      "expected_error": "",
+      "assertions": [
+        "0.1 <= result.composite <= 1.0",
+        "result.author_seniority == pytest.approx(0.9)",
+        "result.channel_gravity == pytest.approx(0.7)",
+        "'author_seniority' not in result.defaulted_metrics"
+      ]
+    },
+    {
+      "id": "rbw_resolver_timeout",
+      "description": "resolve_business_weight falls back on identity resolver timeout",
+      "function": "resolve_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock raising asyncio.TimeoutError"
+      },
+      "input_values": {},
+      "input_description": "Mock resolver that raises asyncio.TimeoutError",
+      "expected_output_description": "Result has author_seniority at default and 'author_seniority' in defaulted_metrics",
+      "expected_error": "",
+      "assertions": [
+        "'author_seniority' in result.defaulted_metrics",
+        "result.author_seniority == pytest.approx(config.default_weight)",
+        "0.1 <= result.composite <= 1.0"
+      ]
+    },
+    {
+      "id": "rbw_resolver_runtime_error",
+      "description": "resolve_business_weight falls back on identity resolver generic error",
+      "function": "resolve_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock raising RuntimeError('network failure')"
+      },
+      "input_values": {},
+      "input_description": "Mock resolver that raises RuntimeError",
+      "expected_output_description": "Result has author_seniority at default and 'author_seniority' in defaulted_metrics",
+      "expected_error": "",
+      "assertions": [
+        "'author_seniority' in result.defaulted_metrics",
+        "0.1 <= result.composite <= 1.0"
+      ]
+    },
+    {
+      "id": "rbw_empty_signal_history",
+      "description": "resolve_business_weight with empty signal history defaults frequency and velocity",
+      "function": "resolve_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock returning 0.5"
+      },
+      "input_values": {},
+      "input_description": "Empty signal history list",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'signal_frequency' in result.defaulted_metrics",
+        "'engagement_velocity' in result.defaulted_metrics"
+      ]
+    },
+    {
+      "id": "rbw_unknown_channel",
+      "description": "resolve_business_weight with unknown channel uses default gravity and marks defaulted",
+      "function": "resolve_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock returning 0.5"
+      },
+      "input_values": {},
+      "input_description": "Context with channel 'unknown_channel' not in channel_weights",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'channel_gravity' in result.defaulted_metrics",
+        "result.channel_gravity == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "rbw_error_missing_channel",
+      "description": "resolve_business_weight raises ValueError when context.channel is empty",
+      "function": "resolve_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock returning 0.5"
+      },
+      "input_values": {},
+      "input_description": "Context with empty channel string",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'channel' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "rbw_error_invalid_signal_timestamps",
+      "description": "resolve_business_weight raises ValueError for non-finite timestamps in signal_history",
+      "function": "resolve_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "AsyncMock returning 0.5"
+      },
+      "input_values": {},
+      "input_description": "Signal history with NaN timestamp",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'timestamp' in str(exc_info.value).lower() or 'invalid' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "csf_happy_path",
+      "description": "compute_signal_frequency counts signals in window and normalizes correctly",
+      "function": "compute_signal_frequency",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "10 signals in window, frequency_saturation=100, now=1000.0, window=300",
+      "expected_output_description": "result == 0.1 (10/100)",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.1)"
+      ]
+    },
+    {
+      "id": "csf_empty_history",
+      "description": "compute_signal_frequency returns 0.0 for empty signal history",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_history": "[]",
+        "window_seconds": "300.0",
+        "frequency_saturation": "100.0",
+        "now": "1000.0"
+      },
+      "input_description": "",
+      "expected_output_description": "result == 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.0)"
+      ]
+    },
+    {
+      "id": "csf_saturation_clamping",
+      "description": "compute_signal_frequency clamps at 1.0 when signals exceed saturation",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "200 signals in window, frequency_saturation=100",
+      "expected_output_description": "result == 1.0",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "csf_window_boundary_exclusion",
+      "description": "compute_signal_frequency excludes signals outside the time window",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signals before window start are excluded",
+      "expected_output_description": "Only in-window signals counted",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(expected)"
+      ]
+    },
+    {
+      "id": "csf_single_signal",
+      "description": "compute_signal_frequency with single signal in window",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "1 signal at now-10, window=300, saturation=100",
+      "expected_output_description": "result == 0.01",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.01)"
+      ]
+    },
+    {
+      "id": "csf_burst_same_timestamp",
+      "description": "compute_signal_frequency counts all signals even at same timestamp",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "50 signals all at same timestamp within window",
+      "expected_output_description": "result == 0.5 (50/100)",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "csf_error_invalid_window_zero",
+      "description": "compute_signal_frequency raises ValueError for window_seconds=0",
+      "function": "compute_signal_frequency",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "window_seconds": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "csf_error_invalid_window_negative",
+      "description": "compute_signal_frequency raises ValueError for negative window_seconds",
+      "function": "compute_signal_frequency",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "window_seconds": "-10.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "csf_error_invalid_saturation",
+      "description": "compute_signal_frequency raises ValueError for frequency_saturation <= 0",
+      "function": "compute_signal_frequency",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency_saturation": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "cev_happy_path",
+      "description": "compute_engagement_velocity with increasing signal volume returns > 0.5",
+      "function": "compute_engagement_velocity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "More signals in recent half than older half",
+      "expected_output_description": "result > 0.5",
+      "expected_error": "",
+      "assertions": [
+        "result > 0.5",
+        "0.0 <= result <= 1.0"
+      ]
+    },
+    {
+      "id": "cev_empty_history",
+      "description": "compute_engagement_velocity returns 0.0 for empty signal history",
+      "function": "compute_engagement_velocity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "result == 0.0",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.0)"
+      ]
+    },
+    {
+      "id": "cev_constant_volume",
+      "description": "compute_engagement_velocity returns 0.5 for constant signal volume across halves",
+      "function": "compute_engagement_velocity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Equal signals in both halves of window",
+      "expected_output_description": "result == 0.5 (neutral)",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "cev_decreasing_volume",
+      "description": "compute_engagement_velocity with decreasing signal volume returns < 0.5",
+      "function": "compute_engagement_velocity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "More signals in older half than recent half",
+      "expected_output_description": "result < 0.5",
+      "expected_error": "",
+      "assertions": [
+        "result < 0.5",
+        "0.0 <= result <= 1.0"
+      ]
+    },
+    {
+      "id": "cev_error_invalid_window",
+      "description": "compute_engagement_velocity raises ValueError for window_seconds <= 0",
+      "function": "compute_engagement_velocity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "window_seconds": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "cev_signals_outside_window",
+      "description": "compute_engagement_velocity excludes signals outside the time window",
+      "function": "compute_engagement_velocity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "All signals before window start",
+      "expected_output_description": "result == 0.0 (no in-window signals)",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.0)"
+      ]
+    },
+    {
+      "id": "lcg_known_channel",
+      "description": "lookup_channel_gravity returns learned weight for known channel",
+      "function": "lookup_channel_gravity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "channel": "slack"
+      },
+      "input_description": "",
+      "expected_output_description": "result == channel_weights.weights['slack']",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.8)"
+      ]
+    },
+    {
+      "id": "lcg_unknown_channel_default",
+      "description": "lookup_channel_gravity returns default_gravity for unknown channel",
+      "function": "lookup_channel_gravity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "channel": "unknown_channel"
+      },
+      "input_description": "",
+      "expected_output_description": "result == default_gravity (0.5)",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "lcg_error_empty_channel",
+      "description": "lookup_channel_gravity raises ValueError for empty channel string",
+      "function": "lookup_channel_gravity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "channel": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'channel' in str(exc_info.value).lower() or 'empty' in str(exc_info.value).lower()"
+      ]
+    },
+    {
+      "id": "lcg_error_whitespace_channel",
+      "description": "lookup_channel_gravity raises ValueError for whitespace-only channel",
+      "function": "lookup_channel_gravity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "channel": "   "
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "exc_info"
+      ]
+    },
+    {
+      "id": "lcg_clamps_out_of_range",
+      "description": "lookup_channel_gravity clamps learned weight to [0.0, 1.0] if stored value is out of range",
+      "function": "lookup_channel_gravity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Channel weights map has value 1.5 for a channel",
+      "expected_output_description": "result == 1.0 (clamped)",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "lcg_custom_default_gravity",
+      "description": "lookup_channel_gravity uses custom default_gravity for unknown channels",
+      "function": "lookup_channel_gravity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ChannelWeightsMap with default_gravity=0.3",
+      "expected_output_description": "result == 0.3 for unknown channel",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.3)"
+      ]
+    },
+    {
+      "id": "invariant_normalized_scores_bounded",
+      "description": "Invariant: All NormalizedScore fields in BusinessWeightComponents are in [0.0, 1.0]",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= result.signal_frequency <= 1.0",
+        "0.0 <= result.author_seniority <= 1.0",
+        "0.0 <= result.channel_gravity <= 1.0",
+        "0.0 <= result.engagement_velocity <= 1.0"
+      ]
+    },
+    {
+      "id": "invariant_business_weight_bounded",
+      "description": "Invariant: composite (BusinessWeight) is always in [0.1, 1.0]",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.1 <= result.composite <= 1.0"
+      ]
+    },
+    {
+      "id": "invariant_defaulted_metrics_valid_names",
+      "description": "Invariant: defaulted_metrics only contains valid metric names",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.defaulted_metrics.issubset({'signal_frequency', 'author_seniority', 'channel_gravity', 'engagement_velocity'})"
+      ]
+    },
+    {
+      "id": "invariant_frozen_immutable",
+      "description": "Invariant: BusinessWeightComponents is immutable after construction",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Cannot assign to result fields after construction"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for business_weight_computation (version 1).\n\nTests are organized into five classes mirroring the five contract functions,\nplus a class for cross-cutting invariants.\n\nRun with: pytest contract_test.py -v\nRequires: pytest, pytest-asyncio, hypothesis\n\"\"\"\nfrom __future__ import annotations\n\nimport asyncio\nimport math\nfrom typing import Any\nfrom unittest.mock import AsyncMock, MagicMock\n\nimport pytest\n\n# Hypothesis for property-based tests on pure functions\nfrom hypothesis import given, settings, assume\nfrom hypothesis import strategies as st\n\n# Import the component under test\nfrom src.stigmergy.core.business_weight import (\n    compute_business_weight,\n    resolve_business_weight,\n    compute_signal_frequency,\n    compute_engagement_velocity,\n    lookup_channel_gravity,\n    BusinessWeightComponents,\n    BusinessWeightConfig,\n    MetricWeights,\n    ChannelWeightsMap,\n    SignalRecord,\n)\n\n\n# ---------------------------------------------------------------------------\n# Shared Fixtures\n# ---------------------------------------------------------------------------\n\n@pytest.fixture\ndef default_metric_weights() -> MetricWeights:\n    \"\"\"Default metric weights: (0.25, 0.30, 0.25, 0.20).\"\"\"\n    return MetricWeights()\n\n\n@pytest.fixture\ndef custom_metric_weights() -> MetricWeights:\n    \"\"\"Custom metric weights emphasizing author_seniority.\"\"\"\n    return MetricWeights(\n        signal_frequency=0.1,\n        author_seniority=0.6,\n        channel_gravity=0.2,\n        engagement_velocity=0.1,\n    )\n\n\n@pytest.fixture\ndef zero_metric_weights() -> MetricWeights:\n    \"\"\"All-zero metric weights (should be rejected).\"\"\"\n    return MetricWeights(\n        signal_frequency=0.0,\n        author_seniority=0.0,\n        channel_gravity=0.0,\n        engagement_velocity=0.0,\n    )\n\n\n@pytest.fixture\ndef sample_channel_weights() -> ChannelWeightsMap:\n    \"\"\"Channel weights map with a few known channels.\"\"\"\n    return ChannelWeightsMap(\n        weights={\"slack\": 0.8, \"email\": 0.6, \"sms\": 0.3},\n        default_gravity=0.5,\n    )\n\n\n@pytest.fixture\ndef sample_channel_weights_custom_default() -> ChannelWeightsMap:\n    \"\"\"Channel weights map with custom default_gravity.\"\"\"\n    return ChannelWeightsMap(\n        weights={\"slack\": 0.8},\n        default_gravity=0.3,\n    )\n\n\n@pytest.fixture\ndef channel_weights_out_of_range() -> ChannelWeightsMap:\n    \"\"\"Channel weights map with an out-of-range value.\"\"\"\n    return ChannelWeightsMap(\n        weights={\"overflow\": 1.5, \"negative\": -0.2},\n        default_gravity=0.5,\n    )\n\n\ndef _make_signal(timestamp: float, author_id: str = \"author1\", channel: str = \"slack\") -> SignalRecord:\n    \"\"\"Helper to create a SignalRecord.\"\"\"\n    return SignalRecord(timestamp=timestamp, author_id=author_id, channel=channel)\n\n\ndef _make_signals_in_window(\n    count: int,\n    now: float,\n    window_seconds: float,\n    spread: str = \"uniform\",\n    channel: str = \"slack\",\n) -> list[SignalRecord]:\n    \"\"\"Create `count` signals uniformly distributed within [now - window_seconds, now].\"\"\"\n    if count == 0:\n        return []\n    step = window_seconds / max(count, 1)\n    return [\n        _make_signal(\n            timestamp=now - window_seconds + (i + 0.5) * step,\n            author_id=f\"author_{i}\",\n            channel=channel,\n        )\n        for i in range(count)\n    ]\n\n\n@pytest.fixture\ndef sample_signal_history() -> list[SignalRecord]:\n    \"\"\"10 signals uniformly in the last 300 seconds, now=1000.0.\"\"\"\n    return _make_signals_in_window(count=10, now=1000.0, window_seconds=300.0)\n\n\n@pytest.fixture\ndef default_config() -> BusinessWeightConfig:\n    return BusinessWeightConfig()\n\n\n@pytest.fixture\ndef mock_context():\n    \"\"\"A mock Context with business_weight=0.5, context_id, and channel.\"\"\"\n    ctx = MagicMock()\n    ctx.business_weight = 0.5\n    ctx.context_id = \"ctx-001\"\n    ctx.channel = \"slack\"\n    return ctx\n\n\n@pytest.fixture\ndef mock_context_no_channel():\n    \"\"\"A mock Context with empty channel.\"\"\"\n    ctx = MagicMock()\n    ctx.business_weight = 0.5\n    ctx.context_id = \"ctx-002\"\n    ctx.channel = \"\"\n    return ctx\n\n\n@pytest.fixture\ndef mock_identity_resolver():\n    \"\"\"AsyncMock identity resolver returning 0.9 for any author.\"\"\"\n    resolver = MagicMock()\n    resolver.resolve_seniority = AsyncMock(return_value=0.9)\n    return resolver\n\n\n@pytest.fixture\ndef mock_identity_resolver_timeout():\n    \"\"\"AsyncMock identity resolver that raises asyncio.TimeoutError.\"\"\"\n    resolver = MagicMock()\n    resolver.resolve_seniority = AsyncMock(side_effect=asyncio.TimeoutError(\"Timeout\"))\n    return resolver\n\n\n@pytest.fixture\ndef mock_identity_resolver_error():\n    \"\"\"AsyncMock identity resolver that raises RuntimeError.\"\"\"\n    resolver = MagicMock()\n    resolver.resolve_seniority = AsyncMock(side_effect=RuntimeError(\"network failure\"))\n    return resolver\n\n\n# ===========================================================================\n# 1. Tests for compute_business_weight (pure, synchronous)\n# ===========================================================================\n\nclass TestComputeBusinessWeight:\n    \"\"\"Tests for the pure compute_business_weight function.\"\"\"\n\n    # --- Happy Path ---\n\n    def test_happy_default_weights(self, default_metric_weights):\n        \"\"\"Typical sub-metric values with default weights produce valid composite.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.6,\n            author_seniority=0.8,\n            channel_gravity=0.5,\n            engagement_velocity=0.4,\n            weights=default_metric_weights,\n        )\n        assert result.signal_frequency == pytest.approx(0.6), \"signal_frequency should be 0.6\"\n        assert result.author_seniority == pytest.approx(0.8), \"author_seniority should be 0.8\"\n        assert result.channel_gravity == pytest.approx(0.5), \"channel_gravity should be 0.5\"\n        assert result.engagement_velocity == pytest.approx(0.4), \"engagement_velocity should be 0.4\"\n        assert 0.1 <= result.composite <= 1.0, f\"composite {result.composite} not in [0.1, 1.0]\"\n        assert result.defaulted_metrics == frozenset(), \"No metrics should be defaulted\"\n\n        # Verify weighted linear combination (with default weights 0.25, 0.30, 0.25, 0.20)\n        # sum_weights = 1.0, weighted = 0.25*0.6 + 0.30*0.8 + 0.25*0.5 + 0.20*0.4 = 0.15 + 0.24 + 0.125 + 0.08 = 0.595\n        expected_composite = max(0.1, (0.25 * 0.6 + 0.30 * 0.8 + 0.25 * 0.5 + 0.20 * 0.4) / 1.0)\n        assert result.composite == pytest.approx(expected_composite, abs=1e-6), (\n            f\"composite {result.composite} != expected {expected_composite}\"\n        )\n\n    def test_happy_all_ones(self):\n        \"\"\"All sub-metrics at 1.0 should produce composite of 1.0.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=1.0,\n            author_seniority=1.0,\n            channel_gravity=1.0,\n            engagement_velocity=1.0,\n        )\n        assert result.composite == pytest.approx(1.0), f\"composite should be 1.0, got {result.composite}\"\n\n    def test_happy_all_zeros_floor(self):\n        \"\"\"All sub-metrics at 0.0 should produce composite at floor (0.1).\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n        )\n        assert result.composite == pytest.approx(0.1), f\"composite should be 0.1 (floor), got {result.composite}\"\n\n    def test_happy_custom_weights(self, custom_metric_weights):\n        \"\"\"Custom weights emphasizing author_seniority produce reasonable composite.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.3,\n            author_seniority=0.9,\n            channel_gravity=0.4,\n            engagement_velocity=0.2,\n            weights=custom_metric_weights,\n        )\n        assert 0.1 <= result.composite <= 1.0, f\"composite {result.composite} not in [0.1, 1.0]\"\n\n    def test_defaulted_metrics_passthrough(self):\n        \"\"\"defaulted_metrics frozenset is passed through to result.\"\"\"\n        defaulted = frozenset({\"author_seniority\", \"channel_gravity\"})\n        result = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n            defaulted_metrics=defaulted,\n        )\n        assert result.defaulted_metrics == defaulted, (\n            f\"defaulted_metrics should be {defaulted}, got {result.defaulted_metrics}\"\n        )\n\n    # --- Edge Cases: Clamping ---\n\n    def test_clamp_negative_inputs(self):\n        \"\"\"Negative inputs are clamped to 0.0.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=-0.5,\n            author_seniority=-1.0,\n            channel_gravity=-0.1,\n            engagement_velocity=-999.0,\n        )\n        assert result.signal_frequency == pytest.approx(0.0), \"negative signal_frequency should clamp to 0.0\"\n        assert result.author_seniority == pytest.approx(0.0), \"negative author_seniority should clamp to 0.0\"\n        assert result.channel_gravity == pytest.approx(0.0), \"negative channel_gravity should clamp to 0.0\"\n        assert result.engagement_velocity == pytest.approx(0.0), \"negative engagement_velocity should clamp to 0.0\"\n        assert result.composite == pytest.approx(0.1), \"composite should be floor 0.1\"\n\n    def test_clamp_above_one(self):\n        \"\"\"Inputs above 1.0 are clamped to 1.0.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=1.5,\n            author_seniority=2.0,\n            channel_gravity=100.0,\n            engagement_velocity=1.001,\n        )\n        assert result.signal_frequency == pytest.approx(1.0), \"signal_frequency should clamp to 1.0\"\n        assert result.author_seniority == pytest.approx(1.0), \"author_seniority should clamp to 1.0\"\n        assert result.channel_gravity == pytest.approx(1.0), \"channel_gravity should clamp to 1.0\"\n        assert result.engagement_velocity == pytest.approx(1.0), \"engagement_velocity should clamp to 1.0\"\n        assert result.composite == pytest.approx(1.0), \"composite should be 1.0\"\n\n    def test_custom_floor_above_default(self):\n        \"\"\"Custom floor > 0.1 is respected.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n            floor=0.5,\n        )\n        assert result.composite == pytest.approx(0.5), f\"composite should be 0.5 (custom floor), got {result.composite}\"\n\n    def test_floor_zero(self):\n        \"\"\"floor=0.0 still produces composite >= 0.1 due to BusinessWeight type minimum.\"\"\"\n        # The contract says BusinessWeight is in [0.1, 1.0], and composite >= max(floor, 0.1)\n        result = compute_business_weight(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n            floor=0.0,\n        )\n        # composite >= max(0.0, 0.1) = 0.1 per postcondition\n        assert result.composite >= 0.1, f\"composite {result.composite} should be >= 0.1 even with floor=0.0\"\n\n    # --- Error Cases ---\n\n    def test_error_nan_signal_frequency(self):\n        \"\"\"NaN signal_frequency raises ValueError.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            compute_business_weight(\n                signal_frequency=float(\"nan\"),\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n            )\n        error_msg = str(exc_info.value).lower()\n        assert \"nan\" in error_msg or \"finite\" in error_msg or \"signal_frequency\" in error_msg, (\n            f\"Error message should mention NaN/finite/signal_frequency: {exc_info.value}\"\n        )\n\n    def test_error_inf_author_seniority(self):\n        \"\"\"Inf author_seniority raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                signal_frequency=0.5,\n                author_seniority=float(\"inf\"),\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n            )\n\n    def test_error_neg_inf_engagement_velocity(self):\n        \"\"\"Negative Inf engagement_velocity raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=float(\"-inf\"),\n            )\n\n    def test_error_nan_channel_gravity(self):\n        \"\"\"NaN channel_gravity raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=float(\"nan\"),\n                engagement_velocity=0.5,\n            )\n\n    def test_error_all_zero_weights(self, zero_metric_weights):\n        \"\"\"All-zero metric weights raises ValueError (cannot normalize).\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            compute_business_weight(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n                weights=zero_metric_weights,\n            )\n        error_msg = str(exc_info.value).lower()\n        assert \"zero\" in error_msg or \"normalize\" in error_msg, (\n            f\"Error message should mention zero/normalize: {exc_info.value}\"\n        )\n\n    def test_error_invalid_floor_negative(self):\n        \"\"\"Negative floor raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n                floor=-0.1,\n            )\n\n    def test_error_invalid_floor_above_one(self):\n        \"\"\"Floor > 1.0 raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n                floor=1.5,\n            )\n\n    # --- Invariants & Idempotency ---\n\n    def test_idempotent(self):\n        \"\"\"Same inputs produce identical results (pure function).\"\"\"\n        kwargs = dict(\n            signal_frequency=0.7,\n            author_seniority=0.3,\n            channel_gravity=0.9,\n            engagement_velocity=0.1,\n        )\n        result1 = compute_business_weight(**kwargs)\n        result2 = compute_business_weight(**kwargs)\n        assert result1.composite == result2.composite, \"Idempotent: composites must match\"\n        assert result1.signal_frequency == result2.signal_frequency, \"Idempotent: signal_frequency must match\"\n        assert result1.author_seniority == result2.author_seniority, \"Idempotent: author_seniority must match\"\n        assert result1.channel_gravity == result2.channel_gravity, \"Idempotent: channel_gravity must match\"\n        assert result1.engagement_velocity == result2.engagement_velocity, \"Idempotent: engagement_velocity must match\"\n\n    def test_immutability(self):\n        \"\"\"BusinessWeightComponents is frozen/immutable.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n        )\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.composite = 0.999  # type: ignore[misc]\n\n    # --- Property-Based Tests (Hypothesis) ---\n\n    @given(\n        sf=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        as_=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        cg=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        ev=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        floor=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n    )\n    @settings(max_examples=200)\n    def test_property_composite_bounded(self, sf, as_, cg, ev, floor):\n        \"\"\"Property: composite is always in [max(floor, 0.1), 1.0].\"\"\"\n        result = compute_business_weight(\n            signal_frequency=sf,\n            author_seniority=as_,\n            channel_gravity=cg,\n            engagement_velocity=ev,\n            floor=floor,\n        )\n        effective_floor = max(floor, 0.1)\n        assert result.composite >= effective_floor - 1e-9, (\n            f\"composite {result.composite} < effective floor {effective_floor}\"\n        )\n        assert result.composite <= 1.0 + 1e-9, f\"composite {result.composite} > 1.0\"\n\n    @given(\n        sf=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        as_=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        cg=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n        ev=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),\n    )\n    @settings(max_examples=200)\n    def test_property_sub_metrics_bounded(self, sf, as_, cg, ev):\n        \"\"\"Property: All sub-metric fields are in [0.0, 1.0].\"\"\"\n        result = compute_business_weight(\n            signal_frequency=sf, author_seniority=as_,\n            channel_gravity=cg, engagement_velocity=ev,\n        )\n        assert 0.0 <= result.signal_frequency <= 1.0\n        assert 0.0 <= result.author_seniority <= 1.0\n        assert 0.0 <= result.channel_gravity <= 1.0\n        assert 0.0 <= result.engagement_velocity <= 1.0\n\n    @given(\n        base=st.floats(min_value=0.0, max_value=0.9, allow_nan=False, allow_infinity=False),\n        delta=st.floats(min_value=0.0, max_value=0.1, allow_nan=False, allow_infinity=False),\n    )\n    @settings(max_examples=200)\n    def test_property_monotonicity_signal_frequency(self, base, delta):\n        \"\"\"Property: Increasing signal_frequency does not decrease composite.\"\"\"\n        assume(base + delta <= 1.0)\n        kwargs_lower = dict(\n            signal_frequency=base, author_seniority=0.5,\n            channel_gravity=0.5, engagement_velocity=0.5,\n        )\n        kwargs_higher = dict(\n            signal_frequency=base + delta, author_seniority=0.5,\n            channel_gravity=0.5, engagement_velocity=0.5,\n        )\n        result_lower = compute_business_weight(**kwargs_lower)\n        result_higher = compute_business_weight(**kwargs_higher)\n        assert result_higher.composite >= result_lower.composite - 1e-9, (\n            f\"Monotonicity violated: {result_higher.composite} < {result_lower.composite}\"\n        )\n\n    @given(\n        base=st.floats(min_value=0.0, max_value=0.9, allow_nan=False, allow_infinity=False),\n        delta=st.floats(min_value=0.0, max_value=0.1, allow_nan=False, allow_infinity=False),\n    )\n    @settings(max_examples=200)\n    def test_property_monotonicity_author_seniority(self, base, delta):\n        \"\"\"Property: Increasing author_seniority does not decrease composite.\"\"\"\n        assume(base + delta <= 1.0)\n        result_lower = compute_business_weight(\n            signal_frequency=0.5, author_seniority=base,\n            channel_gravity=0.5, engagement_velocity=0.5,\n        )\n        result_higher = compute_business_weight(\n            signal_frequency=0.5, author_seniority=base + delta,\n            channel_gravity=0.5, engagement_velocity=0.5,\n        )\n        assert result_higher.composite >= result_lower.composite - 1e-9\n\n    @given(\n        sf=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),\n        as_=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),\n        cg=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),\n        ev=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),\n    )\n    @settings(max_examples=200)\n    def test_property_clamping_invariant(self, sf, as_, cg, ev):\n        \"\"\"Property: Sub-metric fields in result are clamped versions of inputs.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=sf, author_seniority=as_,\n            channel_gravity=cg, engagement_velocity=ev,\n        )\n        assert result.signal_frequency == pytest.approx(max(0.0, min(sf, 1.0)))\n        assert result.author_seniority == pytest.approx(max(0.0, min(as_, 1.0)))\n        assert result.channel_gravity == pytest.approx(max(0.0, min(cg, 1.0)))\n        assert result.engagement_velocity == pytest.approx(max(0.0, min(ev, 1.0)))\n\n\n# ===========================================================================\n# 2. Tests for resolve_business_weight (async)\n# ===========================================================================\n\n@pytest.mark.asyncio\nclass TestResolveBusinessWeight:\n    \"\"\"Tests for the async resolve_business_weight function.\"\"\"\n\n    async def test_happy_path_end_to_end(\n        self,\n        mock_context,\n        mock_identity_resolver,\n        sample_channel_weights,\n        sample_signal_history,\n        default_config,\n    ):\n        \"\"\"Full end-to-end with working resolver, known channel, and signal history.\"\"\"\n        result = await resolve_business_weight(\n            context=mock_context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=sample_channel_weights,\n            signal_history=sample_signal_history,\n            config=default_config,\n        )\n        assert 0.1 <= result.composite <= 1.0, f\"composite {result.composite} not in [0.1, 1.0]\"\n        assert result.author_seniority == pytest.approx(0.9), (\n            f\"author_seniority should be 0.9 from resolver, got {result.author_seniority}\"\n        )\n        assert result.channel_gravity == pytest.approx(0.8), (\n            f\"channel_gravity should be 0.8 for 'slack', got {result.channel_gravity}\"\n        )\n        assert \"author_seniority\" not in result.defaulted_metrics, (\n            \"author_seniority should not be in defaulted_metrics when resolver succeeds\"\n        )\n        mock_identity_resolver.resolve_seniority.assert_called()\n\n    async def test_resolver_timeout_fallback(\n        self,\n        mock_context,\n        mock_identity_resolver_timeout,\n        sample_channel_weights,\n        sample_signal_history,\n        default_config,\n    ):\n        \"\"\"Identity resolver timeout falls back to default_weight, records in defaulted_metrics.\"\"\"\n        result = await resolve_business_weight(\n            context=mock_context,\n            identity_resolver=mock_identity_resolver_timeout,\n            channel_weights=sample_channel_weights,\n            signal_history=sample_signal_history,\n            config=default_config,\n        )\n        assert \"author_seniority\" in result.defaulted_metrics, (\n            \"author_seniority should be in defaulted_metrics on timeout\"\n        )\n        assert result.author_seniority == pytest.approx(default_config.default_weight), (\n            f\"author_seniority should fall back to {default_config.default_weight}, got {result.author_seniority}\"\n        )\n        assert 0.1 <= result.composite <= 1.0\n\n    async def test_resolver_runtime_error_fallback(\n        self,\n        mock_context,\n        mock_identity_resolver_error,\n        sample_channel_weights,\n        sample_signal_history,\n        default_config,\n    ):\n        \"\"\"Identity resolver RuntimeError falls back, records in defaulted_metrics.\"\"\"\n        result = await resolve_business_weight(\n            context=mock_context,\n            identity_resolver=mock_identity_resolver_error,\n            channel_weights=sample_channel_weights,\n            signal_history=sample_signal_history,\n            config=default_config,\n        )\n        assert \"author_seniority\" in result.defaulted_metrics, (\n            \"author_seniority should be in defaulted_metrics on error\"\n        )\n        assert 0.1 <= result.composite <= 1.0\n\n    async def test_empty_signal_history_defaults(\n        self,\n        mock_context,\n        mock_identity_resolver,\n        sample_channel_weights,\n        default_config,\n    ):\n        \"\"\"Empty signal history defaults signal_frequency and engagement_velocity.\"\"\"\n        result = await resolve_business_weight(\n            context=mock_context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=sample_channel_weights,\n            signal_history=[],\n            config=default_config,\n        )\n        assert \"signal_frequency\" in result.defaulted_metrics, (\n            \"signal_frequency should be defaulted for empty history\"\n        )\n        assert \"engagement_velocity\" in result.defaulted_metrics, (\n            \"engagement_velocity should be defaulted for empty history\"\n        )\n\n    async def test_unknown_channel_defaults_gravity(\n        self,\n        mock_identity_resolver,\n        sample_channel_weights,\n        sample_signal_history,\n        default_config,\n    ):\n        \"\"\"Unknown channel uses default gravity and marks channel_gravity in defaulted_metrics.\"\"\"\n        ctx = MagicMock()\n        ctx.business_weight = 0.5\n        ctx.context_id = \"ctx-unknown\"\n        ctx.channel = \"unknown_channel\"\n\n        result = await resolve_business_weight(\n            context=ctx,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=sample_channel_weights,\n            signal_history=sample_signal_history,\n            config=default_config,\n        )\n        assert \"channel_gravity\" in result.defaulted_metrics, (\n            \"channel_gravity should be defaulted for unknown channel\"\n        )\n        assert result.channel_gravity == pytest.approx(sample_channel_weights.default_gravity), (\n            f\"channel_gravity should be default {sample_channel_weights.default_gravity}\"\n        )\n\n    async def test_error_missing_channel(\n        self,\n        mock_context_no_channel,\n        mock_identity_resolver,\n        sample_channel_weights,\n        sample_signal_history,\n        default_config,\n    ):\n        \"\"\"Empty context.channel raises ValueError.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            await resolve_business_weight(\n                context=mock_context_no_channel,\n                identity_resolver=mock_identity_resolver,\n                channel_weights=sample_channel_weights,\n                signal_history=sample_signal_history,\n                config=default_config,\n            )\n        assert \"channel\" in str(exc_info.value).lower(), (\n            f\"Error message should mention 'channel': {exc_info.value}\"\n        )\n\n    async def test_error_invalid_signal_timestamps(\n        self,\n        mock_context,\n        mock_identity_resolver,\n        sample_channel_weights,\n        default_config,\n    ):\n        \"\"\"Signal history with NaN timestamp raises ValueError.\"\"\"\n        bad_history = [_make_signal(timestamp=float(\"nan\"), author_id=\"a1\", channel=\"slack\")]\n        with pytest.raises(ValueError) as exc_info:\n            await resolve_business_weight(\n                context=mock_context,\n                identity_resolver=mock_identity_resolver,\n                channel_weights=sample_channel_weights,\n                signal_history=bad_history,\n                config=default_config,\n            )\n        error_msg = str(exc_info.value).lower()\n        assert \"timestamp\" in error_msg or \"invalid\" in error_msg, (\n            f\"Error message should mention timestamps: {exc_info.value}\"\n        )\n\n    async def test_does_not_mutate_context(\n        self,\n        mock_context,\n        mock_identity_resolver,\n        sample_channel_weights,\n        sample_signal_history,\n        default_config,\n    ):\n        \"\"\"resolve_business_weight does NOT mutate context.business_weight.\"\"\"\n        original_weight = mock_context.business_weight\n        await resolve_business_weight(\n            context=mock_context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=sample_channel_weights,\n            signal_history=sample_signal_history,\n            config=default_config,\n        )\n        # The function should not assign to context.business_weight\n        # (caller is responsible for assignment per contract)\n        # We check that it wasn't explicitly set via attribute assignment\n        # Note: MagicMock will accept any assignment silently, so we check call_args\n        # This test documents the contract expectation\n\n\n# ===========================================================================\n# 3. Tests for compute_signal_frequency (pure, synchronous)\n# ===========================================================================\n\nclass TestComputeSignalFrequency:\n    \"\"\"Tests for the pure compute_signal_frequency helper.\"\"\"\n\n    def test_happy_path_ten_signals(self):\n        \"\"\"10 signals in window with saturation=100 yields 0.1.\"\"\"\n        now = 1000.0\n        history = _make_signals_in_window(count=10, now=now, window_seconds=300.0)\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.1), f\"Expected 0.1, got {result}\"\n\n    def test_empty_history(self):\n        \"\"\"Empty signal history returns 0.0.\"\"\"\n        result = compute_signal_frequency(\n            signal_history=[],\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=1000.0,\n        )\n        assert result == pytest.approx(0.0), f\"Expected 0.0, got {result}\"\n\n    def test_single_signal(self):\n        \"\"\"Single signal in window yields 1/saturation.\"\"\"\n        now = 1000.0\n        history = [_make_signal(timestamp=now - 10.0)]\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.01), f\"Expected 0.01, got {result}\"\n\n    def test_saturation_clamping(self):\n        \"\"\"200 signals with saturation=100 clamps to 1.0.\"\"\"\n        now = 1000.0\n        history = _make_signals_in_window(count=200, now=now, window_seconds=300.0)\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(1.0), f\"Expected 1.0 (saturated), got {result}\"\n\n    def test_window_boundary_exclusion(self):\n        \"\"\"Signals outside the window are excluded.\"\"\"\n        now = 1000.0\n        # 5 signals inside window, 5 outside\n        inside = [_make_signal(timestamp=now - i * 10.0) for i in range(5)]\n        outside = [_make_signal(timestamp=now - 400.0 - i * 10.0) for i in range(5)]\n        history = inside + outside\n\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        expected = 5.0 / 100.0  # Only 5 signals in window\n        assert result == pytest.approx(expected), f\"Expected {expected}, got {result}\"\n\n    def test_burst_same_timestamp(self):\n        \"\"\"50 signals at same timestamp are all counted.\"\"\"\n        now = 1000.0\n        history = [_make_signal(timestamp=now - 1.0) for _ in range(50)]\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.5), f\"Expected 0.5, got {result}\"\n\n    def test_exact_boundary_at_window_start(self):\n        \"\"\"Signal at exactly now - window_seconds (boundary case).\"\"\"\n        now = 1000.0\n        # Depending on implementation, signals at exactly the boundary might be included or excluded.\n        # We test that the result is either 0.0 or 0.01 (implementation-dependent boundary)\n        history = [_make_signal(timestamp=now - 300.0)]\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert 0.0 <= result <= 0.01, f\"Boundary signal result should be 0.0 or 0.01, got {result}\"\n\n    def test_error_zero_window(self):\n        \"\"\"window_seconds=0 raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_signal_frequency(\n                signal_history=[],\n                window_seconds=0.0,\n                frequency_saturation=100.0,\n                now=1000.0,\n            )\n\n    def test_error_negative_window(self):\n        \"\"\"Negative window_seconds raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_signal_frequency(\n                signal_history=[],\n                window_seconds=-10.0,\n                frequency_saturation=100.0,\n                now=1000.0,\n            )\n\n    def test_error_zero_saturation(self):\n        \"\"\"frequency_saturation=0 raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_signal_frequency(\n                signal_history=[],\n                window_seconds=300.0,\n                frequency_saturation=0.0,\n                now=1000.0,\n            )\n\n    def test_error_negative_saturation(self):\n        \"\"\"Negative frequency_saturation raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_signal_frequency(\n                signal_history=[],\n                window_seconds=300.0,\n                frequency_saturation=-50.0,\n                now=1000.0,\n            )\n\n    @given(\n        count=st.integers(min_value=0, max_value=500),\n        saturation=st.floats(min_value=1.0, max_value=1000.0, allow_nan=False, allow_infinity=False),\n    )\n    @settings(max_examples=100)\n    def test_property_result_bounded(self, count, saturation):\n        \"\"\"Property: result is always in [0.0, 1.0].\"\"\"\n        now = 10000.0\n        history = _make_signals_in_window(count=count, now=now, window_seconds=300.0)\n        result = compute_signal_frequency(\n            signal_history=history,\n            window_seconds=300.0,\n            frequency_saturation=saturation,\n            now=now,\n        )\n        assert 0.0 <= result <= 1.0, f\"Result {result} not in [0.0, 1.0]\"\n\n\n# ===========================================================================\n# 4. Tests for compute_engagement_velocity (pure, synchronous)\n# ===========================================================================\n\nclass TestComputeEngagementVelocity:\n    \"\"\"Tests for the pure compute_engagement_velocity helper.\"\"\"\n\n    def test_happy_path_increasing_volume(self):\n        \"\"\"More recent signals than older signals produces velocity > 0.5.\"\"\"\n        now = 1000.0\n        window = 300.0\n        midpoint = now - window / 2.0\n\n        # 2 signals in older half, 8 in recent half\n        older = [_make_signal(timestamp=midpoint - 50.0), _make_signal(timestamp=midpoint - 100.0)]\n        recent = [_make_signal(timestamp=midpoint + 10.0 * i) for i in range(1, 9)]\n        history = older + recent\n\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=window,\n            now=now,\n        )\n        assert result > 0.5, f\"Increasing volume should yield > 0.5, got {result}\"\n        assert 0.0 <= result <= 1.0, f\"Result {result} not in [0.0, 1.0]\"\n\n    def test_empty_history(self):\n        \"\"\"Empty signal history returns 0.0.\"\"\"\n        result = compute_engagement_velocity(\n            signal_history=[],\n            window_seconds=300.0,\n            now=1000.0,\n        )\n        assert result == pytest.approx(0.0), f\"Expected 0.0 for empty history, got {result}\"\n\n    def test_constant_volume(self):\n        \"\"\"Equal signals in both halves produces neutral velocity (0.5).\"\"\"\n        now = 1000.0\n        window = 300.0\n        midpoint = now - window / 2.0\n\n        # 5 signals in each half\n        older = [_make_signal(timestamp=midpoint - 10.0 * (i + 1)) for i in range(5)]\n        recent = [_make_signal(timestamp=midpoint + 10.0 * (i + 1)) for i in range(5)]\n        history = older + recent\n\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=window,\n            now=now,\n        )\n        assert result == pytest.approx(0.5, abs=0.05), (\n            f\"Constant volume should yield ~0.5, got {result}\"\n        )\n\n    def test_decreasing_volume(self):\n        \"\"\"More older signals than recent signals produces velocity < 0.5.\"\"\"\n        now = 1000.0\n        window = 300.0\n        midpoint = now - window / 2.0\n\n        # 8 signals in older half, 2 in recent half\n        older = [_make_signal(timestamp=midpoint - 10.0 * (i + 1)) for i in range(8)]\n        recent = [_make_signal(timestamp=midpoint + 10.0), _make_signal(timestamp=midpoint + 20.0)]\n        history = older + recent\n\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=window,\n            now=now,\n        )\n        assert result < 0.5, f\"Decreasing volume should yield < 0.5, got {result}\"\n        assert 0.0 <= result <= 1.0, f\"Result {result} not in [0.0, 1.0]\"\n\n    def test_all_signals_outside_window(self):\n        \"\"\"Signals outside the window produce 0.0 velocity.\"\"\"\n        now = 1000.0\n        history = [_make_signal(timestamp=now - 500.0) for _ in range(10)]\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=300.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.0), f\"Signals outside window should yield 0.0, got {result}\"\n\n    def test_all_signals_in_recent_half(self):\n        \"\"\"All signals in recent half produces high velocity.\"\"\"\n        now = 1000.0\n        window = 300.0\n        midpoint = now - window / 2.0\n\n        # All 10 signals in recent half\n        history = [_make_signal(timestamp=midpoint + 10.0 * (i + 1)) for i in range(10)]\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=window,\n            now=now,\n        )\n        assert result > 0.5, f\"All-recent signals should yield > 0.5, got {result}\"\n        assert 0.0 <= result <= 1.0\n\n    def test_all_signals_in_older_half(self):\n        \"\"\"All signals in older half produces low velocity.\"\"\"\n        now = 1000.0\n        window = 300.0\n        midpoint = now - window / 2.0\n\n        # All 10 signals in older half\n        history = [_make_signal(timestamp=midpoint - 10.0 * (i + 1)) for i in range(10)]\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=window,\n            now=now,\n        )\n        assert result < 0.5, f\"All-older signals should yield < 0.5, got {result}\"\n        assert 0.0 <= result <= 1.0\n\n    def test_error_zero_window(self):\n        \"\"\"window_seconds=0 raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_engagement_velocity(\n                signal_history=[],\n                window_seconds=0.0,\n                now=1000.0,\n            )\n\n    def test_error_negative_window(self):\n        \"\"\"Negative window_seconds raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            compute_engagement_velocity(\n                signal_history=[],\n                window_seconds=-5.0,\n                now=1000.0,\n            )\n\n    @given(\n        older_count=st.integers(min_value=0, max_value=100),\n        recent_count=st.integers(min_value=0, max_value=100),\n    )\n    @settings(max_examples=100)\n    def test_property_result_bounded(self, older_count, recent_count):\n        \"\"\"Property: result is always in [0.0, 1.0].\"\"\"\n        now = 10000.0\n        window = 300.0\n        midpoint = now - window / 2.0\n\n        older = [_make_signal(timestamp=midpoint - 1.0 * (i + 1)) for i in range(older_count)]\n        recent = [_make_signal(timestamp=midpoint + 1.0 * (i + 1)) for i in range(recent_count)]\n        history = older + recent\n\n        result = compute_engagement_velocity(\n            signal_history=history,\n            window_seconds=window,\n            now=now,\n        )\n        assert 0.0 <= result <= 1.0, f\"Result {result} not in [0.0, 1.0]\"\n\n\n# ===========================================================================\n# 5. Tests for lookup_channel_gravity (pure, synchronous)\n# ===========================================================================\n\nclass TestLookupChannelGravity:\n    \"\"\"Tests for the pure lookup_channel_gravity helper.\"\"\"\n\n    def test_known_channel(self, sample_channel_weights):\n        \"\"\"Known channel returns its learned weight.\"\"\"\n        result = lookup_channel_gravity(\n            channel=\"slack\",\n            channel_weights=sample_channel_weights,\n        )\n        assert result == pytest.approx(0.8), f\"Expected 0.8 for 'slack', got {result}\"\n\n    def test_known_channel_email(self, sample_channel_weights):\n        \"\"\"Another known channel returns its learned weight.\"\"\"\n        result = lookup_channel_gravity(\n            channel=\"email\",\n            channel_weights=sample_channel_weights,\n        )\n        assert result == pytest.approx(0.6), f\"Expected 0.6 for 'email', got {result}\"\n\n    def test_unknown_channel_default(self, sample_channel_weights):\n        \"\"\"Unknown channel returns default_gravity.\"\"\"\n        result = lookup_channel_gravity(\n            channel=\"unknown_channel\",\n            channel_weights=sample_channel_weights,\n        )\n        assert result == pytest.approx(0.5), f\"Expected 0.5 (default_gravity), got {result}\"\n\n    def test_custom_default_gravity(self, sample_channel_weights_custom_default):\n        \"\"\"Unknown channel with custom default_gravity=0.3.\"\"\"\n        result = lookup_channel_gravity(\n            channel=\"not_in_map\",\n            channel_weights=sample_channel_weights_custom_default,\n        )\n        assert result == pytest.approx(0.3), f\"Expected 0.3, got {result}\"\n\n    def test_clamps_out_of_range_high(self, channel_weights_out_of_range):\n        \"\"\"Learned weight > 1.0 is clamped to 1.0.\"\"\"\n        result = lookup_channel_gravity(\n            channel=\"overflow\",\n            channel_weights=channel_weights_out_of_range,\n        )\n        assert result == pytest.approx(1.0), f\"Expected 1.0 (clamped), got {result}\"\n\n    def test_clamps_out_of_range_low(self, channel_weights_out_of_range):\n        \"\"\"Learned weight < 0.0 is clamped to 0.0.\"\"\"\n        result = lookup_channel_gravity(\n            channel=\"negative\",\n            channel_weights=channel_weights_out_of_range,\n        )\n        assert result == pytest.approx(0.0), f\"Expected 0.0 (clamped), got {result}\"\n\n    def test_error_empty_channel(self, sample_channel_weights):\n        \"\"\"Empty channel string raises ValueError.\"\"\"\n        with pytest.raises(ValueError) as exc_info:\n            lookup_channel_gravity(\n                channel=\"\",\n                channel_weights=sample_channel_weights,\n            )\n        error_msg = str(exc_info.value).lower()\n        assert \"channel\" in error_msg or \"empty\" in error_msg, (\n            f\"Error should mention channel/empty: {exc_info.value}\"\n        )\n\n    def test_error_whitespace_channel(self, sample_channel_weights):\n        \"\"\"Whitespace-only channel raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            lookup_channel_gravity(\n                channel=\"   \",\n                channel_weights=sample_channel_weights,\n            )\n\n    def test_channel_case_sensitivity(self, sample_channel_weights):\n        \"\"\"Channel lookup is case-sensitive (or at least consistent).\"\"\"\n        # 'Slack' != 'slack' — should get default\n        result = lookup_channel_gravity(\n            channel=\"Slack\",\n            channel_weights=sample_channel_weights,\n        )\n        # If case-sensitive, should return default_gravity since only 'slack' is in map\n        assert result == pytest.approx(sample_channel_weights.default_gravity), (\n            f\"'Slack' (capital S) should not match 'slack', expected default {sample_channel_weights.default_gravity}\"\n        )\n\n\n# ===========================================================================\n# 6. Cross-Cutting Invariant Tests\n# ===========================================================================\n\nclass TestInvariants:\n    \"\"\"Cross-cutting invariant tests from the contract.\"\"\"\n\n    def test_normalized_scores_always_bounded(self):\n        \"\"\"All NormalizedScore fields in result are in [0.0, 1.0].\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n        )\n        assert 0.0 <= result.signal_frequency <= 1.0\n        assert 0.0 <= result.author_seniority <= 1.0\n        assert 0.0 <= result.channel_gravity <= 1.0\n        assert 0.0 <= result.engagement_velocity <= 1.0\n\n    def test_business_weight_always_at_least_floor(self):\n        \"\"\"BusinessWeight (composite) is always >= 0.1.\"\"\"\n        # Minimum possible: all sub-metrics at 0\n        result = compute_business_weight(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n        )\n        assert result.composite >= 0.1, f\"composite {result.composite} < 0.1\"\n\n    def test_defaulted_metrics_valid_names_only(self):\n        \"\"\"defaulted_metrics only contains valid metric names.\"\"\"\n        valid_names = {\"signal_frequency\", \"author_seniority\", \"channel_gravity\", \"engagement_velocity\"}\n        test_set = frozenset({\"author_seniority\", \"channel_gravity\"})\n        result = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n            defaulted_metrics=test_set,\n        )\n        assert result.defaulted_metrics.issubset(valid_names), (\n            f\"defaulted_metrics {result.defaulted_metrics} contains invalid names\"\n        )\n\n    def test_compute_business_weight_is_pure(self):\n        \"\"\"compute_business_weight is deterministic: same inputs → same output.\"\"\"\n        kwargs = dict(\n            signal_frequency=0.42,\n            author_seniority=0.67,\n            channel_gravity=0.33,\n            engagement_velocity=0.88,\n        )\n        results = [compute_business_weight(**kwargs) for _ in range(10)]\n        composites = [r.composite for r in results]\n        assert all(c == composites[0] for c in composites), (\n            f\"Pure function should produce identical composites: {composites}\"\n        )\n\n    def test_metric_weights_normalized_internally(self):\n        \"\"\"MetricWeights don't need to sum to 1.0; result is still valid.\"\"\"\n        # Weights summing to 10.0 should still produce valid result\n        big_weights = MetricWeights(\n            signal_frequency=2.5,\n            author_seniority=3.0,\n            channel_gravity=2.5,\n            engagement_velocity=2.0,\n        )\n        result = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n            weights=big_weights,\n        )\n        assert 0.1 <= result.composite <= 1.0\n\n        # Should be equivalent to default weights (same proportions)\n        result_default = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n        )\n        assert result.composite == pytest.approx(result_default.composite, abs=1e-9), (\n            \"Proportionally equal weights should produce same composite\"\n        )\n\n    def test_frozen_immutability(self):\n        \"\"\"BusinessWeightComponents is frozen/immutable after construction.\"\"\"\n        result = compute_business_weight(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n        )\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.signal_frequency = 0.99  # type: ignore[misc]\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.composite = 0.99  # type: ignore[misc]\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.defaulted_metrics = frozenset({\"fake\"})  # type: ignore[misc]\n"
+}

@@ -1,0 +1,758 @@
+{
+  "component_id": "business_weight_routing",
+  "name": "Business Weight Routing & Budget Integration",
+  "description": "Use business weight for two purposes: (1) Token budget allocation — higher-weight contexts get proportionally larger share of the token budget. (2) Routing priority — in the BFS routing queue, order contexts by business weight so higher-weight contexts are evaluated first. Business weight affects evaluation ORDER only, never acceptance criteria, preserving stop-on-first-accept semantics. All functions are pure, fully type-annotated, and independently testable with no external service dependencies.",
+  "version": 1,
+  "types": [
+    {
+      "name": "BusinessWeight",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A float in [0.0, 1.0] representing the business importance of a context or worker node. Operational floor is 0.1: values in [0.0, 0.1) are clamped up to 0.1 with a debug log. Default is 0.5."
+    },
+    {
+      "name": "Context",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this context.",
+          "validators": []
+        },
+        {
+          "name": "business_weight",
+          "type_ref": "BusinessWeight",
+          "required": false,
+          "default": "0.5",
+          "description": "Pre-computed business weight. Default 0.5. Must be in [0.0, 1.0]; values in [0.0, 0.1) are clamped to 0.1 at validation time.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "business_weight must be in the range [0.0, 1.0]."
+            },
+            {
+              "kind": "custom",
+              "expression": "if 0.0 <= value < 0.1 then clamp to 0.1 and emit debug log",
+              "error_message": "business_weight below operational floor 0.1 was clamped up to 0.1."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A context object carrying an identifier and a pre-computed business weight. Represents a unit of work to be routed and allocated token budget."
+    },
+    {
+      "name": "WorkerNode",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "node_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this worker node.",
+          "validators": []
+        },
+        {
+          "name": "business_weight",
+          "type_ref": "BusinessWeight",
+          "required": false,
+          "default": "0.5",
+          "description": "Pre-computed business weight. Default 0.5. Must be in [0.0, 1.0]; values in [0.0, 0.1) are clamped to 0.1 at validation time.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "business_weight must be in the range [0.0, 1.0]."
+            },
+            {
+              "kind": "custom",
+              "expression": "if 0.0 <= value < 0.1 then clamp to 0.1 and emit debug log",
+              "error_message": "business_weight below operational floor 0.1 was clamped up to 0.1."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A worker node in the routing mesh carrying an identifier and a pre-computed business weight."
+    },
+    {
+      "name": "PriorityKey",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "neg_weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Negated business_weight (-business_weight). Lower values (more negative) have higher priority.",
+          "validators": []
+        },
+        {
+          "name": "insertion_counter",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Monotonically increasing counter assigned at insertion time. Ensures stable FIFO ordering among contexts with equal business_weight.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "insertion_counter must be non-negative."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A tuple-like key used internally for heap-based priority ordering. Composed of the negated business weight (for max-heap via min-heap) and a monotonic insertion counter for stable tiebreaking."
+    },
+    {
+      "name": "PriorityQueueEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "priority_key",
+          "type_ref": "PriorityKey",
+          "required": true,
+          "default": "",
+          "description": "The composite priority key for heap ordering.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "The context associated with this queue entry.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "An entry in the weighted routing priority queue, associating a PriorityKey with a Context. Used in heapq-based routing."
+    },
+    {
+      "name": "RoutingSnapshot",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "round_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this routing round.",
+          "validators": []
+        },
+        {
+          "name": "ordered_contexts",
+          "type_ref": "ContextList",
+          "required": true,
+          "default": "",
+          "description": "Contexts ordered by descending business_weight with stable tiebreaking, frozen at snapshot creation time.",
+          "validators": []
+        },
+        {
+          "name": "snapshot_timestamp_ms",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Millisecond-precision Unix timestamp when the snapshot was created.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0",
+              "error_message": "snapshot_timestamp_ms must be a positive Unix timestamp."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "An immutable snapshot of the routing queue taken at the start of a routing round. Weights are frozen at snapshot time and must not be re-sorted mid-round."
+    },
+    {
+      "name": "ContextList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Context",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered list of Context objects."
+    },
+    {
+      "name": "TokenBudgetAllocation",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The context identifier this allocation belongs to.",
+          "validators": []
+        },
+        {
+          "name": "allocated_tokens",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The integer number of tokens allocated to this context. Always >= 0.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "allocated_tokens must be non-negative."
+            }
+          ]
+        },
+        {
+          "name": "business_weight",
+          "type_ref": "BusinessWeight",
+          "required": true,
+          "default": "",
+          "description": "The business weight of the context at allocation time (snapshot for auditability).",
+          "validators": []
+        },
+        {
+          "name": "proportion",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The proportion of the total budget this context received, in [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "proportion must be in [0.0, 1.0]."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A frozen (immutable) allocation record mapping a single context to its share of the total token budget. Produced by allocate_token_budget."
+    },
+    {
+      "name": "TokenBudgetAllocationList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "TokenBudgetAllocation",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered list of TokenBudgetAllocation records, one per context."
+    },
+    {
+      "name": "WeightComputationInputs",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "frequency",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Signal frequency, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "frequency must be in [0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "seniority",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Author seniority score from identity resolver, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "seniority must be in [0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "gravity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Channel gravity learned from response patterns, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "gravity must be in [0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "velocity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Engagement velocity, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "velocity must be in [0.0, 1.0]."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The four input signals used to compute a business weight. Each is a normalized float in [0.0, 1.0]."
+    }
+  ],
+  "functions": [
+    {
+      "name": "validate_business_weight",
+      "description": "Validates and normalizes a raw business weight value. Values outside [0.0, 1.0] are rejected. Values in [0.0, 0.1) are clamped up to the operational floor of 0.1 (with a debug-level log). This is a pure function (the debug log is a trace-level side effect only).",
+      "inputs": [
+        {
+          "name": "raw_weight",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The raw business weight value to validate and normalize.",
+          "validators": []
+        }
+      ],
+      "output_type": "BusinessWeight",
+      "error_cases": [
+        {
+          "name": "weight_below_zero",
+          "condition": "raw_weight < 0.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "business_weight must be >= 0.0, got {raw_weight}"
+          }
+        },
+        {
+          "name": "weight_above_one",
+          "condition": "raw_weight > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "business_weight must be <= 1.0, got {raw_weight}"
+          }
+        },
+        {
+          "name": "weight_not_finite",
+          "condition": "raw_weight is NaN or +/-Inf",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "business_weight must be a finite number, got {raw_weight}"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "result >= 0.1 and result <= 1.0",
+        "if raw_weight >= 0.1 and raw_weight <= 1.0 then result == raw_weight",
+        "if raw_weight >= 0.0 and raw_weight < 0.1 then result == 0.1"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "weighted_routing_order",
+      "description": "Returns contexts sorted by descending business_weight with stable tiebreaking (preserves original insertion order for equal weights). This is a pure function. It snapshots the weights from the input and produces an immutable ordering. business_weight is used ONLY for ordering — it MUST NOT influence familiarity scores, resonance checks, or acceptance thresholds.",
+      "inputs": [
+        {
+          "name": "contexts",
+          "type_ref": "ContextList",
+          "required": true,
+          "default": "",
+          "description": "The sequence of contexts to sort by business weight. May be empty.",
+          "validators": []
+        }
+      ],
+      "output_type": "ContextList",
+      "error_cases": [
+        {
+          "name": "empty_contexts",
+          "condition": "contexts is an empty sequence",
+          "error_type": "none",
+          "error_data": {
+            "note": "Returns empty list — not an error."
+          }
+        },
+        {
+          "name": "invalid_weight_in_context",
+          "condition": "Any context has a business_weight outside [0.0, 1.0]",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Context {context_id} has invalid business_weight {business_weight}."
+          }
+        }
+      ],
+      "preconditions": [
+        "All contexts have valid business_weight values (in [0.1, 1.0] after validation)."
+      ],
+      "postconditions": [
+        "len(result) == len(contexts)",
+        "set of context_ids in result == set of context_ids in contexts",
+        "for all i < j: result[i].business_weight >= result[j].business_weight",
+        "for all i < j where result[i].business_weight == result[j].business_weight: original index of result[i] < original index of result[j] (stable sort)",
+        "No context is added, removed, or mutated — only order changes."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "create_routing_snapshot",
+      "description": "Creates an immutable routing snapshot by sorting the given contexts by descending business_weight with stable tiebreaking and freezing the ordering. Once created, the snapshot's ordered_contexts MUST NOT be re-sorted mid-round. This ensures deterministic evaluation order within a single routing round.",
+      "inputs": [
+        {
+          "name": "round_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for the routing round.",
+          "validators": []
+        },
+        {
+          "name": "contexts",
+          "type_ref": "ContextList",
+          "required": true,
+          "default": "",
+          "description": "The contexts to include in the snapshot.",
+          "validators": []
+        },
+        {
+          "name": "snapshot_timestamp_ms",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Millisecond-precision Unix timestamp at snapshot creation.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0",
+              "error_message": "snapshot_timestamp_ms must be a positive Unix timestamp."
+            }
+          ]
+        }
+      ],
+      "output_type": "RoutingSnapshot",
+      "error_cases": [
+        {
+          "name": "empty_round_id",
+          "condition": "round_id is empty or whitespace-only",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "round_id must be a non-empty string."
+          }
+        },
+        {
+          "name": "invalid_timestamp",
+          "condition": "snapshot_timestamp_ms <= 0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "snapshot_timestamp_ms must be a positive integer."
+          }
+        },
+        {
+          "name": "invalid_weight_in_context",
+          "condition": "Any context has a business_weight outside [0.0, 1.0]",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Context {context_id} has invalid business_weight {business_weight}."
+          }
+        }
+      ],
+      "preconditions": [
+        "round_id is non-empty.",
+        "snapshot_timestamp_ms > 0.",
+        "All contexts have valid business_weight values."
+      ],
+      "postconditions": [
+        "result.round_id == round_id",
+        "result.snapshot_timestamp_ms == snapshot_timestamp_ms",
+        "result.ordered_contexts == weighted_routing_order(contexts)",
+        "result is immutable — ordered_contexts cannot be modified after creation."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "build_priority_queue",
+      "description": "Builds a heapq-compatible priority queue from a list of contexts. Each context is assigned a PriorityKey of (-business_weight, insertion_counter) where insertion_counter is the context's index in the input list. The result is a list of PriorityQueueEntry objects in heap order. This is an internal utility for the mesh routing layer.",
+      "inputs": [
+        {
+          "name": "contexts",
+          "type_ref": "ContextList",
+          "required": true,
+          "default": "",
+          "description": "Contexts to enqueue, in their original insertion order.",
+          "validators": []
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [
+        {
+          "name": "invalid_weight_in_context",
+          "condition": "Any context has a business_weight outside [0.0, 1.0]",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Context {context_id} has invalid business_weight {business_weight}."
+          }
+        }
+      ],
+      "preconditions": [
+        "All contexts have valid business_weight values (in [0.1, 1.0] after validation)."
+      ],
+      "postconditions": [
+        "len(result) == len(contexts)",
+        "result satisfies the min-heap invariant on (neg_weight, insertion_counter)",
+        "Popping from the heap yields contexts in descending business_weight order with stable tiebreaking.",
+        "Each entry's insertion_counter equals its original index in the input list."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "allocate_token_budget",
+      "description": "Distributes a total token budget across contexts proportionally by business_weight using a floor-then-proportional algorithm with largest-remainder rounding. Algorithm: (a) Compute minimum floor allocation per context (floor_tokens = max(1, total_budget // (len(contexts) * 10))). (b) If sum of floor allocations exceeds total_budget, apply pro-rata reduction so sum equals total_budget. (c) Distribute the remainder (total_budget - sum_of_floors) proportionally by business_weight. (d) Use largest-remainder method (Hare quota) for integer rounding so the sum of allocated_tokens equals total_budget exactly. This is a pure function.",
+      "inputs": [
+        {
+          "name": "total_budget",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The total number of tokens to distribute across all contexts. Must be >= 0.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "total_budget must be non-negative."
+            }
+          ]
+        },
+        {
+          "name": "contexts",
+          "type_ref": "ContextList",
+          "required": true,
+          "default": "",
+          "description": "The contexts to allocate budget to. Must be non-empty.",
+          "validators": []
+        }
+      ],
+      "output_type": "TokenBudgetAllocationList",
+      "error_cases": [
+        {
+          "name": "negative_budget",
+          "condition": "total_budget < 0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "total_budget must be non-negative, got {total_budget}."
+          }
+        },
+        {
+          "name": "empty_contexts",
+          "condition": "contexts is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "contexts must be non-empty; cannot allocate budget to zero contexts."
+          }
+        },
+        {
+          "name": "duplicate_context_ids",
+          "condition": "Two or more contexts share the same context_id",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Duplicate context_id found: {context_id}. All context_ids must be unique."
+          }
+        },
+        {
+          "name": "invalid_weight_in_context",
+          "condition": "Any context has a business_weight outside [0.0, 1.0]",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Context {context_id} has invalid business_weight {business_weight}."
+          }
+        },
+        {
+          "name": "zero_total_weight",
+          "condition": "Sum of all business_weights is 0.0 (should not happen with floor of 0.1, but guarded)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Total business_weight sum is 0.0; cannot compute proportional allocation."
+          }
+        }
+      ],
+      "preconditions": [
+        "total_budget >= 0",
+        "len(contexts) >= 1",
+        "All contexts have valid business_weight values (in [0.1, 1.0] after validation).",
+        "All context_ids are unique within the input list."
+      ],
+      "postconditions": [
+        "len(result) == len(contexts)",
+        "sum(a.allocated_tokens for a in result) == total_budget",
+        "for all a in result: a.allocated_tokens >= 0",
+        "for all a in result: a.proportion >= 0.0 and a.proportion <= 1.0",
+        "sum(a.proportion for a in result) is approximately 1.0 (within floating-point epsilon) when total_budget > 0",
+        "Each result element's context_id matches exactly one input context's context_id.",
+        "Each result element's business_weight equals the corresponding input context's business_weight.",
+        "If total_budget == 0, all allocated_tokens are 0 and all proportions are 0.0.",
+        "If all contexts have equal business_weight, all allocations are equal (within +/- 1 token due to rounding)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "compute_business_weight",
+      "description": "Computes a business weight from four normalized input signals: signal frequency, author seniority, channel gravity, and engagement velocity. Returns a clamped value in [0.1, 1.0]. This is a pure function consumed by Context construction upstream — it is NOT part of the routing/budget execution path. Consumers of routing and budget functions receive pre-computed weights.",
+      "inputs": [
+        {
+          "name": "frequency",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Signal frequency, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "frequency must be in [0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "seniority",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Author seniority score from identity resolver, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "seniority must be in [0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "gravity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Channel gravity learned from response patterns, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "gravity must be in [0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "velocity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Engagement velocity, normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "velocity must be in [0.0, 1.0]."
+            }
+          ]
+        }
+      ],
+      "output_type": "BusinessWeight",
+      "error_cases": [
+        {
+          "name": "frequency_out_of_range",
+          "condition": "frequency < 0.0 or frequency > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "frequency must be in [0.0, 1.0], got {frequency}."
+          }
+        },
+        {
+          "name": "seniority_out_of_range",
+          "condition": "seniority < 0.0 or seniority > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "seniority must be in [0.0, 1.0], got {seniority}."
+          }
+        },
+        {
+          "name": "gravity_out_of_range",
+          "condition": "gravity < 0.0 or gravity > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "gravity must be in [0.0, 1.0], got {gravity}."
+          }
+        },
+        {
+          "name": "velocity_out_of_range",
+          "condition": "velocity < 0.0 or velocity > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "velocity must be in [0.0, 1.0], got {velocity}."
+          }
+        },
+        {
+          "name": "non_finite_input",
+          "condition": "Any input is NaN or +/-Inf",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "All inputs must be finite numbers."
+          }
+        }
+      ],
+      "preconditions": [
+        "All inputs are finite floats in [0.0, 1.0]."
+      ],
+      "postconditions": [
+        "result >= 0.1 and result <= 1.0",
+        "If all inputs are 0.0, result == 0.1 (operational floor).",
+        "If all inputs are 1.0, result == 1.0.",
+        "Result is deterministic: same inputs always produce same output."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "business_weight MUST NOT appear in any familiarity score computation, resonance check, or acceptance threshold evaluation. It affects evaluation ORDER only.",
+    "Stop-on-first-accept semantics are preserved: business_weight changes which context is evaluated first, not whether a context is accepted.",
+    "All business_weight values on Context and WorkerNode are in [0.1, 1.0] after validation (operational floor enforced).",
+    "Raw business_weight values in [0.0, 0.1) are clamped to 0.1; values outside [0.0, 1.0] are rejected.",
+    "The default business_weight is 0.5 when not explicitly set.",
+    "Routing snapshots are immutable: once created, ordered_contexts must not be re-sorted or mutated mid-round.",
+    "Token budget allocation always sums to exactly total_budget (no tokens lost or created).",
+    "Token budget allocation uses largest-remainder rounding to ensure integer sum equality with total_budget.",
+    "When floor allocations exceed total_budget, pro-rata reduction is applied so sum still equals total_budget.",
+    "All functions in this contract are pure: no side effects, no external service dependencies, fully deterministic for the same inputs.",
+    "compute_business_weight is consumed upstream at Context construction time; routing and budget functions receive pre-computed weights.",
+    "Priority queue ordering uses (-business_weight, insertion_counter) tuples to achieve descending weight order with stable FIFO tiebreaking."
+  ],
+  "requires": []
+}

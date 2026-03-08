@@ -1,0 +1,784 @@
+{
+  "component_id": "embedding_strategy_implementations",
+  "name": "Embedding Strategy Implementations",
+  "description": "Implement 3 concrete embedding strategies: (1) SemanticStrategy - uses LLM for general semantic embedding, falls back to keyword-based feature hashing when no LLM available. (2) TechnicalStrategy - code-aware keyword extraction + hash-bucketed TF-IDF approximation, identifies code patterns, API references, technical terms. (3) SocialStrategy - builds author/mention graph embedding from signal metadata (authors, @mentions, channel participation). Each returns an L2-normalized numpy vector of fixed dimensionality (EMBEDDING_DIM=64). All must work without external services via deterministic heuristic fallbacks. Zero vector serves as no-information sentinel. All hashing uses hashlib.md5 for cross-process deterministic reproducibility.",
+  "version": 1,
+  "types": [
+    {
+      "name": "EmbeddingDimConstant",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Module-level integer constant EMBEDDING_DIM = 64. The fixed dimensionality for all embedding vectors produced by any strategy."
+    },
+    {
+      "name": "EmbeddingVector",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "data",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Flat list of float64 values of length EMBEDDING_DIM (64). Represents the underlying numpy array content.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) == 64",
+              "error_message": "Embedding vector must have exactly EMBEDDING_DIM (64) elements."
+            },
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(v, float) and not math.isnan(v) and not math.isinf(v) for v in value)",
+              "error_message": "Embedding vector must not contain NaN or Inf values."
+            },
+            {
+              "kind": "custom",
+              "expression": "abs(sum(v**2 for v in value) - 1.0) < 1e-6 or all(v == 0.0 for v in value)",
+              "error_message": "Embedding vector must be L2-normalized (unit length) or the zero vector."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A fixed-dimensionality numpy float64 array of shape (EMBEDDING_DIM,). Either L2-normalized (unit length) or the zero vector (no-information sentinel). Never contains NaN or Inf values."
+    },
+    {
+      "name": "SignalMetadata",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal. May be empty string.",
+          "validators": []
+        },
+        {
+          "name": "signal_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The type/kind of the signal (e.g., 'message', 'code_snippet', 'event').",
+          "validators": []
+        },
+        {
+          "name": "author",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The author/creator identifier of the signal. May be empty if unknown.",
+          "validators": []
+        },
+        {
+          "name": "channel",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The channel or context identifier where the signal originated. May be empty.",
+          "validators": []
+        },
+        {
+          "name": "mentions",
+          "type_ref": "MentionsList",
+          "required": false,
+          "default": "[]",
+          "description": "List of @mentioned user/entity identifiers extracted from signal content or metadata.",
+          "validators": []
+        },
+        {
+          "name": "tags",
+          "type_ref": "TagsList",
+          "required": false,
+          "default": "[]",
+          "description": "List of tags or labels associated with the signal.",
+          "validators": []
+        },
+        {
+          "name": "extra",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Additional key-value metadata pairs from the signal. Strategy implementations may inspect arbitrary keys.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Metadata extracted from a Signal object relevant to embedding strategies. Represents the subset of Signal fields consumed by the strategies."
+    },
+    {
+      "name": "MentionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of mentioned entity identifiers (strings)."
+    },
+    {
+      "name": "TagsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of tag strings associated with a signal."
+    },
+    {
+      "name": "StrategyName",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "semantic",
+        "technical",
+        "social"
+      ],
+      "inner_types": [],
+      "description": "The canonical name identifiers for the three concrete embedding strategies."
+    },
+    {
+      "name": "LLMService",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "embed_text",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Callable: async (text: str) -> list[float]. The LLM embedding function. Represented here as a type placeholder; in implementation this is an async callable.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Optional LLM service interface injected into SemanticStrategy. Provides async text-to-embedding capability. When None/absent, SemanticStrategy falls back to deterministic feature hashing."
+    },
+    {
+      "name": "OptionalLLMService",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "LLMService"
+      ],
+      "description": "An optional LLM service. None means no LLM is available and the strategy should use heuristic fallback."
+    },
+    {
+      "name": "HashResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "bucket",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The hash bucket index in range [0, num_buckets). Derived from the first slice of the MD5 digest.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "Bucket index must be non-negative."
+            }
+          ]
+        },
+        {
+          "name": "sign",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The sign value, either +1 or -1. Derived from the second slice of the MD5 digest.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value in (-1, 1)",
+              "error_message": "Sign must be +1 or -1."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of the signed hashing utility. Produces a bucket index and a sign (+1 or -1) from two slices of an MD5 hash digest."
+    },
+    {
+      "name": "CodePatternType",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "function_definition",
+        "import_statement",
+        "api_path",
+        "error_pattern",
+        "class_definition",
+        "variable_assignment",
+        "dotted_path",
+        "decorator"
+      ],
+      "inner_types": [],
+      "description": "Types of code patterns detected by TechnicalStrategy's regex-based pattern detectors. Each pattern type maps to a dedicated range of embedding dimensions."
+    },
+    {
+      "name": "DetectedPatterns",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "pattern_type",
+          "type_ref": "CodePatternType",
+          "required": true,
+          "default": "",
+          "description": "The type of code pattern detected.",
+          "validators": []
+        },
+        {
+          "name": "matches",
+          "type_ref": "MatchesList",
+          "required": true,
+          "default": "",
+          "description": "List of matched strings/tokens for this pattern type.",
+          "validators": []
+        },
+        {
+          "name": "count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of occurrences of this pattern type.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "Pattern count must be non-negative."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Collection of code patterns detected in signal content by TechnicalStrategy."
+    },
+    {
+      "name": "MatchesList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of matched pattern strings."
+    },
+    {
+      "name": "DetectedPatternsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "DetectedPatterns",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of detected code patterns."
+    },
+    {
+      "name": "SocialEntity",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "author",
+        "mention",
+        "channel",
+        "author_mention_pair"
+      ],
+      "inner_types": [],
+      "description": "Types of social entities extracted from signal metadata for SocialStrategy embedding."
+    },
+    {
+      "name": "TokenList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of extracted tokens (strings)."
+    },
+    {
+      "name": "EmbeddingStrategyInfo",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "name",
+          "type_ref": "StrategyName",
+          "required": true,
+          "default": "",
+          "description": "The canonical name of this strategy.",
+          "validators": []
+        },
+        {
+          "name": "description",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of what this strategy captures.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The dimensionality of vectors produced. Always equals EMBEDDING_DIM (64).",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value == 64",
+              "error_message": "Dimension must equal EMBEDDING_DIM (64)."
+            }
+          ]
+        },
+        {
+          "name": "requires_external_service",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether this strategy requires an external service (e.g., LLM). False means fully self-contained heuristic.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Descriptive information about an embedding strategy instance, useful for introspection and registration."
+    }
+  ],
+  "functions": [
+    {
+      "name": "signed_hash",
+      "description": "Shared hashing utility. Computes a deterministic (bucket, sign) pair from a token string using hashlib.md5. The MD5 digest is split into two slices: bytes [0:8] determine the bucket index (modulo num_buckets), bytes [8:16] determine the sign (+1 or -1). This ensures cross-process reproducibility unlike the built-in hash() function.",
+      "inputs": [
+        {
+          "name": "token",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The token string to hash. Will be UTF-8 encoded before hashing.",
+          "validators": []
+        },
+        {
+          "name": "num_buckets",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The number of hash buckets (i.e., embedding dimensions to map into). Must be positive.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0",
+              "error_message": "num_buckets must be a positive integer."
+            }
+          ]
+        }
+      ],
+      "output_type": "HashResult",
+      "error_cases": [],
+      "preconditions": [
+        "token is a valid UTF-8 string",
+        "num_buckets > 0"
+      ],
+      "postconditions": [
+        "result.bucket >= 0 and result.bucket < num_buckets",
+        "result.sign in (-1, +1)",
+        "Calling with same (token, num_buckets) always produces same result (deterministic)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "l2_normalize",
+      "description": "Shared utility that L2-normalizes a numpy vector in-place or returns a copy. If the vector has zero norm (all zeros), returns the zero vector unchanged. Never produces NaN values.",
+      "inputs": [
+        {
+          "name": "vector",
+          "type_ref": "EmbeddingVector",
+          "required": true,
+          "default": "",
+          "description": "The raw (unnormalized) embedding vector of shape (EMBEDDING_DIM,).",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingVector",
+      "error_cases": [],
+      "preconditions": [
+        "vector has exactly EMBEDDING_DIM (64) elements",
+        "vector contains no NaN or Inf values"
+      ],
+      "postconditions": [
+        "If input is zero vector, output is zero vector",
+        "If input is non-zero, output has L2 norm == 1.0 (within floating point tolerance 1e-6)",
+        "Output has exactly EMBEDDING_DIM (64) elements",
+        "Output contains no NaN or Inf values"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "zero_vector",
+      "description": "Returns the zero vector sentinel of shape (EMBEDDING_DIM,). This is the canonical 'no information' value. All strategies return this when they cannot produce a meaningful embedding.",
+      "inputs": [],
+      "output_type": "EmbeddingVector",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "All elements of returned vector are 0.0",
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "L2 norm of returned vector is 0.0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "SemanticStrategy.__init__",
+      "description": "Construct a SemanticStrategy instance. Accepts an optional LLM service via constructor injection. If llm_service is None, the strategy operates in pure-heuristic mode using deterministic feature hashing of tokenized text. The strategy is stateless after construction (only stores immutable config).",
+      "inputs": [
+        {
+          "name": "llm_service",
+          "type_ref": "OptionalLLMService",
+          "required": false,
+          "default": "None",
+          "description": "Optional LLM service providing async text-to-embedding. None means fallback-only mode.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Instance name property returns 'semantic'",
+        "Instance is safe for concurrent use (stateless/immutable config)",
+        "If llm_service is provided, it is stored for use in embed() calls"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "SemanticStrategy.name",
+      "description": "Property returning the canonical strategy name 'semantic'.",
+      "inputs": [],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Return value is always the string 'semantic'"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "SemanticStrategy.embed",
+      "description": "Async method that produces a semantic embedding for the given signal. If an LLM service is available, attempts LLM-based embedding first (projecting/truncating to EMBEDDING_DIM if needed). On LLM failure or absence, falls back to deterministic feature hashing: tokenizes signal content into words, applies signed_hash to each token to accumulate into a EMBEDDING_DIM-sized vector, then L2-normalizes. Returns zero vector for empty content. The entire body is wrapped in try/except; any unexpected exception is logged as a warning and zero vector is returned.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "SignalMetadata",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed. Uses content and optionally signal_type and tags for enrichment.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingVector",
+      "error_cases": [
+        {
+          "name": "llm_service_failure",
+          "condition": "LLM service is available but raises an exception during embedding",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Logs warning, falls back to deterministic feature hashing. Does not propagate exception."
+          }
+        },
+        {
+          "name": "llm_service_invalid_output",
+          "condition": "LLM service returns a vector of unexpected dimensionality or containing NaN/Inf",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Logs warning, falls back to deterministic feature hashing."
+          }
+        },
+        {
+          "name": "unexpected_error",
+          "condition": "Any unexpected exception occurs during embedding computation",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Logs warning with exception details, returns zero vector."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid SignalMetadata instance"
+      ],
+      "postconditions": [
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "Returned vector is either L2-normalized or the zero vector",
+        "Returned vector contains no NaN or Inf values",
+        "If signal.content is empty and no other metadata contributes, returns zero vector",
+        "Same signal with same strategy config produces same result when using fallback (deterministic)",
+        "Function never raises an exception to the caller"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke LLM service (network call) if llm_service was provided",
+        "Logs warning on fallback or failure"
+      ]
+    },
+    {
+      "name": "TechnicalStrategy.__init__",
+      "description": "Construct a TechnicalStrategy instance. No external dependencies required. Compiles regex patterns for code construct detection (function definitions, imports, API paths, error patterns, class definitions, decorators, dotted paths). Stateless after construction.",
+      "inputs": [],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Instance name property returns 'technical'",
+        "Regex patterns for all CodePatternType variants are compiled and ready",
+        "Instance is safe for concurrent use (stateless/immutable config)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "TechnicalStrategy.name",
+      "description": "Property returning the canonical strategy name 'technical'.",
+      "inputs": [],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Return value is always the string 'technical'"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "TechnicalStrategy.embed",
+      "description": "Async method that produces a technical/code-aware embedding for the given signal. Pipeline: (1) Code-aware tokenization — splits camelCase, snake_case, and dotted paths into sub-tokens. (2) Regex-based pattern detection — identifies function definitions, import statements, API paths, error patterns, class definitions, decorators, dotted paths. (3) Hash-bucketed TF-IDF approximation — each token is mapped via signed_hash into a subset of embedding dimensions, weighted by approximate inverse document frequency. (4) Dedicated dimension ranges — the 64 dimensions are partitioned into ranges for general tokens (dims 0-31), pattern type indicators (dims 32-47), and pattern-specific token features (dims 48-63). Final vector is L2-normalized. Returns zero vector for empty/non-technical content. Entire body wrapped in try/except.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "SignalMetadata",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed. Primarily uses content; signal_type and tags may influence pattern weighting.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingVector",
+      "error_cases": [
+        {
+          "name": "unexpected_error",
+          "condition": "Any unexpected exception occurs during embedding computation",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Logs warning with exception details, returns zero vector."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid SignalMetadata instance"
+      ],
+      "postconditions": [
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "Returned vector is either L2-normalized or the zero vector",
+        "Returned vector contains no NaN or Inf values",
+        "If signal.content is empty, returns zero vector",
+        "Same signal produces same result (fully deterministic, no external calls)",
+        "Function never raises an exception to the caller",
+        "Dimensions 0-31 encode general token features",
+        "Dimensions 32-47 encode pattern type indicators",
+        "Dimensions 48-63 encode pattern-specific token features"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warning on failure"
+      ]
+    },
+    {
+      "name": "TechnicalStrategy.tokenize_code_aware",
+      "description": "Code-aware tokenizer that splits text into sub-tokens. Handles camelCase splitting (e.g., 'getUserName' -> ['get', 'user', 'name']), snake_case splitting (e.g., 'get_user_name' -> ['get', 'user', 'name']), and dotted path splitting (e.g., 'os.path.join' -> ['os', 'path', 'join']). Converts all tokens to lowercase. Filters out tokens shorter than 2 characters.",
+      "inputs": [
+        {
+          "name": "text",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The text to tokenize.",
+          "validators": []
+        }
+      ],
+      "output_type": "TokenList",
+      "error_cases": [],
+      "preconditions": [
+        "text is a valid string"
+      ],
+      "postconditions": [
+        "All returned tokens are lowercase",
+        "All returned tokens have length >= 2",
+        "camelCase identifiers are split into constituent words",
+        "snake_case identifiers are split at underscores",
+        "Dotted paths are split at dots"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "TechnicalStrategy.detect_patterns",
+      "description": "Runs all compiled regex pattern detectors against the input text. Returns a list of DetectedPatterns, one per CodePatternType that had at least one match.",
+      "inputs": [
+        {
+          "name": "text",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The text to scan for code patterns.",
+          "validators": []
+        }
+      ],
+      "output_type": "DetectedPatternsList",
+      "error_cases": [],
+      "preconditions": [
+        "text is a valid string"
+      ],
+      "postconditions": [
+        "Each element in result has count > 0",
+        "Each element's matches list has length == count",
+        "No duplicate pattern_type values in result",
+        "Result only contains CodePatternType variants that were actually detected"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "SocialStrategy.__init__",
+      "description": "Construct a SocialStrategy instance. No external dependencies required. Fully heuristic-based using hash projection of social entities. Stateless after construction.",
+      "inputs": [],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Instance name property returns 'social'",
+        "Instance is safe for concurrent use (stateless/immutable config)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "SocialStrategy.name",
+      "description": "Property returning the canonical strategy name 'social'.",
+      "inputs": [],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Return value is always the string 'social'"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "SocialStrategy.embed",
+      "description": "Async method that produces a social/graph embedding for the given signal. Extracts author, @mentions, and channel from signal metadata. Hash-projects each entity into embedding dimensions using signed_hash with entity-type-specific prefixes to avoid collisions (e.g., 'author:alice', 'mention:bob', 'channel:general'). Encodes co-occurrence of author+mention pairs as combined hash entries (e.g., 'pair:alice+bob'). Channel contributes to a separate dimension subrange. Final vector is L2-normalized. Returns zero vector when no social metadata is present (empty author, no mentions, no channel). Entire body wrapped in try/except.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "SignalMetadata",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed. Uses author, mentions, and channel fields from metadata. Content is not used.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingVector",
+      "error_cases": [
+        {
+          "name": "unexpected_error",
+          "condition": "Any unexpected exception occurs during embedding computation",
+          "error_type": "None",
+          "error_data": {
+            "behavior": "Logs warning with exception details, returns zero vector."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid SignalMetadata instance"
+      ],
+      "postconditions": [
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "Returned vector is either L2-normalized or the zero vector",
+        "Returned vector contains no NaN or Inf values",
+        "If author is empty AND mentions is empty AND channel is empty, returns zero vector",
+        "Same signal produces same result (fully deterministic, no external calls)",
+        "Function never raises an exception to the caller",
+        "Different authors hash to different dimension patterns with high probability",
+        "Author+mention co-occurrence pairs contribute distinct signal from individual entities"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warning on failure"
+      ]
+    },
+    {
+      "name": "get_strategy_info",
+      "description": "Returns descriptive metadata about a given strategy instance, useful for registration and introspection.",
+      "inputs": [
+        {
+          "name": "strategy_name",
+          "type_ref": "StrategyName",
+          "required": true,
+          "default": "",
+          "description": "The canonical name of the strategy to describe.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingStrategyInfo",
+      "error_cases": [],
+      "preconditions": [
+        "strategy_name is a valid StrategyName variant"
+      ],
+      "postconditions": [
+        "Returned info.name == strategy_name",
+        "Returned info.dimension == 64",
+        "requires_external_service is True only for 'semantic' when LLM is configured"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "EMBEDDING_DIM is always 64 and is immutable at module level",
+    "All strategy embed() methods return vectors of exactly EMBEDDING_DIM (64) dimensions",
+    "All returned embedding vectors are either L2-normalized (unit length within 1e-6 tolerance) or the zero vector",
+    "No embedding vector ever contains NaN or Inf values",
+    "All strategies use hashlib.md5 for hashing — never the built-in hash() function — ensuring deterministic cross-process reproducibility",
+    "Signed hashing always uses two digest slices: bytes [0:8] for bucket, bytes [8:16] for sign",
+    "All embed() methods are async and never raise exceptions to the caller; failures are logged and result in zero vector",
+    "All strategy instances are stateless or carry only immutable configuration — safe for concurrent use from multiple async tasks",
+    "SemanticStrategy uses constructor injection for LLM service — no global state or service locator",
+    "TechnicalStrategy and SocialStrategy require no external services and operate purely on heuristics",
+    "Zero vector is the canonical 'no information' sentinel — never None, never NaN",
+    "SemanticStrategy.embed() with no LLM service and same input always produces same output (deterministic fallback)",
+    "TechnicalStrategy.embed() always produces same output for same input (fully deterministic)",
+    "SocialStrategy.embed() always produces same output for same input (fully deterministic)",
+    "Entity-type prefixes in SocialStrategy hashing prevent cross-entity-type hash collisions (e.g., 'author:X' vs 'mention:X')",
+    "TechnicalStrategy dimension ranges are non-overlapping: general tokens [0:32], pattern indicators [32:48], pattern-specific [48:64]"
+  ],
+  "requires": []
+}

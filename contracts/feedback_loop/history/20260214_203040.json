@@ -1,0 +1,2258 @@
+{
+  "component_id": "feedback_loop",
+  "name": "Feedback Loop (Feature 7)",
+  "description": "Allow users to rate findings and use feedback to adjust system behavior. Record findings with feedback_ids. Add 'stigmergy feedback <id> [helpful|already_knew|wrong|irrelevant]' CLI command. Store feedback in .stigmergy/feedback.jsonl. Initially adjust only agent confidence scores via attention/calibration.py (calibration_lr_up/down). 'already_knew' = mild positive (correct but low novelty, slightly decrease surfacing priority). Three sub-components: feedback_recording (storage and record management), feedback_cli (CLI command interface), feedback_calibration (rating-to-calibration mapping and application). Shared types module provides Rating StrEnum, CalibrationDimension StrEnum, frozen Pydantic record models, and unified error hierarchy. ID convention: fnd-{timestamp_hex}-{random_hex} for findings, fbk-{timestamp_hex}-{random_hex} for feedback records. CalibratorProtocol enables dependency inversion for testability. ENABLED_DIMENSIONS gate controls which calibration dimensions are active; initially only agent_confidence.",
+  "version": 1,
+  "types": [
+    {
+      "name": "Rating",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "helpful",
+        "already_knew",
+        "wrong",
+        "irrelevant"
+      ],
+      "inner_types": [],
+      "description": "StrEnum of the four possible user feedback ratings for a finding. Shared across all sub-components. Implemented as StrEnum in Python so each variant serializes to its lowercase string value. Rating input from CLI is normalized to lowercase before matching."
+    },
+    {
+      "name": "CalibrationDimension",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "agent_confidence",
+        "surfacing_priority",
+        "business_weight",
+        "familiarity_weight"
+      ],
+      "inner_types": [],
+      "description": "The calibration dimension a CalibrationAction targets. Enables dual-signal nature of 'already_knew' (accuracy + novelty). Only 'agent_confidence' is initially enabled via ENABLED_DIMENSIONS gate; others are deferred until Features 3 and 4 land."
+    },
+    {
+      "name": "FeedbackStatus",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "applied",
+        "partial",
+        "skipped"
+      ],
+      "inner_types": [],
+      "description": "Outcome status of applying feedback through the calibration pipeline. 'applied' = all actions applied, 'partial' = some skipped due to disabled dimensions, 'skipped' = all actions skipped."
+    },
+    {
+      "name": "CLIExitCode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "SUCCESS_0",
+        "FEEDBACK_ID_NOT_FOUND_1",
+        "INVALID_RATING_2",
+        "IO_ERROR_3",
+        "UNEXPECTED_ERROR_4"
+      ],
+      "inner_types": [],
+      "description": "Exit codes used by the CLI layer when handling feedback commands. Maps error types to numeric exit codes for scripting/automation compatibility. 0=success, 1=id_not_found, 2=invalid_rating, 3=io_error, 4=unexpected."
+    },
+    {
+      "name": "FindingRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this finding, auto-generated with 'fnd-' prefix via mint_feedback_id(). Displayed to user for later rating.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fnd-[0-9a-f]{8}-[0-9a-f]{6,}$",
+              "error_message": "feedback_id must match pattern fnd-{timestamp_hex}-{random_hex}"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the signal that produced this finding.",
+          "validators": []
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the context in which the finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the agent that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC datetime string of when the finding was surfaced. Stored as datetime in Python model, serialized as ISO string in JSONL.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$",
+              "error_message": "timestamp must be ISO 8601 UTC format"
+            }
+          ]
+        },
+        {
+          "name": "content_summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Brief summary of the finding content. Maximum 500 characters.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "content_summary must be between 1 and 500 characters"
+            }
+          ]
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility and future migrations.",
+          "validators": []
+        },
+        {
+          "name": "rated",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "Whether this finding has been rated. Computed/cached field in the in-memory index, not persisted to findings.jsonl.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable (frozen=True) Pydantic v2 BaseModel representing a surfaced finding. Created at finding-surfacing time with a minted feedback_id. Stored in .stigmergy/findings.jsonl. Config: frozen=True, extra='ignore'. ID format: fnd-{timestamp_hex}-{random_hex}."
+    },
+    {
+      "name": "FeedbackRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "record_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this feedback record, auto-generated with 'fbk-' prefix.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fbk-[0-9a-f]{8}-[0-9a-f]{6,}$",
+              "error_message": "record_id must match pattern fbk-{timestamp_hex}-{random_hex}"
+            }
+          ]
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the FindingRecord's feedback_id (fnd-* prefix).",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fnd-[0-9a-f]{8}-[0-9a-f]{6,}$",
+              "error_message": "feedback_id must reference a valid finding ID"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: signal that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: context of the finding.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: agent that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: ISO 8601 UTC datetime when finding was surfaced.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$",
+              "error_message": "timestamp must be ISO 8601 UTC format"
+            }
+          ]
+        },
+        {
+          "name": "content_summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: brief summary of the finding content.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "content_summary must be between 1 and 500 characters"
+            }
+          ]
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility.",
+          "validators": []
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": true,
+          "default": "",
+          "description": "The user's rating of the finding: helpful, already_knew, wrong, or irrelevant.",
+          "validators": []
+        },
+        {
+          "name": "feedback_timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC datetime string of when the feedback/rating was submitted. Must be >= the finding's timestamp.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$",
+              "error_message": "feedback_timestamp must be ISO 8601 UTC format"
+            }
+          ]
+        },
+        {
+          "name": "record_type",
+          "type_ref": "str",
+          "required": false,
+          "default": "feedback",
+          "description": "JSONL discriminator field. Always 'feedback' for FeedbackRecord lines.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable (frozen=True) Pydantic v2 BaseModel representing a user's feedback on a finding. Denormalized: contains all FindingRecord fields plus rating and feedback_timestamp. Written to .stigmergy/feedback.jsonl. Re-rating appends a new line; latest wins on read. Config: frozen=True, extra='ignore'. ID format: fbk-{timestamp_hex}-{random_hex}."
+    },
+    {
+      "name": "FeedbackStoreConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "store_path",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy/feedback.jsonl",
+          "description": "Path to the feedback JSONL file. Defaults to .stigmergy/feedback.jsonl.",
+          "validators": []
+        },
+        {
+          "name": "findings_path",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy/findings.jsonl",
+          "description": "Path to the findings JSONL file. Defaults to .stigmergy/findings.jsonl.",
+          "validators": []
+        },
+        {
+          "name": "data_dir",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy",
+          "description": "Root directory for JSONL data files. Auto-created on first write.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic configuration model for FeedbackStore initialization. Specifies storage paths for JSONL files."
+    },
+    {
+      "name": "FeedbackListFilter",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Filter feedback records by agent_id. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": false,
+          "default": "",
+          "description": "Filter feedback records by rating. None means no filter.",
+          "validators": []
+        },
+        {
+          "name": "since",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "ISO 8601 datetime. Return only feedback with feedback_timestamp >= this value. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "limit",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Maximum number of records to return. 0 means no limit.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0..10000",
+              "error_message": "limit must be between 0 and 10000"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Optional filter criteria for list_feedback(). All fields are optional; unset fields are not filtered on."
+    },
+    {
+      "name": "FeedbackSummary",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "total_findings",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of findings recorded.",
+          "validators": []
+        },
+        {
+          "name": "total_rated",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings that have received at least one rating.",
+          "validators": []
+        },
+        {
+          "name": "helpful_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as helpful.",
+          "validators": []
+        },
+        {
+          "name": "already_knew_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as already_knew.",
+          "validators": []
+        },
+        {
+          "name": "wrong_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as wrong.",
+          "validators": []
+        },
+        {
+          "name": "irrelevant_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as irrelevant.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Aggregated summary of feedback for a given agent or globally. Computed from in-memory indexes."
+    },
+    {
+      "name": "CalibrationAction",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "dimension",
+          "type_ref": "CalibrationDimension",
+          "required": true,
+          "default": "",
+          "description": "The calibration dimension this action targets.",
+          "validators": []
+        },
+        {
+          "name": "delta",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Signed magnitude of the adjustment. Positive = increase (calibration_lr_up), negative = decrease (calibration_lr_down). Magnitude sourced from FeedbackCalibrationConfig constants.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "-1.0..1.0",
+              "error_message": "delta must be between -1.0 and 1.0"
+            }
+          ]
+        },
+        {
+          "name": "description",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable explanation of what this action does and why (e.g., 'Increase agent confidence: rating=helpful').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "description must be non-empty and at most 500 characters"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model describing a single calibration adjustment to be applied (or skipped) for a given feedback event. Each rating maps to one or more CalibrationActions across different dimensions."
+    },
+    {
+      "name": "CalibrationActionList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "CalibrationAction",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of CalibrationAction structs."
+    },
+    {
+      "name": "FeedbackCalibrationConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "helpful_confidence_delta",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.05",
+          "description": "Positive delta applied to agent_confidence when rating is 'helpful'. Corresponds to calibration_lr_up.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0..1.0",
+              "error_message": "Must be a positive value <= 1.0"
+            }
+          ]
+        },
+        {
+          "name": "wrong_confidence_delta",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.08",
+          "description": "Negative delta magnitude applied to agent_confidence when rating is 'wrong'. Corresponds to calibration_lr_down. Must be > irrelevant_confidence_delta.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0..1.0",
+              "error_message": "Must be a positive value <= 1.0"
+            }
+          ]
+        },
+        {
+          "name": "irrelevant_confidence_delta",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.03",
+          "description": "Negative delta magnitude (smaller than 'wrong') applied to agent_confidence when rating is 'irrelevant'. Corresponds to calibration_lr_down.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0..1.0",
+              "error_message": "Must be a positive value <= 1.0"
+            }
+          ]
+        },
+        {
+          "name": "already_knew_confidence_delta",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.02",
+          "description": "Mild positive delta applied to agent_confidence when rating is 'already_knew' (correct but low novelty). Effectively helpful_confidence_delta * 0.25 by default. Corresponds to calibration_lr_up.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0..1.0",
+              "error_message": "Must be a positive value <= 1.0"
+            }
+          ]
+        },
+        {
+          "name": "already_knew_surfacing_priority_delta",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.04",
+          "description": "Negative delta magnitude applied to surfacing_priority when rating is 'already_knew' (slightly decrease surfacing priority for low-novelty correct findings). Effectively wrong_confidence_delta * 0.5 by default. Corresponds to calibration_lr_down. Deferred until surfacing_priority is enabled.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0..1.0",
+              "error_message": "Must be a positive value <= 1.0"
+            }
+          ]
+        },
+        {
+          "name": "enabled_dimensions",
+          "type_ref": "EnabledDimensionsList",
+          "required": false,
+          "default": "[\"agent_confidence\"]",
+          "description": "List of CalibrationDimension values that are currently active. Actions targeting other dimensions are computed but skipped and logged. Initially only 'agent_confidence'.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic config model holding named magnitude constants for each rating→dimension pair and the set of enabled dimensions. All delta values are positive magnitudes; the sign (up/down) is determined by map_rating_to_actions based on rating semantics. wrong_confidence_delta > irrelevant_confidence_delta (wrong is penalized more heavily)."
+    },
+    {
+      "name": "EnabledDimensionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of CalibrationDimension string values representing which dimensions are currently enabled."
+    },
+    {
+      "name": "EnabledSkippedPartition",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "enabled",
+          "type_ref": "CalibrationActionList",
+          "required": true,
+          "default": "",
+          "description": "Actions whose dimension is in ENABLED_DIMENSIONS — will be applied to the calibrator.",
+          "validators": []
+        },
+        {
+          "name": "skipped",
+          "type_ref": "CalibrationActionList",
+          "required": true,
+          "default": "",
+          "description": "Actions whose dimension is NOT in ENABLED_DIMENSIONS — deferred, logged but not applied.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Return type of filter_enabled_actions: partitions actions into enabled (to be applied) and skipped (deferred dimensions)."
+    },
+    {
+      "name": "FeedbackResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id (fnd-*) of the finding that was processed.",
+          "validators": []
+        },
+        {
+          "name": "applied_actions",
+          "type_ref": "CalibrationActionList",
+          "required": true,
+          "default": "",
+          "description": "Actions that were successfully applied to the calibrator.",
+          "validators": []
+        },
+        {
+          "name": "skipped_actions",
+          "type_ref": "CalibrationActionList",
+          "required": true,
+          "default": "",
+          "description": "Actions that were computed but skipped because their dimension is not in ENABLED_DIMENSIONS.",
+          "validators": []
+        },
+        {
+          "name": "status",
+          "type_ref": "FeedbackStatus",
+          "required": true,
+          "default": "",
+          "description": "Overall outcome: 'applied' if all actions applied, 'partial' if some skipped, 'skipped' if all skipped.",
+          "validators": []
+        },
+        {
+          "name": "reason",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Optional human-readable explanation when status is not 'applied' (e.g., which dimensions were disabled, or error details).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the outcome of applying a single feedback entry through the calibration pipeline. Contains both applied and skipped actions for auditability."
+    },
+    {
+      "name": "FeedbackResultList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "FeedbackResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FeedbackResult structs returned from batch processing."
+    },
+    {
+      "name": "FeedbackEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The finding ID (fnd-* prefix) being rated.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..256",
+              "error_message": "feedback_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ID of the agent that produced the finding being rated.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..256",
+              "error_message": "agent_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": true,
+          "default": "",
+          "description": "The user's rating of the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC timestamp of when the feedback was given.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$",
+              "error_message": "timestamp must be ISO 8601 UTC format"
+            }
+          ]
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional free-form metadata dictionary for extensibility (e.g., user notes, session context).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing a single user feedback event for the calibration pipeline. Created when a user rates a finding via the CLI. This is the calibration-facing representation that includes agent_id for calibrator dispatch."
+    },
+    {
+      "name": "FeedbackEntryList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "FeedbackEntry",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FeedbackEntry structs, e.g., loaded from feedback.jsonl."
+    },
+    {
+      "name": "FindingRecordList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "FindingRecord",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FindingRecord objects."
+    },
+    {
+      "name": "FeedbackRecordList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "FeedbackRecord",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FeedbackRecord objects."
+    },
+    {
+      "name": "ValidationResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "found",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the feedback_id was found in the findings store.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that was checked.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of feedback_id validation. Used internally by CLI; not persisted."
+    },
+    {
+      "name": "CalibratorProtocol",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "calibration_lr_up",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Async method signature: async def calibration_lr_up(agent_id: str, delta: float) -> None. Increases the calibration learning rate / confidence for the specified agent.",
+          "validators": []
+        },
+        {
+          "name": "calibration_lr_down",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Async method signature: async def calibration_lr_down(agent_id: str, delta: float) -> None. Decreases the calibration learning rate / confidence for the specified agent.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "typing.Protocol defining the interface to the concrete calibration system (attention/calibration.py). Decouples feedback_calibration from the concrete implementation. Structural subtyping — no inheritance required. Implementations must provide async calibration_lr_up and calibration_lr_down methods."
+    },
+    {
+      "name": "FeedbackError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message suitable for display to the user.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The feedback_id involved, if applicable.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base exception for all feedback subsystem errors. Raised for general feedback operation failures (e.g., file I/O errors, serialization errors). Root of the error hierarchy. Located in feedback/types.py."
+    },
+    {
+      "name": "FeedbackNotFoundError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including the unrecognized feedback_id.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that was not found.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when a feedback_id is not found in the store. Subclass of FeedbackError. Located in feedback/types.py."
+    },
+    {
+      "name": "DuplicateFeedbackError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that already exists.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when attempting to record a finding with a feedback_id that already exists (duplicate finding registration). Subclass of FeedbackError. Located in feedback/types.py."
+    },
+    {
+      "name": "InvalidFeedbackRatingError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including the invalid rating and the list of allowed values.",
+          "validators": []
+        },
+        {
+          "name": "rating_given",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw rating string that was rejected.",
+          "validators": []
+        },
+        {
+          "name": "allowed_ratings",
+          "type_ref": "RatingStringList",
+          "required": true,
+          "default": "",
+          "description": "The list of valid Rating string values.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when the rating string does not match any variant of Rating (after case-insensitive normalization). Subclass of FeedbackError. Located in feedback/types.py."
+    },
+    {
+      "name": "RatingStringList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of Rating string values (helpful, already_knew, wrong, irrelevant)."
+    },
+    {
+      "name": "CalibrationApplicationError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id being processed when the error occurred.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The agent_id being calibrated when the error occurred.",
+          "validators": []
+        },
+        {
+          "name": "original_error",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "String representation of the underlying exception.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when the calibrator protocol raises an exception during calibration_lr_up or calibration_lr_down calls. Subclass of FeedbackError."
+    },
+    {
+      "name": "FeedbackIOError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The filesystem path that caused the error.",
+          "validators": []
+        },
+        {
+          "name": "original_error",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "OS-level error message.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised for filesystem I/O errors during feedback operations (permission denied, disk full, etc.). Subclass of FeedbackError."
+    },
+    {
+      "name": "FeedbackParseError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The file path containing the corrupt line.",
+          "validators": []
+        },
+        {
+          "name": "line_number",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "1-based line number of the corrupt line.",
+          "validators": []
+        },
+        {
+          "name": "raw_line",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw text of the corrupt line.",
+          "validators": []
+        },
+        {
+          "name": "parse_error",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Description of the parse/validation failure.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when a line in the JSONL file cannot be parsed into a valid record. Subclass of FeedbackError."
+    }
+  ],
+  "functions": [
+    {
+      "name": "mint_feedback_id",
+      "description": "Generate a unique feedback_id string with the 'fnd-' prefix for findings. Uses a combination of timestamp hex and random hex bytes to ensure uniqueness and visual distinction. Format: fnd-{timestamp_hex}-{random_hex}. Standalone synchronous utility function in feedback/types.py. Called at finding-surfacing time.",
+      "inputs": [],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned string matches pattern ^fnd-[0-9a-f]{8}-[0-9a-f]{6,}$",
+        "Returned string is unique with extremely high probability (collision-resistant)",
+        "Returned string length is between 20 and 40 characters"
+      ],
+      "idempotent": false,
+      "side_effects": []
+    },
+    {
+      "name": "mint_record_id",
+      "description": "Generate a unique record ID string with the 'fbk-' prefix for feedback records. Uses timestamp hex and random hex. Format: fbk-{timestamp_hex}-{random_hex}. Standalone synchronous utility function in feedback/types.py.",
+      "inputs": [],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned string matches pattern ^fbk-[0-9a-f]{8}-[0-9a-f]{6,}$",
+        "Returned string is unique with extremely high probability (collision-resistant)"
+      ],
+      "idempotent": false,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.__init__",
+      "description": "Initialize the FeedbackStore with optional configuration. Sets up in-memory indexes (empty dicts for findings and feedback keyed by feedback_id). Does NOT load from disk — call load() after construction. Creates asyncio.Lock for write serialization.",
+      "inputs": [
+        {
+          "name": "config",
+          "type_ref": "FeedbackStoreConfig",
+          "required": false,
+          "default": "FeedbackStoreConfig()",
+          "description": "Configuration for storage paths. Uses defaults if not provided.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "In-memory findings index is initialized as empty dict",
+        "In-memory feedback index is initialized as empty dict",
+        "asyncio.Lock is created for write serialization",
+        "No file I/O is performed during construction"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.load",
+      "description": "Async method to load existing findings and feedback records from JSONL files into in-memory indexes. Reads findings.jsonl and feedback.jsonl from configured paths. Each JSONL line has a 'record_type' discriminator ('finding' or 'feedback'). Defensive parsing: blank lines and malformed JSON lines are skipped with a warning logged. If files do not exist, indexes remain empty (no error). For feedback records, latest entry per feedback_id wins (append-only re-rating). Uses asyncio.to_thread for file I/O.",
+      "inputs": [],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "io_error",
+          "condition": "Unrecoverable file I/O error (e.g., permission denied on existing file)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Failed to load feedback data from disk"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized via __init__"
+      ],
+      "postconditions": [
+        "In-memory findings index contains all valid FindingRecord entries from findings.jsonl",
+        "In-memory feedback index contains the latest FeedbackRecord per feedback_id from feedback.jsonl",
+        "Malformed or blank lines are skipped with warnings logged, not raised as errors",
+        "If JSONL files do not exist, indexes are empty and no error is raised"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Reads from findings.jsonl via asyncio.to_thread",
+        "Reads from feedback.jsonl via asyncio.to_thread",
+        "May log warnings for skipped malformed lines"
+      ]
+    },
+    {
+      "name": "FeedbackStore.record_finding",
+      "description": "Async method to record a new finding. Accepts finding metadata, creates a FindingRecord (feedback_id should already be minted via mint_feedback_id), adds it to the in-memory index, and appends the JSON-serialized record as a line to findings.jsonl with record_type='finding' discriminator. Auto-creates .stigmergy/ directory on first write. Acquires asyncio.Lock for the write operation. Uses asyncio.to_thread for file I/O.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique finding ID, pre-minted via mint_feedback_id().",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fnd-[0-9a-f]{8}-[0-9a-f]{6,}$",
+              "error_message": "feedback_id must match fnd-{hex}-{hex} pattern"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the signal that produced this finding.",
+          "validators": []
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the context in which the finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the agent that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 UTC datetime string of when the finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "content_summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Brief summary of the finding content. Maximum 500 characters.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "content_summary must be between 1 and 500 characters"
+            }
+          ]
+        }
+      ],
+      "output_type": "FindingRecord",
+      "error_cases": [
+        {
+          "name": "duplicate_finding",
+          "condition": "A FindingRecord with the given feedback_id already exists in the index",
+          "error_type": "DuplicateFeedbackError",
+          "error_data": {
+            "feedback_id": "The duplicate feedback_id"
+          }
+        },
+        {
+          "name": "invalid_feedback_id",
+          "condition": "feedback_id does not match the required fnd-* pattern",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid feedback_id format: must match fnd-{hex}-{hex}"
+          }
+        },
+        {
+          "name": "content_summary_too_long",
+          "condition": "content_summary exceeds 500 characters",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "content_summary exceeds maximum length of 500 characters"
+          }
+        },
+        {
+          "name": "io_write_error",
+          "condition": "Failed to write to findings.jsonl (e.g., disk full, permission denied)",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "message": "Failed to persist finding record to disk"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called",
+        "feedback_id has been minted via mint_feedback_id()",
+        "feedback_id does not already exist in the findings index"
+      ],
+      "postconditions": [
+        "A FindingRecord with the given fields is stored in the in-memory findings index keyed by feedback_id",
+        "The JSON-serialized FindingRecord (with record_type='finding') is appended as a new line to findings.jsonl",
+        "The returned FindingRecord is frozen and has schema_version=1",
+        "The .stigmergy/ directory exists after this call"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to findings.jsonl via asyncio.to_thread",
+        "May create .stigmergy/ directory if it does not exist",
+        "Acquires and releases asyncio.Lock"
+      ]
+    },
+    {
+      "name": "FeedbackStore.record_feedback",
+      "description": "Async method to record user feedback (rating) for an existing finding. Looks up the FindingRecord by feedback_id, constructs a denormalized FeedbackRecord with the rating, current timestamp, and a minted fbk-* record_id, adds/updates the in-memory feedback index, and appends the JSON-serialized record to feedback.jsonl with record_type='feedback' discriminator. Re-rating is allowed: a new append overwrites the in-memory entry (latest wins). Acquires asyncio.Lock for write. Uses asyncio.to_thread for file I/O.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the FindingRecord's feedback_id (fnd-* prefix).",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fnd-[0-9a-f]{8}-[0-9a-f]{6,}$",
+              "error_message": "feedback_id must match fnd-{hex}-{hex} pattern"
+            }
+          ]
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": true,
+          "default": "",
+          "description": "The user's rating: helpful, already_knew, wrong, or irrelevant.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRecord",
+      "error_cases": [
+        {
+          "name": "finding_not_found",
+          "condition": "No FindingRecord exists with the given feedback_id",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        },
+        {
+          "name": "invalid_rating",
+          "condition": "The provided rating is not one of the valid Rating values",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "message": "Invalid rating value. Must be one of: helpful, already_knew, wrong, irrelevant"
+          }
+        },
+        {
+          "name": "io_write_error",
+          "condition": "Failed to write to feedback.jsonl (e.g., disk full, permission denied)",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "message": "Failed to persist feedback record to disk"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called",
+        "A FindingRecord with the given feedback_id exists in the findings index"
+      ],
+      "postconditions": [
+        "A FeedbackRecord is stored in the in-memory feedback index keyed by feedback_id (replaces any previous entry)",
+        "The JSON-serialized FeedbackRecord is appended as a new line to feedback.jsonl",
+        "The returned FeedbackRecord contains all fields from the original FindingRecord plus rating and feedback_timestamp",
+        "The FeedbackRecord.feedback_timestamp >= the FindingRecord.timestamp",
+        "The corresponding FindingRecord's 'rated' status is true in the in-memory index"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to feedback.jsonl via asyncio.to_thread",
+        "May create .stigmergy/ directory if it does not exist",
+        "Acquires and releases asyncio.Lock",
+        "Updates in-memory feedback index (latest rating wins for this feedback_id)"
+      ]
+    },
+    {
+      "name": "FeedbackStore.get_finding",
+      "description": "Async method to retrieve a FindingRecord by feedback_id from the in-memory index. O(1) lookup.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id (fnd-* prefix) of the finding to retrieve.",
+          "validators": []
+        }
+      ],
+      "output_type": "FindingRecord",
+      "error_cases": [
+        {
+          "name": "not_found",
+          "condition": "No FindingRecord exists with the given feedback_id in the index",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "Returns the FindingRecord matching the given feedback_id",
+        "The returned record is frozen/immutable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.get_feedback",
+      "description": "Async method to retrieve the latest FeedbackRecord for a given feedback_id from the in-memory index. O(1) lookup. Returns the most recent rating if the finding has been re-rated.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id (fnd-* prefix) to look up feedback for.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRecord",
+      "error_cases": [
+        {
+          "name": "not_found",
+          "condition": "No FeedbackRecord exists with the given feedback_id (either finding doesn't exist or has not been rated)",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "Returns the latest FeedbackRecord matching the given feedback_id",
+        "The returned record is frozen/immutable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.list_feedback",
+      "description": "Async method to list FeedbackRecords from the in-memory index with optional filtering by agent_id, rating, time range, and a result limit. Returns only the latest rating per feedback_id. Results are ordered by feedback_timestamp descending (most recent first).",
+      "inputs": [
+        {
+          "name": "filter",
+          "type_ref": "FeedbackListFilter",
+          "required": false,
+          "default": "FeedbackListFilter()",
+          "description": "Optional filter criteria. All fields optional; unset fields are not filtered on.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRecordList",
+      "error_cases": [
+        {
+          "name": "invalid_filter",
+          "condition": "Filter contains invalid values (e.g., invalid rating string, unparseable since datetime)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid filter criteria"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "Returned list contains only FeedbackRecords matching all specified filter criteria",
+        "Returned list has at most 'limit' entries (or all matching if limit=0)",
+        "Returned list is ordered by feedback_timestamp descending",
+        "Each entry in the returned list represents the latest rating for its feedback_id"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.list_findings",
+      "description": "Async method to list all FindingRecords from the in-memory index, optionally filtered by agent_id and/or rated status. Returns results ordered by timestamp descending.",
+      "inputs": [
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Filter findings by agent_id. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "rated_only",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "If true, return only findings that have been rated.",
+          "validators": []
+        },
+        {
+          "name": "unrated_only",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "If true, return only findings that have NOT been rated.",
+          "validators": []
+        },
+        {
+          "name": "limit",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Maximum number of records to return. 0 means no limit.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0..10000",
+              "error_message": "limit must be between 0 and 10000"
+            }
+          ]
+        }
+      ],
+      "output_type": "FindingRecordList",
+      "error_cases": [
+        {
+          "name": "conflicting_filters",
+          "condition": "Both rated_only and unrated_only are set to true",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "rated_only and unrated_only are mutually exclusive"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called",
+        "rated_only and unrated_only are not both true"
+      ],
+      "postconditions": [
+        "Returned list contains only FindingRecords matching all specified filter criteria",
+        "Returned list has at most 'limit' entries (or all matching if limit=0)",
+        "Returned list is ordered by timestamp descending"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.get_summary",
+      "description": "Async method to compute a FeedbackSummary of all findings and feedback, optionally filtered by agent_id. Provides counts of total findings, rated findings, and breakdown by rating category. Computed from in-memory indexes.",
+      "inputs": [
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Filter summary by agent_id. Empty string means compute global summary.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackSummary",
+      "error_cases": [],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "total_findings >= total_rated",
+        "total_rated == helpful_count + already_knew_count + wrong_count + irrelevant_count",
+        "All counts are >= 0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_feedback_id",
+      "description": "Validates the format and existence of a feedback_id. First checks that the ID matches the fnd-{hex}-{hex} pattern (fast fail on format). Then checks whether the feedback_id exists in the recorded findings store via the FeedbackStore. Returns None on success. Async function.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id to validate.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..256",
+              "error_message": "feedback_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "store",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Reference to an initialized and loaded FeedbackStore instance (typed as FeedbackStore at runtime).",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "invalid_format",
+          "condition": "feedback_id does not match the fnd-{hex}-{hex} pattern",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid feedback_id format: must match fnd-{timestamp_hex}-{random_hex}"
+          }
+        },
+        {
+          "name": "id_not_found",
+          "condition": "No finding with the given feedback_id exists in the store",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        }
+      ],
+      "preconditions": [
+        "feedback_id is a non-empty string",
+        "store is an initialized and loaded FeedbackStore"
+      ],
+      "postconditions": [
+        "If the function returns without error, the feedback_id is valid format and exists in the findings store",
+        "No mutations are made to the store or filesystem"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "parse_feedback_rating",
+      "description": "Parses and validates a raw rating string into a Rating enum value. Performs case-insensitive matching (e.g., 'Helpful' -> 'helpful'). Pure synchronous function.",
+      "inputs": [
+        {
+          "name": "rating_str",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Raw rating string from CLI input.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..50",
+              "error_message": "rating_str must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "Rating",
+      "error_cases": [
+        {
+          "name": "invalid_rating",
+          "condition": "rating_str (lowercased) does not match any Rating variant",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "rating_given": "The raw string that was provided",
+            "allowed_ratings": "helpful, already_knew, wrong, irrelevant"
+          }
+        }
+      ],
+      "preconditions": [
+        "rating_str is a non-empty string"
+      ],
+      "postconditions": [
+        "Return value is one of: helpful, already_knew, wrong, irrelevant",
+        "No side effects"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "handle_feedback",
+      "description": "Top-level orchestrator for the feedback workflow. Validates the feedback_id format (fast fail), then checks finding existence in the store, parses and validates the rating string (case-insensitive), records the feedback via FeedbackStore.record_feedback, triggers calibration via apply_feedback with the CalibratorProtocol, and returns the CLIExitCode. This is the primary entry point called by the CLI layer. Async function.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id of the finding to rate.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..256",
+              "error_message": "feedback_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "rating_str",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Raw rating string from CLI input (case-insensitive).",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..50",
+              "error_message": "rating_str must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "store",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Reference to an initialized and loaded FeedbackStore instance.",
+          "validators": []
+        },
+        {
+          "name": "calibrator",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Reference to a CalibratorProtocol implementation for applying calibration adjustments.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "FeedbackCalibrationConfig",
+          "required": false,
+          "default": "FeedbackCalibrationConfig()",
+          "description": "Calibration configuration with delta magnitudes and enabled dimensions.",
+          "validators": []
+        }
+      ],
+      "output_type": "CLIExitCode",
+      "error_cases": [
+        {
+          "name": "id_format_invalid",
+          "condition": "feedback_id does not match the fnd-{hex}-{hex} pattern",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid feedback_id format"
+          }
+        },
+        {
+          "name": "id_not_found",
+          "condition": "feedback_id does not match any recorded finding",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The unrecognized feedback_id"
+          }
+        },
+        {
+          "name": "invalid_rating",
+          "condition": "rating_str does not match any Rating variant after case normalization",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "rating_given": "The raw invalid rating string",
+            "allowed_ratings": "helpful, already_knew, wrong, irrelevant"
+          }
+        },
+        {
+          "name": "io_error",
+          "condition": "File I/O fails during recording (permissions, disk full)",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "message": "Descriptive I/O error message"
+          }
+        },
+        {
+          "name": "calibration_error",
+          "condition": "Calibrator raises an exception during apply_feedback",
+          "error_type": "CalibrationApplicationError",
+          "error_data": {
+            "message": "Failed to apply calibration adjustment"
+          }
+        }
+      ],
+      "preconditions": [
+        "feedback_id is a non-empty string",
+        "rating_str is a non-empty string",
+        "store is an initialized and loaded FeedbackStore",
+        "calibrator implements CalibratorProtocol"
+      ],
+      "postconditions": [
+        "On success: a FeedbackRecord has been appended to feedback.jsonl and calibration has been applied",
+        "Return value is CLIExitCode.SUCCESS_0 on success",
+        "Return value is CLIExitCode.FEEDBACK_ID_NOT_FOUND_1 if feedback_id not found",
+        "Return value is CLIExitCode.INVALID_RATING_2 if rating is invalid",
+        "Return value is CLIExitCode.IO_ERROR_3 on I/O failure",
+        "Return value is CLIExitCode.UNEXPECTED_ERROR_4 on unexpected errors",
+        "Validation order: ID format → finding existence → rating parse → record feedback → apply calibration"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to feedback.jsonl via FeedbackStore",
+        "Calls calibrator.calibration_lr_up or calibration_lr_down via apply_feedback",
+        "May create .stigmergy/ directory and/or feedback.jsonl file"
+      ]
+    },
+    {
+      "name": "register_feedback_command",
+      "description": "Registers the 'feedback' subcommand with the CLI argument parser. Configures two positional arguments: <id> (feedback_id) and <rating>. Binds the subcommand handler to invoke handle_feedback, catch FeedbackError subtypes, print user-friendly messages, and return the appropriate CLIExitCode. This is the thin CLI layer that contains no business logic.",
+      "inputs": [
+        {
+          "name": "parser",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "A valid argparse subparsers action object or equivalent CLI parser infrastructure.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [
+        "parser is a valid argparse subparsers action object",
+        "No 'feedback' subcommand is already registered on this parser"
+      ],
+      "postconditions": [
+        "A 'feedback' subcommand is registered on the parser",
+        "The subcommand accepts two positional arguments: id (str) and rating (str)",
+        "The subcommand handler calls handle_feedback and maps errors to CLIExitCode values"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Mutates the parser object by adding a 'feedback' subcommand"
+      ]
+    },
+    {
+      "name": "run_feedback_command",
+      "description": "CLI entry point handler invoked when 'stigmergy feedback <id> <rating>' is executed. Calls handle_feedback, prints a human-readable confirmation on success (to stdout), catches FeedbackError subtypes and prints formatted error messages to stderr, and returns the appropriate CLIExitCode integer value. This is the async-to-sync bridge for the CLI layer.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id positional argument from the CLI.",
+          "validators": []
+        },
+        {
+          "name": "rating",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The rating positional argument from the CLI.",
+          "validators": []
+        },
+        {
+          "name": "stigmergy_dir",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy",
+          "description": "Path to the .stigmergy data directory.",
+          "validators": []
+        }
+      ],
+      "output_type": "int",
+      "error_cases": [
+        {
+          "name": "id_not_found",
+          "condition": "handle_feedback raises FeedbackNotFoundError",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "exit_code": "1"
+          }
+        },
+        {
+          "name": "invalid_rating",
+          "condition": "handle_feedback raises InvalidFeedbackRatingError",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "exit_code": "2"
+          }
+        },
+        {
+          "name": "io_error",
+          "condition": "handle_feedback raises FeedbackIOError or FeedbackError for I/O issues",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "exit_code": "3"
+          }
+        },
+        {
+          "name": "unexpected_error",
+          "condition": "An unexpected exception occurs outside the FeedbackError hierarchy",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "exit_code": "4",
+            "message": "Unexpected error: <original exception message>"
+          }
+        }
+      ],
+      "preconditions": [
+        "Called from CLI argument dispatch with parsed positional arguments"
+      ],
+      "postconditions": [
+        "Return value is 0 on success, 1 for FeedbackNotFoundError, 2 for InvalidFeedbackRatingError, 3 for I/O FeedbackError, 4 for unexpected errors",
+        "On success: confirmation message printed to stdout including feedback_id and rating",
+        "On error: error message printed to stderr"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Prints to stdout on success",
+        "Prints to stderr on error",
+        "Delegates to handle_feedback which appends to feedback.jsonl and applies calibration"
+      ]
+    },
+    {
+      "name": "map_rating_to_actions",
+      "description": "Pure synchronous function. Maps a Rating to a complete list of CalibrationActions across ALL dimensions (including deferred ones). Uses exhaustive match with assert_never to guarantee all rating variants are handled. The returned actions represent the full intent; filtering by enabled dimensions happens separately in filter_enabled_actions. Rating→action mapping: 'helpful' → [(agent_confidence, +helpful_confidence_delta)], 'wrong' → [(agent_confidence, -wrong_confidence_delta)], 'irrelevant' → [(agent_confidence, -irrelevant_confidence_delta)], 'already_knew' → [(agent_confidence, +already_knew_confidence_delta), (surfacing_priority, -already_knew_surfacing_priority_delta)].",
+      "inputs": [
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": true,
+          "default": "",
+          "description": "The user's feedback rating.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "FeedbackCalibrationConfig",
+          "required": false,
+          "default": "FeedbackCalibrationConfig()",
+          "description": "Configuration providing delta magnitudes for each rating→dimension pair.",
+          "validators": []
+        }
+      ],
+      "output_type": "CalibrationActionList",
+      "error_cases": [
+        {
+          "name": "invalid_rating",
+          "condition": "rating value is not a valid Rating variant (should be impossible with proper typing; assert_never catches at runtime)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Unreachable: unhandled Rating variant"
+          }
+        }
+      ],
+      "preconditions": [
+        "rating is a valid Rating variant",
+        "config contains valid positive magnitude values for all delta fields"
+      ],
+      "postconditions": [
+        "Returned list is non-empty (every rating produces at least one action)",
+        "Each action has a non-empty description",
+        "Each action's delta is in [-1.0, 1.0]",
+        "For 'helpful': exactly 1 action with dimension='agent_confidence' and delta > 0 equal to +config.helpful_confidence_delta",
+        "For 'wrong': exactly 1 action with dimension='agent_confidence' and delta < 0 equal to -config.wrong_confidence_delta",
+        "For 'irrelevant': exactly 1 action with dimension='agent_confidence' and delta < 0 equal to -config.irrelevant_confidence_delta",
+        "For 'already_knew': exactly 2 actions — (agent_confidence, +config.already_knew_confidence_delta) and (surfacing_priority, -config.already_knew_surfacing_priority_delta)",
+        "All Rating variants are exhaustively handled (assert_never guarantees this at type-check time)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "filter_enabled_actions",
+      "description": "Pure synchronous function. Partitions a list of CalibrationActions into (enabled, skipped) based on the ENABLED_DIMENSIONS gate from config. Actions whose dimension is in enabled_dimensions are placed in the enabled list; all others go to skipped. Skipped actions represent deferred feature dimensions.",
+      "inputs": [
+        {
+          "name": "actions",
+          "type_ref": "CalibrationActionList",
+          "required": true,
+          "default": "",
+          "description": "List of CalibrationActions to partition.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "FeedbackCalibrationConfig",
+          "required": false,
+          "default": "FeedbackCalibrationConfig()",
+          "description": "Configuration providing the list of enabled dimensions.",
+          "validators": []
+        }
+      ],
+      "output_type": "EnabledSkippedPartition",
+      "error_cases": [],
+      "preconditions": [
+        "actions is a valid list of CalibrationAction (may be empty)"
+      ],
+      "postconditions": [
+        "len(enabled) + len(skipped) == len(actions) — all input actions are accounted for",
+        "Every action in enabled has dimension in config.enabled_dimensions",
+        "Every action in skipped has dimension NOT in config.enabled_dimensions",
+        "Order of actions is preserved within each partition"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "apply_feedback",
+      "description": "Async function. Processes a single FeedbackEntry: maps rating to actions via map_rating_to_actions, filters by enabled dimensions via filter_enabled_actions, applies enabled actions via the CalibratorProtocol (positive delta → calibration_lr_up, negative delta → calibration_lr_down with abs(delta)), and returns a FeedbackResult. Skipped actions (deferred dimensions) are logged at DEBUG level and included in FeedbackResult.skipped_actions.",
+      "inputs": [
+        {
+          "name": "entry",
+          "type_ref": "FeedbackEntry",
+          "required": true,
+          "default": "",
+          "description": "The feedback entry to process.",
+          "validators": []
+        },
+        {
+          "name": "calibrator",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "An object implementing CalibratorProtocol (has async calibration_lr_up and calibration_lr_down methods). Typed as CalibratorProtocol at runtime.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "FeedbackCalibrationConfig",
+          "required": false,
+          "default": "FeedbackCalibrationConfig()",
+          "description": "Calibration configuration with delta magnitudes and enabled dimensions.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackResult",
+      "error_cases": [
+        {
+          "name": "calibrator_error",
+          "condition": "calibrator.calibration_lr_up or calibration_lr_down raises an exception",
+          "error_type": "CalibrationApplicationError",
+          "error_data": {
+            "feedback_id": "The feedback_id being processed",
+            "agent_id": "The agent_id being calibrated",
+            "original_error": "String representation of the underlying exception"
+          }
+        },
+        {
+          "name": "invalid_entry",
+          "condition": "entry fails validation (e.g., empty agent_id, invalid feedback_id)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid feedback entry"
+          }
+        }
+      ],
+      "preconditions": [
+        "entry is a valid FeedbackEntry with non-empty agent_id and feedback_id",
+        "calibrator implements CalibratorProtocol (has async calibration_lr_up and calibration_lr_down methods)"
+      ],
+      "postconditions": [
+        "result.feedback_id == entry.feedback_id",
+        "result.status is 'applied' if all actions were enabled and applied successfully",
+        "result.status is 'partial' if some actions were skipped due to disabled dimensions",
+        "result.status is 'skipped' if all actions were skipped (no enabled dimensions matched)",
+        "len(result.applied_actions) + len(result.skipped_actions) == total actions from map_rating_to_actions",
+        "calibrator.calibration_lr_up was called once for each applied action with delta > 0",
+        "calibrator.calibration_lr_down was called once for each applied action with delta < 0 (with abs(delta))"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Calls calibrator.calibration_lr_up or calibration_lr_down to mutate agent confidence scores",
+        "Logs skipped actions at DEBUG level",
+        "Logs applied actions at INFO level"
+      ]
+    },
+    {
+      "name": "process_feedback_batch",
+      "description": "Async function. Processes a sequence of FeedbackEntry items sequentially (to preserve ordering semantics of feedback), applying each via apply_feedback. Collects and returns all FeedbackResults. If an individual entry fails, its error is captured in the result (status='skipped', reason=error message) and processing continues with the next entry — batch processing is fail-safe.",
+      "inputs": [
+        {
+          "name": "entries",
+          "type_ref": "FeedbackEntryList",
+          "required": true,
+          "default": "",
+          "description": "List of FeedbackEntry items to process. May be empty.",
+          "validators": []
+        },
+        {
+          "name": "calibrator",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "An object implementing CalibratorProtocol.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "FeedbackCalibrationConfig",
+          "required": false,
+          "default": "FeedbackCalibrationConfig()",
+          "description": "Calibration configuration.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackResultList",
+      "error_cases": [],
+      "preconditions": [
+        "entries is a valid sequence of FeedbackEntry (may be empty)",
+        "calibrator implements CalibratorProtocol"
+      ],
+      "postconditions": [
+        "len(results) == len(entries) — one result per input entry",
+        "results[i].feedback_id == entries[i].feedback_id for all i",
+        "Entries are processed sequentially in input order",
+        "A failure on entry[i] does not prevent processing of entry[i+1]",
+        "If entries is empty, returns an empty list",
+        "Failed entries have status='skipped' and reason containing the error message"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Calls calibrator methods for each entry's enabled actions",
+        "Logs each entry's processing outcome at INFO level",
+        "Logs individual failures at WARNING level"
+      ]
+    },
+    {
+      "name": "load_feedback",
+      "description": "Async function. Reads and parses all feedback entries from a JSONL file (typically .stigmergy/feedback.jsonl). Each line is a JSON object parsed into a FeedbackEntry. Blank lines and lines starting with '#' are skipped. Returns entries in file order (chronological). If file does not exist, returns empty list. Uses asyncio.to_thread for file I/O.",
+      "inputs": [
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path to the feedback.jsonl file.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..1024",
+              "error_message": "path must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "FeedbackEntryList",
+      "error_cases": [
+        {
+          "name": "permission_error",
+          "condition": "Insufficient filesystem permissions to read the file",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "path": "The path that could not be read",
+            "original_error": "OS-level error message"
+          }
+        },
+        {
+          "name": "corrupt_line",
+          "condition": "A line in the JSONL file is not valid JSON or does not conform to FeedbackEntry schema",
+          "error_type": "FeedbackParseError",
+          "error_data": {
+            "path": "The file path",
+            "line_number": "1-based line number",
+            "raw_line": "The raw text",
+            "parse_error": "Description of the failure"
+          }
+        }
+      ],
+      "preconditions": [
+        "path is a valid filesystem path string"
+      ],
+      "postconditions": [
+        "All returned entries are valid FeedbackEntry instances",
+        "Entries are in the same order as they appear in the file",
+        "If the file is empty, returns an empty list",
+        "If the file does not exist, returns an empty list (not an error — fresh install)"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Reads from filesystem via asyncio.to_thread",
+        "May log warnings for skipped corrupt lines"
+      ]
+    },
+    {
+      "name": "append_feedback",
+      "description": "Async function. Appends a single FeedbackEntry as a JSON line to the feedback JSONL file. Creates parent directories and the file if they do not exist. Each entry is serialized as a single JSON line terminated by newline. Uses asyncio.to_thread for file I/O.",
+      "inputs": [
+        {
+          "name": "entry",
+          "type_ref": "FeedbackEntry",
+          "required": true,
+          "default": "",
+          "description": "The FeedbackEntry to append.",
+          "validators": []
+        },
+        {
+          "name": "path",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path to the feedback.jsonl file.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..1024",
+              "error_message": "path must be non-empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "permission_error",
+          "condition": "Insufficient filesystem permissions to write to the file or create directories",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "path": "The path that could not be written",
+            "original_error": "OS-level error message"
+          }
+        },
+        {
+          "name": "disk_full",
+          "condition": "No space left on device during write",
+          "error_type": "FeedbackIOError",
+          "error_data": {
+            "path": "The path that could not be written",
+            "original_error": "OS-level error message"
+          }
+        }
+      ],
+      "preconditions": [
+        "entry is a valid FeedbackEntry",
+        "path is a valid filesystem path string"
+      ],
+      "postconditions": [
+        "The file at path exists after the call",
+        "The file contains the entry as the last line (JSON-serialized, newline-terminated)",
+        "All previously existing lines in the file are preserved and unmodified (append-only)",
+        "Parent directories are created if they did not exist"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to the specified file via asyncio.to_thread",
+        "May create parent directories if they do not exist",
+        "May create the file if it does not exist"
+      ]
+    }
+  ],
+  "dependencies": [
+    "feedback_recording",
+    "feedback_cli",
+    "feedback_calibration"
+  ],
+  "dependency_contracts": {
+    "feedback_recording": [
+      "FeedbackStore",
+      "FeedbackStore.load",
+      "FeedbackStore.record_finding",
+      "FeedbackStore.record_feedback",
+      "FeedbackStore.get_finding",
+      "FeedbackStore.get_feedback",
+      "FeedbackStore.list_feedback",
+      "FeedbackStore.list_findings",
+      "FeedbackStore.get_summary",
+      "mint_feedback_id"
+    ],
+    "feedback_cli": [
+      "validate_feedback_id",
+      "parse_feedback_rating",
+      "record_feedback",
+      "handle_feedback",
+      "register_feedback_command",
+      "run_feedback_command"
+    ],
+    "feedback_calibration": [
+      "map_rating_to_actions",
+      "filter_enabled_actions",
+      "apply_feedback",
+      "process_feedback_batch",
+      "load_feedback",
+      "append_feedback"
+    ]
+  },
+  "invariants": [
+    "Every finding feedback_id starts with prefix 'fnd-' followed by {timestamp_hex}-{random_hex}; every feedback record_id starts with prefix 'fbk-'",
+    "FindingRecord, FeedbackRecord, FeedbackEntry, CalibrationAction, FeedbackResult, FeedbackCalibrationConfig, and FeedbackStoreConfig are all frozen (immutable) once created",
+    "FeedbackRecord is a denormalized superset of FindingRecord fields plus rating, feedback_timestamp, and record_id",
+    "The in-memory index is always consistent with the on-disk JSONL files after successful writes",
+    "A FeedbackRecord can only exist for a feedback_id that has a corresponding FindingRecord",
+    "Re-rating a finding appends a new FeedbackRecord line; get_feedback returns the latest rating for a given feedback_id",
+    "Write operations on FeedbackStore are serialized via asyncio.Lock (single-process concurrency model)",
+    "Blank and malformed JSONL lines are skipped with a warning during file reads — never cause crashes",
+    "Each JSONL line has a 'record_type' discriminator ('finding' or 'feedback') to distinguish record types",
+    "schema_version field on records enables future migration of stored records",
+    "content_summary is limited to 500 characters maximum",
+    "All file I/O is performed via asyncio.to_thread to avoid blocking the event loop",
+    "Directory .stigmergy/ is auto-created on first write if it does not exist",
+    "Rating input from CLI is matched case-insensitively (normalized to lowercase before comparison)",
+    "CLI exit codes: 0=success, 1=id_not_found, 2=invalid_rating, 3=io_error, 4=unexpected",
+    "The CLI layer contains no business logic; all validation and persistence logic resides in domain functions",
+    "FeedbackError is the base exception type; FeedbackNotFoundError, DuplicateFeedbackError, InvalidFeedbackRatingError, CalibrationApplicationError, FeedbackIOError, FeedbackParseError are subtypes",
+    "ENABLED_DIMENSIONS is initially frozenset({'agent_confidence'}); only dimensions in this set are applied, all others are skipped and logged",
+    "map_rating_to_actions uses exhaustive match with assert_never — adding a new Rating variant without updating the match is a type error",
+    "Feedback processing order is preserved: batch entries are processed sequentially in input order for temporal consistency",
+    "All delta magnitudes in FeedbackCalibrationConfig are positive; the sign (up/down) is determined by map_rating_to_actions based on rating semantics",
+    "CalibratorProtocol uses structural subtyping (typing.Protocol) — no inheritance from a base class is required",
+    "A 'helpful' rating always results in calibration_lr_up on agent_confidence with delta = +helpful_confidence_delta",
+    "A 'wrong' rating always results in calibration_lr_down on agent_confidence with delta = -wrong_confidence_delta (largest negative magnitude)",
+    "An 'irrelevant' rating always results in calibration_lr_down on agent_confidence with delta = -irrelevant_confidence_delta (smaller than wrong)",
+    "An 'already_knew' rating results in a mild calibration_lr_up on agent_confidence (+already_knew_confidence_delta) AND a deferred calibration_lr_down on surfacing_priority (-already_knew_surfacing_priority_delta)",
+    "wrong_confidence_delta > irrelevant_confidence_delta (wrong is penalized more heavily than irrelevant)",
+    "Deferred dimensions (surfacing_priority, business_weight, familiarity_weight) are computed in map_rating_to_actions but filtered out by filter_enabled_actions until corresponding features enable them",
+    "All public functions have type annotations and docstrings",
+    "All models are frozen Pydantic v2 BaseModels with model_config = ConfigDict(frozen=True)",
+    "Tests mock the CalibratorProtocol and use tmp_path for JSONL files"
+  ],
+  "requires": [
+    "feedback_recording",
+    "feedback_cli",
+    "feedback_calibration"
+  ]
+}

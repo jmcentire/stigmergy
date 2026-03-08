@@ -1,0 +1,675 @@
+{
+  "component_id": "merge_operation",
+  "name": "Merge Execution",
+  "description": "Implements merge(context_a, context_b) in core/lifecycle.py. Unions vector stores from both contexts, deduplicates agents by (identity, role) composite key, takes max energy from the two contexts (capped at system maximum), and computes merged neighbor topology. Handles both signal-overlap merges and decay-to-fork handoff merges. Returns a side-effect-free MergeResult with topology update commands for the caller (mesh.py) to apply atomically. Merge decision logic (overlap/agreement thresholds) remains external in mesh.py; this component is a pure algorithm module performing only merge execution.",
+  "version": 1,
+  "types": [
+    {
+      "name": "MergeReason",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "SIGNAL_OVERLAP",
+        "DECAY_HANDOFF"
+      ],
+      "inner_types": [],
+      "description": "StrEnum indicating why a merge is being performed. Used to distinguish audit trails and handoff semantics."
+    },
+    {
+      "name": "TopologyAction",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "add_neighbor",
+        "remove_neighbor"
+      ],
+      "inner_types": [],
+      "description": "The type of topology mutation to apply to a neighbor context."
+    },
+    {
+      "name": "TopologyUpdate",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The context whose neighbor list is being mutated.",
+          "validators": []
+        },
+        {
+          "name": "action",
+          "type_ref": "TopologyAction",
+          "required": true,
+          "default": "",
+          "description": "Whether to add or remove a neighbor from the context's neighbor list.",
+          "validators": []
+        },
+        {
+          "name": "target_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The neighbor context ID to add or remove.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single, atomic topology mutation command. Frozen Pydantic model. The caller (mesh.py) applies these commands atomically after merge returns."
+    },
+    {
+      "name": "AgentIdentityKey",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "identity",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The agent's unique identity string.",
+          "validators": []
+        },
+        {
+          "name": "role",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The agent's role within a context.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Composite deduplication key for agents. Two agents with the same (identity, role) are considered duplicates."
+    },
+    {
+      "name": "Agent",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "identity",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The agent's unique identity string.",
+          "validators": []
+        },
+        {
+          "name": "role",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The agent's role within the context.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary agent metadata.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Represents an agent within a context. Contains identity, role, and associated metadata."
+    },
+    {
+      "name": "VectorStore",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "store_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this vector store instance.",
+          "validators": []
+        },
+        {
+          "name": "signal_ids",
+          "type_ref": "StringList",
+          "required": true,
+          "default": "",
+          "description": "List of signal IDs currently stored.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol-compatible vector store abstraction. Must implement a merge_union method that unions entries by signal_id, deduplicating on signal_id."
+    },
+    {
+      "name": "StringList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of strings."
+    },
+    {
+      "name": "AgentList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Agent",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of Agent structs."
+    },
+    {
+      "name": "TopologyUpdateList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "TopologyUpdate",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of TopologyUpdate commands."
+    },
+    {
+      "name": "Context",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this context.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len >= 1",
+              "error_message": "Context ID must be non-empty."
+            }
+          ]
+        },
+        {
+          "name": "energy",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Current energy level of the context. Must be non-negative.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": ">= 0.0",
+              "error_message": "Energy must be non-negative."
+            }
+          ]
+        },
+        {
+          "name": "agents",
+          "type_ref": "AgentList",
+          "required": true,
+          "default": "",
+          "description": "Agents currently assigned to this context.",
+          "validators": []
+        },
+        {
+          "name": "vector_store",
+          "type_ref": "VectorStore",
+          "required": true,
+          "default": "",
+          "description": "The vector store holding signal embeddings for this context.",
+          "validators": []
+        },
+        {
+          "name": "neighbor_ids",
+          "type_ref": "StringList",
+          "required": true,
+          "default": "",
+          "description": "IDs of neighboring contexts in the mesh topology.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Represents a context in the mesh. Contains identity, energy level, agents, vector store, and neighbor topology."
+    },
+    {
+      "name": "MergeResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "merged_context",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "The resulting merged context with unioned vector store, deduplicated agents, max energy, and updated neighbor list.",
+          "validators": []
+        },
+        {
+          "name": "removed_context_ids",
+          "type_ref": "StringList",
+          "required": true,
+          "default": "",
+          "description": "IDs of contexts that were absorbed and should be removed from the mesh. Always contains exactly the ID of the non-surviving context.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len >= 1",
+              "error_message": "At least one context must be removed during a merge."
+            }
+          ]
+        },
+        {
+          "name": "topology_updates",
+          "type_ref": "TopologyUpdateList",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of topology mutation commands for the caller to apply atomically to affected neighbors.",
+          "validators": []
+        },
+        {
+          "name": "reason",
+          "type_ref": "MergeReason",
+          "required": true,
+          "default": "",
+          "description": "The reason this merge was performed, preserved for audit trail.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model returned by the merge function. Contains the merged context, the IDs of contexts that were removed (absorbed), the topology update commands to apply, and the reason for the merge. No side effects have been applied; the caller must apply topology_updates atomically."
+    },
+    {
+      "name": "OptionalMergeReason",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "MergeReason"
+      ],
+      "description": "An optional MergeReason, used for default parameter values."
+    },
+    {
+      "name": "SystemConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "max_energy",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The system-wide maximum energy cap for any context.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "> 0.0",
+              "error_message": "System max energy must be positive."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "System-level configuration values relevant to merge execution."
+    }
+  ],
+  "functions": [
+    {
+      "name": "merge",
+      "description": "Async function that executes the merge of two neighboring contexts into one. Resolves surviving identity (higher energy wins, lexicographic tiebreak), deduplicates agents by (identity, role) composite key preferring the higher-energy context's agent on conflict, delegates vector store union to the store's protocol merge_union method (dedup by signal_id), takes max energy capped at system maximum, computes merged neighbor set excluding old context IDs, and returns a side-effect-free MergeResult with topology update commands. When reason=DECAY_HANDOFF, the decaying context is folded into the forking context's new partition using the same merge mechanics but with a different audit trail. Located in core/lifecycle.py.",
+      "inputs": [
+        {
+          "name": "context_a",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "The first context to merge. Must be a valid, existing context in the mesh.",
+          "validators": []
+        },
+        {
+          "name": "context_b",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "The second context to merge. Must be a valid, existing context in the mesh, distinct from context_a.",
+          "validators": []
+        },
+        {
+          "name": "reason",
+          "type_ref": "MergeReason",
+          "required": false,
+          "default": "SIGNAL_OVERLAP",
+          "description": "The reason for performing this merge. Determines audit trail semantics. Defaults to SIGNAL_OVERLAP.",
+          "validators": []
+        },
+        {
+          "name": "system_config",
+          "type_ref": "SystemConfig",
+          "required": true,
+          "default": "",
+          "description": "System-level configuration providing the max_energy cap and other global parameters.",
+          "validators": []
+        }
+      ],
+      "output_type": "MergeResult",
+      "error_cases": [
+        {
+          "name": "same_context_error",
+          "condition": "context_a.id == context_b.id",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Cannot merge a context with itself.",
+            "context_id": "context_a.id"
+          }
+        },
+        {
+          "name": "not_neighbors_error",
+          "condition": "context_b.id not in context_a.neighbor_ids OR context_a.id not in context_b.neighbor_ids",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Contexts must be neighbors to merge.",
+            "context_a_id": "context_a.id",
+            "context_b_id": "context_b.id"
+          }
+        },
+        {
+          "name": "vector_store_merge_failure",
+          "condition": "The vector store's merge_union protocol method raises an exception during store union.",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Vector store union failed.",
+            "context_a_store_id": "context_a.vector_store.store_id",
+            "context_b_store_id": "context_b.vector_store.store_id"
+          }
+        },
+        {
+          "name": "invalid_energy_error",
+          "condition": "context_a.energy < 0.0 OR context_b.energy < 0.0",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Context energy must be non-negative.",
+            "context_a_energy": "str(context_a.energy)",
+            "context_b_energy": "str(context_b.energy)"
+          }
+        },
+        {
+          "name": "invalid_system_config_error",
+          "condition": "system_config.max_energy <= 0.0",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "System max energy must be positive.",
+            "max_energy": "str(system_config.max_energy)"
+          }
+        }
+      ],
+      "preconditions": [
+        "context_a.id != context_b.id — the two contexts must be distinct (not the same context).",
+        "context_b.id in context_a.neighbor_ids AND context_a.id in context_b.neighbor_ids — the two contexts must be neighbors of each other.",
+        "context_a.energy >= 0.0 AND context_b.energy >= 0.0 — both contexts must have non-negative energy.",
+        "system_config.max_energy > 0.0 — system maximum energy must be positive."
+      ],
+      "postconditions": [
+        "merged_context.id == (context with higher energy).id, or lexicographically smaller ID if energies are equal — surviving identity is deterministic.",
+        "merged_context.energy == min(max(context_a.energy, context_b.energy), system_config.max_energy) — energy is max of both, capped at system maximum.",
+        "For every agent in context_a.agents and context_b.agents, there exists exactly one agent in merged_context.agents with the same (identity, role) key — no duplicate agents.",
+        "On agent (identity, role) conflict, the agent from the higher-energy context is preserved; if energies are equal, the agent from the context with the lexicographically smaller ID is preserved.",
+        "set(merged_context.vector_store.signal_ids) == set(context_a.vector_store.signal_ids) | set(context_b.vector_store.signal_ids) — vector store is a union, deduplicated by signal_id.",
+        "set(merged_context.neighbor_ids) == (set(context_a.neighbor_ids) | set(context_b.neighbor_ids)) - {context_a.id, context_b.id} — merged neighbor set excludes both original context IDs.",
+        "removed_context_ids contains exactly one element: the ID of the non-surviving context.",
+        "topology_updates contains remove_neighbor commands for every affected neighbor to remove the non-surviving context ID, and add_neighbor commands for every affected neighbor that was not already a neighbor of the surviving context to add the surviving context ID.",
+        "No side effects are applied — the returned MergeResult is purely descriptive; the caller (mesh.py) must apply topology_updates atomically.",
+        "result.reason == reason — the merge reason is preserved in the result for audit purposes."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "None. This function is pure — it computes and returns a MergeResult without mutating any external state. The caller (mesh.py) is responsible for applying topology mutations and removing absorbed contexts."
+      ]
+    },
+    {
+      "name": "resolve_surviving_identity",
+      "description": "Determines which of two contexts survives a merge. The higher-energy context's ID wins. On energy tie, the lexicographically smaller ID wins. This is a pure helper function used internally by merge().",
+      "inputs": [
+        {
+          "name": "context_a",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "First context candidate.",
+          "validators": []
+        },
+        {
+          "name": "context_b",
+          "type_ref": "Context",
+          "required": true,
+          "default": "",
+          "description": "Second context candidate.",
+          "validators": []
+        }
+      ],
+      "output_type": "Context",
+      "error_cases": [
+        {
+          "name": "same_context_error",
+          "condition": "context_a.id == context_b.id",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Cannot resolve surviving identity for the same context.",
+            "context_id": "context_a.id"
+          }
+        }
+      ],
+      "preconditions": [
+        "context_a.id != context_b.id — contexts must be distinct."
+      ],
+      "postconditions": [
+        "If context_a.energy > context_b.energy, returns context_a.",
+        "If context_b.energy > context_a.energy, returns context_b.",
+        "If context_a.energy == context_b.energy, returns the context with the lexicographically smaller id."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deduplicate_agents",
+      "description": "Merges two agent lists, deduplicating by the (identity, role) composite key. On conflict (same key in both lists), the agent from the preferred context (higher-energy, or lexicographic tiebreak) is kept. This is a pure helper function used internally by merge().",
+      "inputs": [
+        {
+          "name": "agents_a",
+          "type_ref": "AgentList",
+          "required": true,
+          "default": "",
+          "description": "Agents from context A.",
+          "validators": []
+        },
+        {
+          "name": "agents_b",
+          "type_ref": "AgentList",
+          "required": true,
+          "default": "",
+          "description": "Agents from context B.",
+          "validators": []
+        },
+        {
+          "name": "preferred_context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ID of the surviving (higher-energy) context. Agents from this context are preferred on dedup conflicts.",
+          "validators": []
+        },
+        {
+          "name": "context_a_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ID of context A, used to determine which agent list is preferred.",
+          "validators": []
+        },
+        {
+          "name": "context_b_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ID of context B, used to determine which agent list is preferred.",
+          "validators": []
+        }
+      ],
+      "output_type": "AgentList",
+      "error_cases": [
+        {
+          "name": "invalid_preferred_context",
+          "condition": "preferred_context_id != context_a_id AND preferred_context_id != context_b_id",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Preferred context ID must match one of the provided context IDs.",
+            "preferred_context_id": "preferred_context_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "preferred_context_id == context_a_id OR preferred_context_id == context_b_id — preferred context must be one of the two."
+      ],
+      "postconditions": [
+        "No two agents in the result have the same (identity, role) pair.",
+        "Every unique (identity, role) from agents_a and agents_b is represented in the result.",
+        "On conflict for a given (identity, role), the agent from the preferred context's agent list is in the result."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "compute_topology_updates",
+      "description": "Computes the list of TopologyUpdate commands needed to update the mesh topology after a merge. Produces remove_neighbor commands to remove the non-surviving context from all affected neighbors, and add_neighbor commands to introduce the surviving context to neighbors that only knew the non-surviving context. This is a pure helper function used internally by merge().",
+      "inputs": [
+        {
+          "name": "surviving_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ID of the surviving (merged) context.",
+          "validators": []
+        },
+        {
+          "name": "removed_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The ID of the non-surviving (absorbed) context.",
+          "validators": []
+        },
+        {
+          "name": "surviving_neighbor_ids",
+          "type_ref": "StringList",
+          "required": true,
+          "default": "",
+          "description": "Original neighbor IDs of the surviving context (before merge).",
+          "validators": []
+        },
+        {
+          "name": "removed_neighbor_ids",
+          "type_ref": "StringList",
+          "required": true,
+          "default": "",
+          "description": "Original neighbor IDs of the non-surviving context (before merge).",
+          "validators": []
+        }
+      ],
+      "output_type": "TopologyUpdateList",
+      "error_cases": [
+        {
+          "name": "same_id_error",
+          "condition": "surviving_id == removed_id",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Surviving and removed context IDs must be distinct.",
+            "context_id": "surviving_id"
+          }
+        }
+      ],
+      "preconditions": [
+        "surviving_id != removed_id — the two IDs must be distinct."
+      ],
+      "postconditions": [
+        "For every neighbor N in removed_neighbor_ids where N != surviving_id, there is a remove_neighbor command: (context_id=N, action=remove_neighbor, target_id=removed_id).",
+        "For every neighbor N in removed_neighbor_ids where N != surviving_id AND N not in surviving_neighbor_ids, there is an add_neighbor command: (context_id=N, action=add_neighbor, target_id=surviving_id) AND (context_id=surviving_id, action=add_neighbor, target_id=N).",
+        "There is a remove_neighbor command: (context_id=surviving_id, action=remove_neighbor, target_id=removed_id) to clean the surviving context's own neighbor list.",
+        "No TopologyUpdate references surviving_id or removed_id as both context_id and target_id simultaneously in an add_neighbor command."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "merge_vector_stores",
+      "description": "Unions two vector stores by delegating to the vector store's merge_union protocol method. Deduplicates entries by signal_id. Returns a new VectorStore instance. This is a pure helper function used internally by merge().",
+      "inputs": [
+        {
+          "name": "store_a",
+          "type_ref": "VectorStore",
+          "required": true,
+          "default": "",
+          "description": "Vector store from context A.",
+          "validators": []
+        },
+        {
+          "name": "store_b",
+          "type_ref": "VectorStore",
+          "required": true,
+          "default": "",
+          "description": "Vector store from context B.",
+          "validators": []
+        },
+        {
+          "name": "surviving_store_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The store_id to assign to the resulting merged vector store (typically the surviving context's store ID).",
+          "validators": []
+        }
+      ],
+      "output_type": "VectorStore",
+      "error_cases": [
+        {
+          "name": "store_merge_failure",
+          "condition": "The underlying vector store merge_union protocol method raises an exception.",
+          "error_type": "MergeError",
+          "error_data": {
+            "message": "Vector store merge_union failed.",
+            "store_a_id": "store_a.store_id",
+            "store_b_id": "store_b.store_id"
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "result.store_id == surviving_store_id.",
+        "set(result.signal_ids) == set(store_a.signal_ids) | set(store_b.signal_ids) — the result is a union deduplicated by signal_id.",
+        "len(result.signal_ids) == len(set(result.signal_ids)) — no duplicate signal_ids in the result."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "The merge function is pure: it never mutates input contexts, vector stores, agent lists, or any external state. All mutations are expressed as return values.",
+    "Surviving identity resolution is deterministic: given the same two contexts, the same survivor is always chosen (higher energy wins, lexicographic ID tiebreak on equal energy).",
+    "Agent deduplication is deterministic: given the same two agent lists and the same preferred context, the same deduplicated list is always produced.",
+    "The merged context's neighbor set never contains either of the original context IDs: set(merged.neighbor_ids) ∩ {context_a.id, context_b.id} == ∅.",
+    "removed_context_ids always contains exactly one element — the non-surviving context's ID.",
+    "Energy in the merged context is always in the range [0.0, system_config.max_energy].",
+    "TopologyUpdate commands are self-consistent: every remove_neighbor for the removed context is paired with add_neighbor for the surviving context where the neighbor was not already connected to the survivor.",
+    "MergeReason is always preserved from input to output without modification.",
+    "Vector store union is commutative: merge(A, B) and merge(B, A) produce vector stores with identical signal_id sets."
+  ],
+  "requires": []
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "ambiguity": "",
+    "decision": "Feature independence and parallelism",
+    "rationale": "Features 1-7 are decomposed as independent top-level components that can be implemented and merged in priority order. Features 1 (Active Inquiry), 2 (Context Merge), 3 (Multi-Strategy Embeddings), 4 (Business Weight), 5 (Identity Prompting), 6 (Temporal Filtering), and 7 (Feedback Loop) have no hard cross-dependencies at the initial implementation level. Feature 7's full integration with Features 3 and 4 is explicitly deferred per the interview answer."
+  },
+  {
+    "ambiguity": "",
+    "decision": "Merge detection uses signal ID set intersection, not embedding similarity",
+    "rationale": "Per the interview answer, signal overlap is measured by signal ID set intersection over a rolling time window. This is cheaper than embedding similarity for a lifecycle check that runs frequently."
+  },
+  {
+    "ambiguity": "",
+    "decision": "InquiryResult is a frozen Pydantic primitive, not an agent class",
+    "rationale": "Per the interview answer, InquiryResult follows the same pattern as Assessment \u2014 it's a data type in primitives/, not a special agent class, so it doesn't violate the 'one pattern' principle."
+  },
+  {
+    "ambiguity": "",
+    "decision": "Active Inquiry runs only on the accepting worker",
+    "rationale": "Per the interview answer, inquiry runs ONLY on the single worker that accepts the signal, consistent with stop-on-first-accept. This keeps the pipeline simple and avoids wasted computation."
+  },
+  {
+    "ambiguity": "",
+    "decision": "Identity prompting defaults to non-interactive mode",
+    "rationale": "Per the assumptions, identity prompting defaults to log-and-skip unless --resolve-identities is explicitly passed. This prevents blocking CI/automated pipelines."
+  },
+  {
+    "ambiguity": "",
+    "decision": "Business weight range and defaults",
+    "rationale": "Per the assumptions, business_weight is a float in [0.0, 1.0] with default 0.5 and floor 0.1 to prevent context starvation."
+  },
+  {
+    "ambiguity": "",
+    "decision": "Feedback initially only adjusts agent confidence",
+    "rationale": "Per the interview answer, Feature 7 ships with only agent confidence score adjustments. Business weight and familiarity weight adjustments are added after Features 3 and 4 land, avoiding premature coupling."
+  },
+  {
+    "ambiguity": "",
+    "decision": "All embedding strategies produce same-dimensionality vectors",
+    "rationale": "Per the assumptions, all strategies target the same fixed dimensionality using projection/padding as needed. This keeps the vector store and familiarity calculations uniform and avoids heterogeneous vector handling complexity."
+  },
+  {
+    "ambiguity": "",
+    "decision": "Temporal filtering uses ISO 8601 with UTC internally",
+    "rationale": "Per the assumptions, --since accepts ISO 8601 strings, all internal timestamps are UTC, and adapters are responsible for converting to their native format (Unix timestamps for Slack, etc.)."
+  },
+  {
+    "ambiguity": "",
+    "decision": "'already_knew' feedback maps to mild positive",
+    "rationale": "Per the assumptions, 'already_knew' means the finding was correct but not novel. It should slightly decrease surfacing priority (to prefer novel findings) but not penalize agent confidence (the agent was right)."
+  }
+]

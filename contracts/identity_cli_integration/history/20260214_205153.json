@@ -1,0 +1,1141 @@
+{
+  "component_id": "identity_cli_integration",
+  "name": "Identity Prompting CLI Integration",
+  "description": "Add --resolve-identities flag to the CLI (cli/ entry point). When flag is passed and unknowns exist, present interactive prompts: 'Who is @handle? Best match: john.smith (0.87). Confirm? [y/n/other]'. Process user responses and persist confirmed mappings via AliasStore. In non-interactive mode (default, or CI): log unknowns and suggestions as warnings, write to a YAML file for later resolution. Auto-prompt when unknowns exceed a configurable threshold. Supports graceful Ctrl+C handling with partial progress persistence.",
+  "version": 1,
+  "types": [
+    {
+      "name": "str",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "UTF-8 string"
+    },
+    {
+      "name": "int",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Integer"
+    },
+    {
+      "name": "float",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "IEEE 754 double-precision floating point"
+    },
+    {
+      "name": "bool",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Boolean true/false"
+    },
+    {
+      "name": "datetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "ISO-8601 datetime with timezone (UTC preferred)"
+    },
+    {
+      "name": "Path",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Filesystem path (pathlib.Path compatible)"
+    },
+    {
+      "name": "UnknownIdentifier",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "handle",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw identifier string (e.g. '@jsmith', 'jsmith@corp.com') that could not be resolved.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1,max=512",
+              "error_message": "handle must be between 1 and 512 characters"
+            }
+          ]
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Origin system or context where this identifier was encountered (e.g. 'git_log', 'jira_api', 'slack').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1,max=256",
+              "error_message": "source must be between 1 and 256 characters"
+            }
+          ]
+        },
+        {
+          "name": "first_seen",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp of the first occurrence of this unknown identifier.",
+          "validators": []
+        },
+        {
+          "name": "occurrence_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of times this identifier has been encountered across all sources.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "occurrence_count must be at least 1"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model representing an identifier the resolver could not map to a known person. Immutable after creation."
+    },
+    {
+      "name": "EvidenceList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of human-readable evidence strings supporting a match suggestion."
+    },
+    {
+      "name": "MatchSuggestion",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "candidate_person_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The unique person identifier of the suggested match from the identity store.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1,max=256",
+              "error_message": "candidate_person_id must be non-empty and at most 256 characters"
+            }
+          ]
+        },
+        {
+          "name": "confidence",
+          "type_ref": "float",
+          "required": true,
+          "default": "0.0",
+          "description": "Confidence score for this match, from 0.0 (no confidence) to 1.0 (certain match).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0.0,le=1.0",
+              "error_message": "confidence must be between 0.0 and 1.0 inclusive"
+            }
+          ]
+        },
+        {
+          "name": "evidence",
+          "type_ref": "EvidenceList",
+          "required": true,
+          "default": "",
+          "description": "List of human-readable strings explaining why this candidate was suggested (e.g. 'email prefix matches', 'GitHub username overlap').",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model representing a candidate match for an unknown identifier, with confidence score and supporting evidence."
+    },
+    {
+      "name": "MatchSuggestionList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "MatchSuggestion",
+      "variants": [],
+      "inner_types": [],
+      "description": "Ordered list of match suggestions, sorted by descending confidence."
+    },
+    {
+      "name": "ResolutionAction",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "confirm",
+        "reject",
+        "skip",
+        "manual"
+      ],
+      "inner_types": [],
+      "description": "The action taken by the user or system when resolving an unknown identifier."
+    },
+    {
+      "name": "OptionalStr",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "An optional string value, present or null."
+    },
+    {
+      "name": "ResolutionDecision",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "unknown",
+          "type_ref": "UnknownIdentifier",
+          "required": true,
+          "default": "",
+          "description": "The unknown identifier this decision pertains to.",
+          "validators": []
+        },
+        {
+          "name": "action",
+          "type_ref": "ResolutionAction",
+          "required": true,
+          "default": "",
+          "description": "The resolution action taken: confirm (accept suggestion), reject (discard suggestion), skip (defer for later), manual (user supplied a different person_id).",
+          "validators": []
+        },
+        {
+          "name": "resolved_person_id",
+          "type_ref": "OptionalStr",
+          "required": false,
+          "default": "null",
+          "description": "The person_id the unknown was resolved to. Required when action is 'confirm' or 'manual'. Must be null when action is 'reject' or 'skip'.",
+          "validators": []
+        },
+        {
+          "name": "matched_suggestion",
+          "type_ref": "OptionalMatchSuggestion",
+          "required": false,
+          "default": "null",
+          "description": "The MatchSuggestion that was confirmed, if action is 'confirm'. Null for other actions.",
+          "validators": []
+        },
+        {
+          "name": "decided_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when this decision was made.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model capturing the decision made for a single unknown identifier resolution attempt."
+    },
+    {
+      "name": "OptionalMatchSuggestion",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "MatchSuggestion"
+      ],
+      "description": "An optional MatchSuggestion, present when a suggestion was confirmed."
+    },
+    {
+      "name": "ResolutionDecisionList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ResolutionDecision",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of resolution decisions made during a resolution session."
+    },
+    {
+      "name": "UnknownIdentifierList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "UnknownIdentifier",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of unknown identifiers."
+    },
+    {
+      "name": "ResolutionReport",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": true,
+          "default": "1",
+          "description": "Schema version for this report format, enabling forward-compatible YAML deserialization.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "schema_version must be at least 1"
+            }
+          ]
+        },
+        {
+          "name": "decisions",
+          "type_ref": "ResolutionDecisionList",
+          "required": true,
+          "default": "",
+          "description": "All resolution decisions made during this session (confirm, reject, skip, manual).",
+          "validators": []
+        },
+        {
+          "name": "unresolved",
+          "type_ref": "UnknownIdentifierList",
+          "required": true,
+          "default": "",
+          "description": "Identifiers that remain unresolved after this session (skipped or not yet processed due to interruption).",
+          "validators": []
+        },
+        {
+          "name": "auto_confirmed",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Count of identifiers auto-confirmed because suggestion confidence exceeded auto_confirm_threshold.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "auto_confirmed must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "user_confirmed",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Count of identifiers explicitly confirmed by the user via interactive prompt.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "user_confirmed must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "total_processed",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of unknown identifiers processed (should equal len(decisions) + len(unresolved) when session completes normally).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "total_processed must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "interrupted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "false",
+          "description": "True if the session was interrupted (e.g. Ctrl+C) and partial progress was persisted.",
+          "validators": []
+        },
+        {
+          "name": "started_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the resolution session started.",
+          "validators": []
+        },
+        {
+          "name": "completed_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the resolution session ended (or was interrupted).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model summarizing the outcome of a complete identity resolution session. Supports both JSON and YAML serialization."
+    },
+    {
+      "name": "IdentityResolutionConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "auto_confirm_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.95",
+          "description": "Suggestions at or above this confidence are auto-confirmed without user interaction. Maps to --auto-confirm-above CLI flag.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0.0,le=1.0",
+              "error_message": "auto_confirm_threshold must be between 0.0 and 1.0"
+            }
+          ]
+        },
+        {
+          "name": "unknown_count_threshold",
+          "type_ref": "int",
+          "required": false,
+          "default": "5",
+          "description": "When the number of unknown identifiers exceeds this threshold, auto-trigger interactive prompting (if in a TTY). Maps to --unknown-threshold CLI flag.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "unknown_count_threshold must be at least 1"
+            }
+          ]
+        },
+        {
+          "name": "output_path",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path where the YAML unresolved identities file is written in non-interactive mode. Parent directory must exist.",
+          "validators": []
+        },
+        {
+          "name": "interactive",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "When true, use TTY interactive prompts. When false (default), log warnings and write YAML file. Overridden to false if stdout is not a TTY regardless of flag value.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 configuration model for the identity resolution subsystem. Populated from CLI flags and/or configuration file."
+    },
+    {
+      "name": "PromptMode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "interactive",
+        "non_interactive"
+      ],
+      "inner_types": [],
+      "description": "Discriminates between the two IdentityPrompter implementations."
+    },
+    {
+      "name": "IdentityResolutionErrorKind",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "store_write_failed",
+        "store_read_failed",
+        "prompt_io_error",
+        "config_invalid",
+        "yaml_serialization_failed",
+        "yaml_deserialization_failed",
+        "file_write_failed",
+        "interrupted",
+        "resolver_unavailable"
+      ],
+      "inner_types": [],
+      "description": "Classifies unexpected errors in the identity resolution subsystem. Forms a small exception hierarchy under IdentityResolutionError base."
+    },
+    {
+      "name": "IdentityResolutionError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "kind",
+          "type_ref": "IdentityResolutionErrorKind",
+          "required": true,
+          "default": "",
+          "description": "Classification of the error.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error description.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value context data for debugging (e.g. file path, handle, store name).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Structured error type for unexpected failures in the identity resolution subsystem. Wraps an error kind, human-readable message, and optional context."
+    },
+    {
+      "name": "CLIFlags",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "resolve_identities",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "Whether --resolve-identities was passed. BooleanOptionalAction: --resolve-identities / --no-resolve-identities.",
+          "validators": []
+        },
+        {
+          "name": "auto_confirm_above",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "null",
+          "description": "Value of --auto-confirm-above flag. Overrides config auto_confirm_threshold if provided.",
+          "validators": []
+        },
+        {
+          "name": "unknown_threshold",
+          "type_ref": "OptionalInt",
+          "required": false,
+          "default": "null",
+          "description": "Value of --unknown-threshold flag. Overrides config unknown_count_threshold if provided.",
+          "validators": []
+        },
+        {
+          "name": "output_path",
+          "type_ref": "OptionalPath",
+          "required": false,
+          "default": "null",
+          "description": "Value of --identity-output-path flag. Overrides config output_path if provided.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Parsed CLI flags relevant to identity resolution, extracted from argparse namespace."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "float"
+      ],
+      "description": "An optional float value."
+    },
+    {
+      "name": "OptionalInt",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "int"
+      ],
+      "description": "An optional integer value."
+    },
+    {
+      "name": "OptionalPath",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "Path"
+      ],
+      "description": "An optional filesystem path."
+    },
+    {
+      "name": "PartialProgress",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "completed_decisions",
+          "type_ref": "ResolutionDecisionList",
+          "required": true,
+          "default": "",
+          "description": "Decisions made so far before interruption.",
+          "validators": []
+        },
+        {
+          "name": "remaining_unknowns",
+          "type_ref": "UnknownIdentifierList",
+          "required": true,
+          "default": "",
+          "description": "Identifiers not yet processed at time of interruption.",
+          "validators": []
+        },
+        {
+          "name": "persisted_to_store",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether completed confirm/manual decisions were flushed to AliasStore before serialization.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Snapshot of resolution progress captured before persisting on interruption. Enables resume-from-checkpoint semantics."
+    }
+  ],
+  "functions": [
+    {
+      "name": "prompt",
+      "description": "Present an unknown identifier and its match suggestions to the user (or log them in non-interactive mode) and return a resolution decision. This is the core method of the IdentityPrompter protocol. InteractivePrompter: displays formatted TTY prompt 'Who is @handle? Best match: person_id (confidence). Confirm? [y/n/other]'. NonInteractivePrompter: logs a warning and returns a skip decision.",
+      "inputs": [
+        {
+          "name": "unknown",
+          "type_ref": "UnknownIdentifier",
+          "required": true,
+          "default": "",
+          "description": "The unknown identifier to present for resolution.",
+          "validators": []
+        },
+        {
+          "name": "suggestions",
+          "type_ref": "MatchSuggestionList",
+          "required": true,
+          "default": "",
+          "description": "Candidate matches ordered by descending confidence. May be empty if no suggestions are available.",
+          "validators": []
+        }
+      ],
+      "output_type": "ResolutionDecision",
+      "error_cases": [
+        {
+          "name": "prompt_io_error",
+          "condition": "Interactive mode and stdin/stdout IO fails (e.g. broken pipe, closed TTY)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "prompt_io_error"
+          }
+        },
+        {
+          "name": "interrupted",
+          "condition": "User sends Ctrl+C (KeyboardInterrupt) during interactive prompt",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "interrupted"
+          }
+        }
+      ],
+      "preconditions": [
+        "unknown.handle is a non-empty string",
+        "suggestions list is sorted by confidence descending",
+        "For interactive mode: stdout is a TTY (verified at construction time)"
+      ],
+      "postconditions": [
+        "Returned ResolutionDecision.unknown == input unknown",
+        "If action is 'confirm', resolved_person_id matches a candidate_person_id from suggestions",
+        "If action is 'manual', resolved_person_id is a non-empty string not necessarily from suggestions",
+        "If action is 'reject' or 'skip', resolved_person_id is null",
+        "decided_at is set to current UTC time"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Interactive mode: writes prompt text to stdout, reads from stdin",
+        "Non-interactive mode: writes warning to logger"
+      ]
+    },
+    {
+      "name": "resolve_identity_unknowns",
+      "description": "Async orchestrator: collects unknown identifiers from the resolver, generates match suggestions, presents each to the prompter (interactive or non-interactive), persists confirmed/manual mappings to AliasStore, and returns a comprehensive ResolutionReport. Handles Ctrl+C gracefully by persisting partial progress. Auto-confirms suggestions above config.auto_confirm_threshold without prompting. In non-interactive mode, writes unresolved identities to YAML at config.output_path.",
+      "inputs": [
+        {
+          "name": "unknowns",
+          "type_ref": "UnknownIdentifierList",
+          "required": true,
+          "default": "",
+          "description": "List of unknown identifiers collected from the identity resolver after a run.",
+          "validators": []
+        },
+        {
+          "name": "suggestion_fn",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Callable with signature (handle: str) -> list[MatchSuggestion]. Typically resolver.suggest_match. Returns candidate matches for a given handle.",
+          "validators": []
+        },
+        {
+          "name": "prompter_mode",
+          "type_ref": "PromptMode",
+          "required": true,
+          "default": "",
+          "description": "Selects the prompter implementation: 'interactive' for TTY prompts, 'non_interactive' for log-and-file.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "AliasStore protocol implementation for persisting confirmed alias mappings. Must support add_alias(handle: str, person_id: str, source: str) -> None.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "IdentityResolutionConfig",
+          "required": true,
+          "default": "",
+          "description": "Configuration controlling thresholds, output path, and interactive mode.",
+          "validators": []
+        }
+      ],
+      "output_type": "ResolutionReport",
+      "error_cases": [
+        {
+          "name": "store_write_failed",
+          "condition": "AliasStore.add_alias raises an exception during persistence of a confirmed mapping",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "store_write_failed"
+          }
+        },
+        {
+          "name": "yaml_serialization_failed",
+          "condition": "YAML serialization of the unresolved identities file fails (encoding error, invalid data)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "yaml_serialization_failed"
+          }
+        },
+        {
+          "name": "file_write_failed",
+          "condition": "Writing the YAML output file to config.output_path fails (permission denied, disk full, path not found)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "file_write_failed"
+          }
+        },
+        {
+          "name": "resolver_unavailable",
+          "condition": "The suggestion_fn callable raises an exception when invoked",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "resolver_unavailable"
+          }
+        },
+        {
+          "name": "config_invalid",
+          "condition": "Config validation fails at runtime (e.g. output_path parent does not exist)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid"
+          }
+        }
+      ],
+      "preconditions": [
+        "unknowns list is not empty (caller should skip invocation if empty)",
+        "suggestion_fn is callable and returns list[MatchSuggestion]",
+        "alias_store implements the AliasStore protocol (add_alias method)",
+        "config.output_path parent directory exists and is writable",
+        "If prompter_mode is 'interactive', stdout must be a TTY"
+      ],
+      "postconditions": [
+        "All confirm/manual decisions have been persisted to alias_store via add_alias",
+        "report.total_processed == len(unknowns)",
+        "report.auto_confirmed + report.user_confirmed == count of decisions with action in ('confirm', 'manual')",
+        "len(report.decisions) + len(report.unresolved) == report.total_processed when report.interrupted is false",
+        "In non-interactive mode: YAML file written at config.output_path containing unresolved identities",
+        "If interrupted: report.interrupted is true and partial progress was persisted to alias_store and YAML file",
+        "report.started_at <= report.completed_at"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Persists confirmed/manual alias mappings to AliasStore",
+        "Writes YAML file at config.output_path in non-interactive mode or on interruption",
+        "Logs warnings for all unknown identifiers in non-interactive mode",
+        "Reads from stdin and writes to stdout in interactive mode"
+      ]
+    },
+    {
+      "name": "build_config_from_cli",
+      "description": "Build an IdentityResolutionConfig from parsed CLI flags, applying defaults and TTY safety guard. If interactive mode is requested but stdout is not a TTY, forces non-interactive mode and logs a warning. Merges CLI flag overrides with defaults.",
+      "inputs": [
+        {
+          "name": "cli_flags",
+          "type_ref": "CLIFlags",
+          "required": true,
+          "default": "",
+          "description": "Parsed CLI flags from argparse namespace.",
+          "validators": []
+        },
+        {
+          "name": "is_tty",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether stdout is connected to a TTY. Used as safety guard to prevent interactive prompts in CI or piped contexts.",
+          "validators": []
+        },
+        {
+          "name": "default_output_path",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "Default filesystem path for YAML output if not specified via CLI flags.",
+          "validators": []
+        }
+      ],
+      "output_type": "IdentityResolutionConfig",
+      "error_cases": [
+        {
+          "name": "config_invalid",
+          "condition": "CLI flag values fail validation (e.g. auto_confirm_above outside 0.0-1.0, unknown_threshold < 1)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid"
+          }
+        }
+      ],
+      "preconditions": [
+        "cli_flags is a valid CLIFlags instance",
+        "default_output_path is a valid path whose parent directory exists"
+      ],
+      "postconditions": [
+        "If is_tty is false, returned config.interactive is always false regardless of cli_flags",
+        "If cli_flags.auto_confirm_above is not null, config.auto_confirm_threshold equals cli_flags.auto_confirm_above",
+        "If cli_flags.unknown_threshold is not null, config.unknown_count_threshold equals cli_flags.unknown_threshold",
+        "If cli_flags.output_path is not null, config.output_path equals cli_flags.output_path; otherwise equals default_output_path"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs a warning if interactive mode was requested but stdout is not a TTY"
+      ]
+    },
+    {
+      "name": "serialize_report_to_yaml",
+      "description": "Serialize a ResolutionReport to a versioned YAML string suitable for writing to the unresolved identities file. The output is mergeable (sorted keys, stable ordering) and idempotent (same input always produces same output).",
+      "inputs": [
+        {
+          "name": "report",
+          "type_ref": "ResolutionReport",
+          "required": true,
+          "default": "",
+          "description": "The resolution report to serialize.",
+          "validators": []
+        }
+      ],
+      "output_type": "str",
+      "error_cases": [
+        {
+          "name": "yaml_serialization_failed",
+          "condition": "YAML serialization fails due to unencodable data in the report",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "yaml_serialization_failed"
+          }
+        }
+      ],
+      "preconditions": [
+        "report is a valid ResolutionReport instance",
+        "report.schema_version >= 1"
+      ],
+      "postconditions": [
+        "Output is valid YAML that can be deserialized back to a ResolutionReport",
+        "Output contains a top-level 'schema_version' key",
+        "Identical inputs produce byte-identical outputs (deterministic serialization)",
+        "Output uses block style for readability, sorted mapping keys"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deserialize_report_from_yaml",
+      "description": "Deserialize a YAML string into a ResolutionReport, with schema version migration support. Enables loading previously written unresolved identity files for incremental resolution.",
+      "inputs": [
+        {
+          "name": "yaml_content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "YAML string content to deserialize.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "yaml_content must not be empty"
+            }
+          ]
+        }
+      ],
+      "output_type": "ResolutionReport",
+      "error_cases": [
+        {
+          "name": "yaml_deserialization_failed",
+          "condition": "YAML parsing fails or content does not conform to any known schema version",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "yaml_deserialization_failed"
+          }
+        }
+      ],
+      "preconditions": [
+        "yaml_content is valid YAML",
+        "yaml_content contains a 'schema_version' key"
+      ],
+      "postconditions": [
+        "Returned ResolutionReport is valid and fully hydrated",
+        "Schema version migration applied if yaml schema_version < current version"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "persist_partial_progress",
+      "description": "Persist partial resolution progress on interruption (Ctrl+C). Flushes all completed confirm/manual decisions to AliasStore, then writes a PartialProgress snapshot and remaining unknowns as YAML to the configured output path. Called from the Ctrl+C signal handler within resolve_identity_unknowns.",
+      "inputs": [
+        {
+          "name": "progress",
+          "type_ref": "PartialProgress",
+          "required": true,
+          "default": "",
+          "description": "Snapshot of the resolution session at the time of interruption.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "AliasStore protocol implementation for persisting confirmed alias mappings.",
+          "validators": []
+        },
+        {
+          "name": "config",
+          "type_ref": "IdentityResolutionConfig",
+          "required": true,
+          "default": "",
+          "description": "Configuration containing the output_path for YAML file.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "store_write_failed",
+          "condition": "AliasStore write fails during partial flush — best-effort, does not re-raise",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "store_write_failed"
+          }
+        },
+        {
+          "name": "file_write_failed",
+          "condition": "YAML file write fails during partial progress save — best-effort, does not re-raise",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "file_write_failed"
+          }
+        }
+      ],
+      "preconditions": [
+        "progress contains only valid decisions",
+        "alias_store is available and writable",
+        "config.output_path parent directory exists"
+      ],
+      "postconditions": [
+        "All confirm/manual decisions in progress.completed_decisions are persisted to alias_store",
+        "YAML file at config.output_path contains the remaining_unknowns for later resume",
+        "Returns true if all persistence operations succeeded, false if any failed (best-effort)"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Writes alias mappings to AliasStore (best-effort)",
+        "Writes YAML file at config.output_path (best-effort)",
+        "Logs errors if persistence fails rather than raising"
+      ]
+    },
+    {
+      "name": "should_auto_trigger_interactive",
+      "description": "Determine whether the identity resolution should auto-trigger interactive prompting based on the number of unknowns exceeding the configured threshold and TTY availability. Used by the CLI entry point to decide whether to invoke resolve_identity_unknowns even without an explicit --resolve-identities flag.",
+      "inputs": [
+        {
+          "name": "unknown_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of unknown identifiers found after the resolver run.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "unknown_count must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "config",
+          "type_ref": "IdentityResolutionConfig",
+          "required": true,
+          "default": "",
+          "description": "Configuration containing the unknown_count_threshold.",
+          "validators": []
+        },
+        {
+          "name": "is_tty",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether stdout is a TTY.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returns true only if unknown_count > config.unknown_count_threshold AND is_tty is true",
+        "Returns false if is_tty is false regardless of unknown_count"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "register_identity_cli_flags",
+      "description": "Register identity resolution CLI flags on an argparse ArgumentParser. Adds --resolve-identities (BooleanOptionalAction), --auto-confirm-above (float), --unknown-threshold (int), and --identity-output-path (Path). Called during CLI setup in cli/run_cmd.py.",
+      "inputs": [
+        {
+          "name": "parser",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "argparse.ArgumentParser instance to add flags to.",
+          "validators": []
+        }
+      ],
+      "output_type": "any",
+      "error_cases": [
+        {
+          "name": "config_invalid",
+          "condition": "Flag registration fails due to conflicting argument names on the parser",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid"
+          }
+        }
+      ],
+      "preconditions": [
+        "parser is a valid argparse.ArgumentParser instance",
+        "No conflicting flags already registered on parser"
+      ],
+      "postconditions": [
+        "parser now accepts --resolve-identities / --no-resolve-identities (BooleanOptionalAction, default false)",
+        "parser now accepts --auto-confirm-above (float, optional)",
+        "parser now accepts --unknown-threshold (int, optional)",
+        "parser now accepts --identity-output-path (Path, optional)",
+        "Returns the same parser for chaining"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Mutates the provided argparse parser by adding argument definitions"
+      ]
+    },
+    {
+      "name": "parse_cli_flags_to_struct",
+      "description": "Extract identity-resolution-related flags from a parsed argparse.Namespace and return a typed CLIFlags struct. Validates that flag values are within acceptable ranges.",
+      "inputs": [
+        {
+          "name": "namespace",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "argparse.Namespace from parser.parse_args().",
+          "validators": []
+        }
+      ],
+      "output_type": "CLIFlags",
+      "error_cases": [
+        {
+          "name": "config_invalid",
+          "condition": "Namespace contains invalid values for identity resolution flags (e.g. auto_confirm_above > 1.0)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid"
+          }
+        }
+      ],
+      "preconditions": [
+        "namespace was produced by a parser that had register_identity_cli_flags applied"
+      ],
+      "postconditions": [
+        "All fields in CLIFlags are populated from namespace attributes or set to their defaults",
+        "Float and int values have been validated against their ranges"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "ResolutionDecision: if action is 'confirm' or 'manual', then resolved_person_id must be a non-empty string",
+    "ResolutionDecision: if action is 'reject' or 'skip', then resolved_person_id must be null",
+    "ResolutionDecision: if action is 'confirm', then matched_suggestion must not be null and matched_suggestion.candidate_person_id must equal resolved_person_id",
+    "ResolutionReport: auto_confirmed + user_confirmed <= total_processed",
+    "ResolutionReport: len(decisions) + len(unresolved) == total_processed when interrupted is false",
+    "IdentityResolutionConfig: if interactive is true, the runtime environment must have a TTY on stdout",
+    "All datetime fields use UTC timezone",
+    "YAML output files always contain a top-level schema_version key",
+    "YAML serialization is deterministic: same input produces byte-identical output",
+    "Auto-confirm only applies when the best suggestion confidence >= config.auto_confirm_threshold",
+    "Non-interactive mode never blocks on stdin; it always logs and skips",
+    "Partial progress persistence on Ctrl+C is best-effort: failures are logged, not raised",
+    "MatchSuggestion confidence is always in [0.0, 1.0]",
+    "UnknownIdentifier occurrence_count is always >= 1",
+    "All Pydantic models are frozen (immutable after construction)"
+  ],
+  "requires": [
+    "AliasStore protocol: add_alias(handle: str, person_id: str, source: str) -> None",
+    "Identity resolver: unknown_identifiers property returning list of unknown handles",
+    "Identity resolver: suggest_match(handle: str) -> list[MatchSuggestion]",
+    "argparse from Python standard library",
+    "PyYAML or ruamel.yaml for YAML serialization",
+    "Pydantic v2 for model definitions and validation",
+    "Python asyncio for async orchestrator"
+  ]
+}

@@ -1,0 +1,863 @@
+{
+  "component_id": "temporal_adapter_integration",
+  "name": "Temporal Adapter Integration",
+  "description": "Pass the resolved 'since' datetime to all adapters (GitHub, Linear, Slack — both mock and live). Each adapter filters signals to only return those after the given timestamp. Adapters are responsible for converting UTC datetime to their native format (ISO 8601 for GitHub, Unix timestamps for Slack, etc.). Mock adapters must also respect the since parameter for testing. Add since parameter to adapter fetch interfaces without breaking existing callers (default None = fetch all).",
+  "version": 1,
+  "types": [
+    {
+      "name": "UtcDatetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A timezone-aware UTC datetime. Must have tzinfo set to UTC. Naive datetimes are rejected with a ValueError. Serialized as ISO 8601 string (e.g. '2024-01-15T09:30:00+00:00')."
+    },
+    {
+      "name": "OptionalUtcDatetime",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "UtcDatetime",
+      "variants": [],
+      "inner_types": [],
+      "description": "An optional UtcDatetime. None means 'no temporal filter — fetch all signals'."
+    },
+    {
+      "name": "AdapterKind",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "GITHUB_LIVE",
+        "GITHUB_MOCK",
+        "LINEAR_LIVE",
+        "LINEAR_MOCK",
+        "SLACK_LIVE",
+        "SLACK_MOCK"
+      ],
+      "inner_types": [],
+      "description": "Enumeration of supported signal source adapter types."
+    },
+    {
+      "name": "NativeTimestampFormat",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "ISO_8601",
+        "UNIX_EPOCH_STRING",
+        "UNIX_EPOCH_INT"
+      ],
+      "inner_types": [],
+      "description": "The native timestamp format used by each adapter's upstream API."
+    },
+    {
+      "name": "SignalSource",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter implementation this source represents.",
+          "validators": []
+        },
+        {
+          "name": "native_format",
+          "type_ref": "NativeTimestampFormat",
+          "required": true,
+          "default": "",
+          "description": "The native timestamp format this adapter converts UTC datetimes into for upstream API calls.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol definition for all signal source adapters. Every adapter (mock and live) must implement this interface. Defines the canonical fetch_signals method with keyword-only since parameter."
+    },
+    {
+      "name": "Signal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this signal within its source.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..512",
+              "error_message": "Signal id must be between 1 and 512 characters."
+            }
+          ]
+        },
+        {
+          "name": "source",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter produced this signal.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "When this signal occurred, always in UTC. Used for since-based filtering.",
+          "validators": []
+        },
+        {
+          "name": "payload",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Adapter-specific payload data for the signal. Schema varies by adapter kind.",
+          "validators": []
+        },
+        {
+          "name": "raw_timestamp",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The original timestamp string as returned by the upstream API, before UTC normalization. Useful for debugging format conversion.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A discrete signal fetched from an adapter source. Represents a single event or activity item (e.g., a GitHub PR, Linear issue update, Slack message)."
+    },
+    {
+      "name": "SignalList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "Signal",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered list of Signal objects, sorted by timestamp ascending."
+    },
+    {
+      "name": "NativeTimestampResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "native_value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The converted timestamp string in the adapter's native format.",
+          "validators": []
+        },
+        {
+          "name": "format_used",
+          "type_ref": "NativeTimestampFormat",
+          "required": true,
+          "default": "",
+          "description": "Which native format was used for the conversion.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of converting a UtcDatetime to an adapter's native timestamp format."
+    },
+    {
+      "name": "AdapterError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter encountered the error.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error description.",
+          "validators": []
+        },
+        {
+          "name": "retriable",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether this error is transient and the operation can be retried.",
+          "validators": []
+        },
+        {
+          "name": "status_code",
+          "type_ref": "int",
+          "required": false,
+          "default": "0",
+          "description": "HTTP status code if applicable, 0 otherwise.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base error type for adapter-level failures (API errors, network issues, rate limits, authentication failures)."
+    },
+    {
+      "name": "AdapterErrorKind",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "NETWORK_ERROR",
+        "AUTH_ERROR",
+        "RATE_LIMIT_ERROR",
+        "API_ERROR",
+        "TIMEOUT_ERROR",
+        "PARSE_ERROR"
+      ],
+      "inner_types": [],
+      "description": "Classification of adapter error subtypes."
+    },
+    {
+      "name": "FetchResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signals",
+          "type_ref": "SignalList",
+          "required": true,
+          "default": "",
+          "description": "The fetched signals, filtered by the since parameter. Sorted by timestamp ascending.",
+          "validators": []
+        },
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter produced this result.",
+          "validators": []
+        },
+        {
+          "name": "since_applied",
+          "type_ref": "OptionalUtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The since filter that was applied, or None if all signals were fetched.",
+          "validators": []
+        },
+        {
+          "name": "signal_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of signals returned after filtering.",
+          "validators": []
+        },
+        {
+          "name": "oldest_signal_timestamp",
+          "type_ref": "OptionalUtcDatetime",
+          "required": false,
+          "default": "",
+          "description": "Timestamp of the oldest signal in the result, or None if no signals returned.",
+          "validators": []
+        },
+        {
+          "name": "newest_signal_timestamp",
+          "type_ref": "OptionalUtcDatetime",
+          "required": false,
+          "default": "",
+          "description": "Timestamp of the newest signal in the result, or None if no signals returned.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of a fetch_signals call, including metadata about the fetch operation."
+    },
+    {
+      "name": "SinceParameter",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "value",
+          "type_ref": "OptionalUtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The resolved UTC datetime to filter from, or None for 'fetch all'.",
+          "validators": []
+        },
+        {
+          "name": "provenance",
+          "type_ref": "SinceProvenance",
+          "required": true,
+          "default": "",
+          "description": "Where this since value was resolved from.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Encapsulates the resolved since parameter with provenance metadata, indicating where the value came from."
+    },
+    {
+      "name": "SinceProvenance",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "CLI_FLAG",
+        "STATE_FILE",
+        "FORCE_ALL",
+        "DEFAULT_NONE"
+      ],
+      "inner_types": [],
+      "description": "Indicates the origin of the resolved since parameter value."
+    },
+    {
+      "name": "StateEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter this state entry belongs to.",
+          "validators": []
+        },
+        {
+          "name": "last_run_iso",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Last run timestamp as ISO 8601 string (e.g. '2024-01-15T09:30:00+00:00'). Stored as string to avoid YAML native timestamp parsing ambiguity.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}([.\\d+])?(Z|[+-]\\d{2}:\\d{2})$",
+              "error_message": "last_run_iso must be a valid ISO 8601 datetime string with timezone offset."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single last-run timestamp entry stored in .stigmergy/state.yaml. Timestamps are serialized as ISO 8601 strings, not native YAML timestamps."
+    },
+    {
+      "name": "StateFile",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "StateEntryList",
+          "required": true,
+          "default": "",
+          "description": "List of per-adapter last-run state entries.",
+          "validators": []
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": true,
+          "default": "1",
+          "description": "Version of the state file schema for forward compatibility.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1..100",
+              "error_message": "schema_version must be between 1 and 100."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Represents the full .stigmergy/state.yaml file content. All timestamps are stored as explicit ISO 8601 strings."
+    },
+    {
+      "name": "StateEntryList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "StateEntry",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of StateEntry objects, one per adapter."
+    }
+  ],
+  "functions": [
+    {
+      "name": "fetch_signals",
+      "description": "Canonical adapter interface method. Fetches signals from the adapter's source, filtered to only include signals strictly after the given since timestamp. If since is None, all available signals are returned. This is a keyword-only interface — since must be passed as a keyword argument. Each adapter internally converts the UTC datetime to its native format via _to_native_timestamp(). Mock adapters filter their fixture data using the same exclusive semantics.",
+      "inputs": [
+        {
+          "name": "adapter",
+          "type_ref": "SignalSource",
+          "required": true,
+          "default": "",
+          "description": "The adapter instance to fetch signals from. Must implement the SignalSource protocol.",
+          "validators": []
+        },
+        {
+          "name": "since",
+          "type_ref": "OptionalUtcDatetime",
+          "required": false,
+          "default": "None",
+          "description": "If provided, only signals with timestamps strictly after this UTC datetime are returned (exclusive lower bound). If None, all signals are fetched. Must be timezone-aware UTC if provided; naive datetimes are rejected.",
+          "validators": []
+        }
+      ],
+      "output_type": "FetchResult",
+      "error_cases": [
+        {
+          "name": "naive_datetime_error",
+          "condition": "since is provided but has no tzinfo (naive datetime).",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "since parameter must be a timezone-aware UTC datetime, got naive datetime."
+          }
+        },
+        {
+          "name": "non_utc_datetime_error",
+          "condition": "since is provided with a non-UTC timezone.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "since parameter must be in UTC timezone."
+          }
+        },
+        {
+          "name": "future_datetime_error",
+          "condition": "since is provided but is in the future relative to server clock.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "since parameter must not be in the future."
+          }
+        },
+        {
+          "name": "network_error",
+          "condition": "Live adapter cannot reach the upstream API due to network issues.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "NETWORK_ERROR",
+            "retriable": "true"
+          }
+        },
+        {
+          "name": "auth_error",
+          "condition": "Live adapter's credentials are invalid or expired.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "AUTH_ERROR",
+            "retriable": "false"
+          }
+        },
+        {
+          "name": "rate_limit_error",
+          "condition": "Upstream API rate limit exceeded.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "RATE_LIMIT_ERROR",
+            "retriable": "true"
+          }
+        },
+        {
+          "name": "api_error",
+          "condition": "Upstream API returned an unexpected error response.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "API_ERROR",
+            "retriable": "false"
+          }
+        },
+        {
+          "name": "timeout_error",
+          "condition": "Request to upstream API timed out.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "TIMEOUT_ERROR",
+            "retriable": "true"
+          }
+        },
+        {
+          "name": "parse_error",
+          "condition": "Adapter failed to parse the response from the upstream API into Signal objects.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "PARSE_ERROR",
+            "retriable": "false"
+          }
+        }
+      ],
+      "preconditions": [
+        "If since is not None, it must be a timezone-aware datetime with tzinfo set to UTC.",
+        "If since is not None, it must not be in the future (relative to server UTC clock).",
+        "The adapter must be properly initialized with valid credentials (for live adapters) or fixture data (for mock adapters)."
+      ],
+      "postconditions": [
+        "All returned signals have timestamps strictly after the since parameter (exclusive lower bound).",
+        "If since is None, all available signals from the source are returned.",
+        "Returned signals are sorted by timestamp in ascending order.",
+        "FetchResult.signal_count equals the length of FetchResult.signals.",
+        "FetchResult.since_applied equals the since parameter that was passed in.",
+        "If signals is non-empty, oldest_signal_timestamp equals signals[0].timestamp and newest_signal_timestamp equals signals[-1].timestamp.",
+        "If signals is empty, oldest_signal_timestamp and newest_signal_timestamp are both None.",
+        "Every signal in the result has signal.source equal to adapter.adapter_kind."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Live adapters make HTTP requests to upstream APIs (GitHub, Linear, Slack).",
+        "Live adapters may consume API rate limit quota."
+      ]
+    },
+    {
+      "name": "to_native_timestamp",
+      "description": "Converts a timezone-aware UTC datetime to the adapter's native timestamp format string. GitHub and Linear use ISO 8601 format. Slack uses Unix epoch string. This is a private helper encapsulated within each adapter but is part of the contract for testability and correctness verification.",
+      "inputs": [
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "The adapter whose native format to convert to.",
+          "validators": []
+        },
+        {
+          "name": "utc_dt",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The UTC datetime to convert. Must be timezone-aware with UTC tzinfo.",
+          "validators": []
+        }
+      ],
+      "output_type": "NativeTimestampResult",
+      "error_cases": [
+        {
+          "name": "naive_datetime_error",
+          "condition": "utc_dt has no tzinfo (naive datetime).",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "utc_dt must be a timezone-aware UTC datetime."
+          }
+        },
+        {
+          "name": "non_utc_datetime_error",
+          "condition": "utc_dt has a non-UTC timezone.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "utc_dt must be in UTC timezone."
+          }
+        }
+      ],
+      "preconditions": [
+        "utc_dt must be timezone-aware with tzinfo set to UTC.",
+        "utc_dt must not be a naive datetime."
+      ],
+      "postconditions": [
+        "For GITHUB_LIVE and GITHUB_MOCK, native_value is an ISO 8601 string (e.g. '2024-01-15T09:30:00Z').",
+        "For LINEAR_LIVE and LINEAR_MOCK, native_value is an ISO 8601 string (e.g. '2024-01-15T09:30:00.000Z').",
+        "For SLACK_LIVE and SLACK_MOCK, native_value is a Unix epoch string with up to 6 decimal places (e.g. '1705310400.000000').",
+        "NativeTimestampResult.format_used matches the expected format for the given adapter_kind.",
+        "Converting the native_value back to a UTC datetime yields a value equal to the input utc_dt (round-trip fidelity)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "resolve_since_parameter",
+      "description": "Resolves the effective since datetime from the CLI --since flag, state file last-run timestamp, and --since all override. Priority: (1) explicit --since DATETIME from CLI, (2) --since all forces None (fetch all), (3) last-run timestamp from state file, (4) None (no state, fetch all). Returns the resolved value with provenance metadata.",
+      "inputs": [
+        {
+          "name": "cli_since_raw",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Raw --since value from CLI. Can be an ISO 8601 string, the literal 'all', or empty string if not provided.",
+          "validators": []
+        },
+        {
+          "name": "state_file",
+          "type_ref": "StateFile",
+          "required": false,
+          "default": "None",
+          "description": "The loaded state file, or None if no state file exists.",
+          "validators": []
+        },
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter to look up in the state file for last-run timestamp.",
+          "validators": []
+        }
+      ],
+      "output_type": "SinceParameter",
+      "error_cases": [
+        {
+          "name": "invalid_iso_format",
+          "condition": "cli_since_raw is not empty, not 'all', and cannot be parsed as a valid ISO 8601 datetime.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Invalid ISO 8601 datetime format for --since flag."
+          }
+        },
+        {
+          "name": "naive_parsed_datetime",
+          "condition": "cli_since_raw parses to a datetime without timezone info.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Parsed --since datetime must include timezone offset. Use ISO 8601 with timezone (e.g. 2024-01-15T09:30:00Z)."
+          }
+        },
+        {
+          "name": "corrupt_state_entry",
+          "condition": "State file contains an entry for this adapter_kind but the last_run_iso field is not a valid ISO 8601 string.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Corrupt last_run_iso in state file for adapter."
+          }
+        }
+      ],
+      "preconditions": [
+        "If cli_since_raw is not empty and not 'all', it must be a valid ISO 8601 datetime string."
+      ],
+      "postconditions": [
+        "If cli_since_raw is a valid ISO 8601 string, result.value is the parsed UTC datetime and result.provenance is CLI_FLAG.",
+        "If cli_since_raw is 'all', result.value is None and result.provenance is FORCE_ALL.",
+        "If cli_since_raw is empty and state_file contains an entry for adapter_kind, result.value is the parsed last-run timestamp and result.provenance is STATE_FILE.",
+        "If cli_since_raw is empty and state_file is None or has no entry for adapter_kind, result.value is None and result.provenance is DEFAULT_NONE.",
+        "If result.value is not None, it is always timezone-aware UTC."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "save_last_run_timestamp",
+      "description": "Persists the current run timestamp to .stigmergy/state.yaml for the specified adapter. The timestamp is serialized as an explicit ISO 8601 string (not a native YAML timestamp) to avoid parser ambiguity. Creates the state file and directory if they do not exist. Updates the entry for the specified adapter, preserving entries for other adapters.",
+      "inputs": [
+        {
+          "name": "adapter_kind",
+          "type_ref": "AdapterKind",
+          "required": true,
+          "default": "",
+          "description": "Which adapter's last-run timestamp to update.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The UTC datetime to store as the last-run timestamp. Must be timezone-aware UTC.",
+          "validators": []
+        },
+        {
+          "name": "state_file_path",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy/state.yaml",
+          "description": "Path to the state YAML file. Defaults to '.stigmergy/state.yaml'.",
+          "validators": []
+        }
+      ],
+      "output_type": "StateFile",
+      "error_cases": [
+        {
+          "name": "naive_datetime_error",
+          "condition": "timestamp has no tzinfo (naive datetime).",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "timestamp must be a timezone-aware UTC datetime."
+          }
+        },
+        {
+          "name": "file_write_error",
+          "condition": "Cannot write to the state file path due to permissions or disk issues.",
+          "error_type": "IOError",
+          "error_data": {
+            "message": "Failed to write state file."
+          }
+        },
+        {
+          "name": "directory_creation_error",
+          "condition": "Cannot create the .stigmergy directory.",
+          "error_type": "IOError",
+          "error_data": {
+            "message": "Failed to create .stigmergy directory."
+          }
+        },
+        {
+          "name": "corrupt_existing_state",
+          "condition": "Existing state file cannot be parsed as valid YAML.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Existing state file is corrupt and cannot be parsed."
+          }
+        }
+      ],
+      "preconditions": [
+        "timestamp must be timezone-aware with UTC tzinfo.",
+        "timestamp must not be in the future."
+      ],
+      "postconditions": [
+        "The state file at state_file_path exists and is valid YAML.",
+        "The state file contains an entry for adapter_kind with last_run_iso equal to the ISO 8601 serialization of timestamp.",
+        "Entries for other adapters in the state file are preserved unchanged.",
+        "The timestamp is stored as a quoted YAML string, not a native YAML timestamp.",
+        "The returned StateFile reflects the updated state."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Creates .stigmergy/ directory if it does not exist.",
+        "Creates or overwrites .stigmergy/state.yaml.",
+        "File system write operation."
+      ]
+    },
+    {
+      "name": "load_state_file",
+      "description": "Loads and parses the .stigmergy/state.yaml file. Returns None if the file does not exist. Validates that all timestamps are valid ISO 8601 strings.",
+      "inputs": [
+        {
+          "name": "state_file_path",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy/state.yaml",
+          "description": "Path to the state YAML file.",
+          "validators": []
+        }
+      ],
+      "output_type": "StateFile",
+      "error_cases": [
+        {
+          "name": "corrupt_yaml",
+          "condition": "File exists but cannot be parsed as valid YAML.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "State file is not valid YAML."
+          }
+        },
+        {
+          "name": "invalid_schema",
+          "condition": "YAML is valid but does not match the expected StateFile schema.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "State file schema does not match expected format."
+          }
+        },
+        {
+          "name": "file_read_error",
+          "condition": "File exists but cannot be read due to permissions.",
+          "error_type": "IOError",
+          "error_data": {
+            "message": "Cannot read state file due to permissions."
+          }
+        },
+        {
+          "name": "invalid_timestamp_in_state",
+          "condition": "A last_run_iso value in the state file is not a valid ISO 8601 datetime.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Invalid ISO 8601 timestamp found in state file entry."
+          }
+        }
+      ],
+      "preconditions": [],
+      "postconditions": [
+        "If the file does not exist, returns a StateFile with empty entries list and schema_version 1.",
+        "If the file exists and is valid, returns a fully parsed StateFile.",
+        "All last_run_iso fields in returned entries are valid ISO 8601 strings with timezone offsets."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "dispatch_fetch_to_all_adapters",
+      "description": "Orchestrates fetching signals from all configured adapters, passing the resolved since parameter to each. This is the primary call site integration point used by cli/run_cmd.py. Collects results from all adapters and returns them aggregated. Each adapter receives the same since parameter.",
+      "inputs": [
+        {
+          "name": "adapters",
+          "type_ref": "SignalSourceList",
+          "required": true,
+          "default": "",
+          "description": "List of adapter instances to fetch from.",
+          "validators": []
+        },
+        {
+          "name": "since",
+          "type_ref": "SinceParameter",
+          "required": true,
+          "default": "",
+          "description": "The resolved since parameter with provenance, to pass to each adapter's fetch_signals call.",
+          "validators": []
+        }
+      ],
+      "output_type": "AggregatedFetchResult",
+      "error_cases": [
+        {
+          "name": "empty_adapters_list",
+          "condition": "The adapters list is empty.",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "At least one adapter must be provided."
+          }
+        },
+        {
+          "name": "all_adapters_failed",
+          "condition": "Every adapter in the list raised an AdapterError.",
+          "error_type": "AdapterError",
+          "error_data": {
+            "adapter_error_kind": "API_ERROR",
+            "message": "All adapters failed to fetch signals."
+          }
+        }
+      ],
+      "preconditions": [
+        "adapters list must not be empty.",
+        "If since.value is not None, it must be timezone-aware UTC."
+      ],
+      "postconditions": [
+        "AggregatedFetchResult contains one FetchResult per adapter in the input list.",
+        "Each FetchResult.since_applied equals since.value.",
+        "All signals across all results have timestamps strictly after since.value (if not None).",
+        "AggregatedFetchResult.total_signal_count equals the sum of all individual FetchResult.signal_count values.",
+        "AggregatedFetchResult.failed_adapters lists any adapters that raised AdapterError.",
+        "Successful adapter results are returned even if other adapters fail (partial success)."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Live adapters make HTTP requests to upstream APIs.",
+        "Live adapters may consume API rate limit quota.",
+        "Multiple concurrent network requests may be initiated."
+      ]
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "The since parameter is always keyword-only in all adapter fetch interfaces — positional invocation is a contract violation.",
+    "None as the since value universally means 'fetch all signals with no temporal filter' across all adapters.",
+    "All since filtering uses exclusive semantics: signals with timestamp strictly after the since value are included; signals at exactly the since timestamp are excluded.",
+    "All datetimes within the system are timezone-aware UTC. Naive datetimes are never accepted and always produce a ValueError.",
+    "Mock adapters implement identical since filtering semantics as their live counterparts, enabling contract tests.",
+    "State file timestamps are always serialized as quoted ISO 8601 strings in YAML, never as native YAML timestamp types.",
+    "Each adapter's _to_native_timestamp conversion is lossless: converting to native format and back yields the original UTC datetime.",
+    "Adding the since parameter with default None does not break any existing callers — full backward compatibility is maintained.",
+    "GitHub and Linear adapters use ISO 8601 native format; Slack adapters use Unix epoch string native format.",
+    "The state file preserves entries for all adapters; updating one adapter's timestamp never affects another adapter's entry."
+  ],
+  "requires": []
+}

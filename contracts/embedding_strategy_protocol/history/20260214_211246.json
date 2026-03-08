@@ -1,0 +1,895 @@
+{
+  "component_id": "embedding_strategy_protocol",
+  "name": "Embedding Strategy Protocol & Registry",
+  "description": "Define EmbeddingStrategy protocol in services/embedding.py with async embed(signal) -> numpy vector method. All strategies must produce vectors of the same fixed dimensionality (e.g., 128 or 256) using projection/padding as needed. Create a strategy registry that manages available strategies and runs them to populate Signal.embeddings dict (keyed by strategy name). Ensure the existing single-strategy behavior is preserved as the 'semantic' strategy.",
+  "version": 1,
+  "types": [
+    {
+      "name": "Signal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for the signal.",
+          "validators": []
+        },
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Primary textual content of the signal.",
+          "validators": []
+        },
+        {
+          "name": "author",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Author or originator of the signal. May be empty.",
+          "validators": []
+        },
+        {
+          "name": "mentions",
+          "type_ref": "MentionsList",
+          "required": false,
+          "default": "[]",
+          "description": "List of user/entity mentions referenced in the signal.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value metadata associated with the signal.",
+          "validators": []
+        },
+        {
+          "name": "embeddings",
+          "type_ref": "EmbeddingsDict",
+          "required": false,
+          "default": "{}",
+          "description": "Strategy-keyed embedding vectors stored as list[float] for Pydantic v2 frozen model serialization safety. Keys are strategy names, values are float lists of length equal to registry dimensions.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Core signal model representing an incoming piece of information to be embedded. Pydantic v2 frozen model. The embeddings field stores strategy-keyed vectors as lists of floats for serialization safety."
+    },
+    {
+      "name": "MentionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of mention strings (usernames, entity references)."
+    },
+    {
+      "name": "EmbeddingsDict",
+      "kind": "struct",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict[str, list[float]] mapping strategy names to embedding vectors stored as plain float lists. Keys must be valid strategy names (lowercase alphanumeric + underscores). Each value list must have length equal to the registry's configured dimensions."
+    },
+    {
+      "name": "NdArray",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "shape",
+          "type_ref": "IntTuple",
+          "required": true,
+          "default": "",
+          "description": "Shape tuple of the array. For embedding vectors this must be (dimensions,) — a 1-D vector.",
+          "validators": []
+        },
+        {
+          "name": "dtype",
+          "type_ref": "NdArrayDtype",
+          "required": true,
+          "default": "",
+          "description": "Data type of array elements.",
+          "validators": []
+        },
+        {
+          "name": "data",
+          "type_ref": "FloatList",
+          "required": true,
+          "default": "",
+          "description": "The raw float data of the vector.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Represents a numpy ndarray vector. In Python this is numpy.ndarray with dtype float32 or float64. Contracts reference shape and dtype constraints. Used as function input/output type for embedding operations."
+    },
+    {
+      "name": "IntTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "int",
+      "variants": [],
+      "inner_types": [],
+      "description": "A tuple of integers representing array shape. For embedding vectors this is a single-element list [dimensions]."
+    },
+    {
+      "name": "FloatList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "float",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of float values representing vector components."
+    },
+    {
+      "name": "NdArrayDtype",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "float32",
+        "float64"
+      ],
+      "inner_types": [],
+      "description": "Allowed numpy dtypes for embedding vectors."
+    },
+    {
+      "name": "EmbedAllResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "embeddings",
+          "type_ref": "StrategyEmbeddingMap",
+          "required": true,
+          "default": "",
+          "description": "Map of strategy name to successfully computed embedding vector. Only includes strategies that succeeded.",
+          "validators": []
+        },
+        {
+          "name": "failures",
+          "type_ref": "StrategyFailureList",
+          "required": true,
+          "default": "",
+          "description": "List of strategy failures with details. Strategies that raised exceptions or produced invalid output.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of running all registered strategies on a signal. Contains successfully computed embeddings and information about any strategies that failed."
+    },
+    {
+      "name": "StrategyEmbeddingMap",
+      "kind": "struct",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict[str, NdArray] mapping strategy names to their computed embedding vectors."
+    },
+    {
+      "name": "StrategyFailure",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "strategy_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Name of the strategy that failed.",
+          "validators": []
+        },
+        {
+          "name": "error_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The exception type name (e.g., 'ValueError', 'TimeoutError').",
+          "validators": []
+        },
+        {
+          "name": "error_message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message from the exception.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Details about a strategy that failed during embed_all execution."
+    },
+    {
+      "name": "StrategyFailureList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "StrategyFailure",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of strategy failures from an embed_all execution."
+    },
+    {
+      "name": "RegistryConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Fixed dimensionality for all embedding vectors produced by this registry. All strategies must produce vectors of this exact length.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "dimensions must be between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for constructing an EmbeddingStrategyRegistry."
+    },
+    {
+      "name": "StrategyInfo",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Registered name of the strategy.",
+          "validators": []
+        },
+        {
+          "name": "strategy_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Fully qualified class name of the strategy implementation.",
+          "validators": []
+        },
+        {
+          "name": "is_available",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the strategy is currently available and registered.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Information about a registered strategy, returned by introspection methods."
+    },
+    {
+      "name": "StrategyInfoList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "StrategyInfo",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of StrategyInfo entries for all registered strategies."
+    },
+    {
+      "name": "StrategyName",
+      "kind": "primitive",
+      "fields": [
+        {
+          "name": "value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The strategy name string.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^[a-z][a-z0-9_]{0,63}$",
+              "error_message": "Strategy name must be 1-64 chars, start with lowercase letter, contain only lowercase alphanumeric and underscores."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A valid strategy name: lowercase alphanumeric characters and underscores only, 1-64 characters, must start with a letter."
+    }
+  ],
+  "functions": [
+    {
+      "name": "EmbeddingStrategyRegistry.__init__",
+      "description": "Construct a new EmbeddingStrategyRegistry with a fixed target dimensionality. The registry starts empty with no strategies registered. The 'semantic' strategy should be pre-registered by the application layer after construction.",
+      "inputs": [
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Fixed dimensionality for all embedding vectors. All registered strategies must produce vectors of this size, or their output will be projected/padded via project_to_dim.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "dimensions must be between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "invalid_dimensions",
+          "condition": "dimensions < 1 or dimensions > 4096 or not isinstance(dimensions, int)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "dimensions must be an integer between 1 and 4096 inclusive."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimensions is a positive integer within [1, 4096]"
+      ],
+      "postconditions": [
+        "Registry is initialized with the given dimensions",
+        "Registry contains no registered strategies",
+        "Registry.dimensions == dimensions"
+      ],
+      "idempotent": false,
+      "side_effects": []
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.register",
+      "description": "Register a named embedding strategy with the registry. Validates the strategy name format, checks that the object satisfies the EmbeddingStrategy @runtime_checkable Protocol, and verifies that the embed method is a coroutine function via inspect.iscoroutinefunction. Raises on invalid name, protocol non-conformance, or duplicate name.",
+      "inputs": [
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique name for the strategy. Must match pattern ^[a-z][a-z0-9_]{0,63}$.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^[a-z][a-z0-9_]{0,63}$",
+              "error_message": "Strategy name must be 1-64 chars, start with lowercase letter, contain only lowercase alphanumeric and underscores."
+            }
+          ]
+        },
+        {
+          "name": "strategy",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An object conforming to the EmbeddingStrategy protocol. Must have an async embed(self, signal: Signal) -> np.ndarray method.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "invalid_name_format",
+          "condition": "name does not match ^[a-z][a-z0-9_]{0,63}$",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Strategy name must start with a lowercase letter and contain only lowercase alphanumeric characters and underscores (1-64 chars)."
+          }
+        },
+        {
+          "name": "protocol_not_satisfied",
+          "condition": "not isinstance(strategy, EmbeddingStrategy) — the object does not have an embed method with the correct signature",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Strategy does not satisfy the EmbeddingStrategy protocol. Must have an 'embed(self, signal: Signal) -> np.ndarray' method."
+          }
+        },
+        {
+          "name": "embed_not_async",
+          "condition": "strategy has an embed method but inspect.iscoroutinefunction(strategy.embed) is False",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Strategy.embed must be an async coroutine function (defined with 'async def')."
+          }
+        },
+        {
+          "name": "duplicate_name",
+          "condition": "A strategy with the same name is already registered",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "A strategy with name '{name}' is already registered. Use unregister() first to replace it."
+          }
+        }
+      ],
+      "preconditions": [
+        "name matches ^[a-z][a-z0-9_]{0,63}$",
+        "strategy satisfies isinstance(strategy, EmbeddingStrategy) via @runtime_checkable",
+        "strategy.embed is a coroutine function (inspect.iscoroutinefunction(strategy.embed) is True)",
+        "name is not already registered in this registry"
+      ],
+      "postconditions": [
+        "Strategy is stored in the registry under the given name",
+        "list_strategies() includes the newly registered strategy",
+        "Strategy can be invoked via embed() or embed_all()"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Adds the strategy to the internal strategy registry mapping"
+      ]
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.unregister",
+      "description": "Remove a previously registered strategy by name. Allows re-registration of the same name with a different implementation.",
+      "inputs": [
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Name of the strategy to remove.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "strategy_not_found",
+          "condition": "No strategy with the given name is registered",
+          "error_type": "KeyError",
+          "error_data": {
+            "message": "No strategy registered with name '{name}'."
+          }
+        }
+      ],
+      "preconditions": [
+        "name is currently registered in the registry"
+      ],
+      "postconditions": [
+        "Strategy with the given name is removed from the registry",
+        "list_strategies() no longer includes this strategy name"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Removes the strategy from the internal strategy registry mapping"
+      ]
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.embed_all",
+      "description": "Run all registered strategies concurrently on the given signal using asyncio.gather(return_exceptions=True). Validates each result for correct shape (dimensions,) and dtype (float32 or float64). Strategies that raise exceptions or produce invalid output are skipped with logging. Returns a result containing successful embeddings and failure details.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed using all registered strategies.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbedAllResult",
+      "error_cases": [
+        {
+          "name": "no_strategies_registered",
+          "condition": "Registry has no strategies registered",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "message": "No strategies registered. Register at least one strategy before calling embed_all()."
+          }
+        },
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance, got {type}."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance",
+        "At least one strategy is registered in the registry"
+      ],
+      "postconditions": [
+        "Result.embeddings contains only vectors with shape (dimensions,) and dtype in {float32, float64}",
+        "Result.embeddings keys are a subset of registered strategy names",
+        "Result.failures + len(Result.embeddings) == number of registered strategies",
+        "All strategies were invoked concurrently via asyncio.gather",
+        "Failed strategies are logged at WARNING level and included in Result.failures",
+        "No exception is raised for individual strategy failures"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warnings for each strategy that fails or produces invalid output",
+        "May invoke external services or models depending on strategy implementations"
+      ]
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.embed",
+      "description": "Run a single named strategy on the given signal. Defaults to 'semantic' for backward compatibility with the existing single-strategy behavior. Validates the output shape and dtype. This is a convenience wrapper for invoking one strategy at a time.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed.",
+          "validators": []
+        },
+        {
+          "name": "strategy",
+          "type_ref": "str",
+          "required": false,
+          "default": "semantic",
+          "description": "Name of the strategy to use. Defaults to 'semantic' for backward compatibility.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "strategy_not_found",
+          "condition": "No strategy with the given name is registered",
+          "error_type": "KeyError",
+          "error_data": {
+            "message": "No strategy registered with name '{strategy}'. Available: {available_names}."
+          }
+        },
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance, got {type}."
+          }
+        },
+        {
+          "name": "strategy_execution_failed",
+          "condition": "The strategy's embed() method raises an exception",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "message": "Strategy '{strategy}' failed: {original_error}"
+          }
+        },
+        {
+          "name": "invalid_output_shape",
+          "condition": "Strategy returned a vector with shape != (dimensions,)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Strategy '{strategy}' returned vector with shape {actual_shape}, expected ({dimensions},)."
+          }
+        },
+        {
+          "name": "invalid_output_dtype",
+          "condition": "Strategy returned a vector with dtype not in {float32, float64}",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Strategy '{strategy}' returned vector with dtype {actual_dtype}, expected float32 or float64."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance",
+        "strategy name is registered in the registry"
+      ],
+      "postconditions": [
+        "Returned vector has shape (dimensions,)",
+        "Returned vector has dtype float32 or float64",
+        "Returned vector is L2-normalized (np.linalg.norm(result) ≈ 1.0 within tolerance 1e-6) unless the input signal produces a zero vector"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke external services or models depending on strategy implementation"
+      ]
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.list_strategies",
+      "description": "Return information about all currently registered strategies.",
+      "inputs": [],
+      "output_type": "StrategyInfoList",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned list has one entry per registered strategy",
+        "Each entry has the correct name, type, and availability status",
+        "List is sorted alphabetically by strategy name"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.has_strategy",
+      "description": "Check whether a strategy with the given name is registered.",
+      "inputs": [
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Name of the strategy to check.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returns True if and only if a strategy with the given name is currently registered"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "project_to_dim",
+      "description": "Shared utility function for truncation/padding of a vector to a target dimensionality, followed by L2 normalization. If the input vector is longer than target_dim, it is truncated to the first target_dim elements. If shorter, it is zero-padded on the right. After projection, the vector is L2-normalized (unless it is a zero vector, in which case it remains zero). This is a static/standalone function, not bound to a registry instance.",
+      "inputs": [
+        {
+          "name": "vector",
+          "type_ref": "NdArray",
+          "required": true,
+          "default": "",
+          "description": "Input numpy vector to project. Must be 1-D.",
+          "validators": []
+        },
+        {
+          "name": "target_dim",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Target dimensionality for the output vector.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "target_dim must be between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "not_1d_array",
+          "condition": "vector.ndim != 1",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Expected 1-D array, got {ndim}-D array with shape {shape}."
+          }
+        },
+        {
+          "name": "invalid_dtype",
+          "condition": "vector.dtype not in {float32, float64}",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected float32 or float64 dtype, got {dtype}."
+          }
+        },
+        {
+          "name": "invalid_target_dim",
+          "condition": "target_dim < 1 or target_dim > 4096 or not isinstance(target_dim, int)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "target_dim must be an integer between 1 and 4096 inclusive."
+          }
+        },
+        {
+          "name": "empty_vector",
+          "condition": "vector has length 0 (vector.shape == (0,))",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Input vector must have at least one element."
+          }
+        }
+      ],
+      "preconditions": [
+        "vector is a 1-D numpy array (vector.ndim == 1)",
+        "vector has dtype float32 or float64",
+        "target_dim is a positive integer within [1, 4096]"
+      ],
+      "postconditions": [
+        "Returned vector has shape (target_dim,)",
+        "Returned vector has the same dtype as the input vector",
+        "If input vector is longer than target_dim, output is first target_dim elements (truncated), then L2-normalized",
+        "If input vector is shorter than target_dim, output is zero-padded on the right, then L2-normalized",
+        "If input vector has length == target_dim, output is L2-normalized input",
+        "If input vector is all zeros, output is all zeros with shape (target_dim,)",
+        "L2 norm of output is approximately 1.0 (within 1e-6) or exactly 0.0 for zero vectors"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "embeddings_to_ndarray",
+      "description": "Helper function to convert a serialized embedding (list[float]) from Signal.embeddings back into a numpy ndarray. Used at computation sites where numpy operations are needed on stored embeddings.",
+      "inputs": [
+        {
+          "name": "embedding",
+          "type_ref": "FloatList",
+          "required": true,
+          "default": "",
+          "description": "A list of floats representing a serialized embedding vector from Signal.embeddings.",
+          "validators": []
+        },
+        {
+          "name": "dtype",
+          "type_ref": "str",
+          "required": false,
+          "default": "float32",
+          "description": "Target numpy dtype for the output array. Must be 'float32' or 'float64'.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "empty_embedding",
+          "condition": "embedding is an empty list",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Embedding list must not be empty."
+          }
+        },
+        {
+          "name": "non_finite_values",
+          "condition": "embedding contains NaN or Inf values",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Embedding contains non-finite values (NaN or Inf)."
+          }
+        },
+        {
+          "name": "invalid_dtype",
+          "condition": "dtype is not 'float32' or 'float64'",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "dtype must be 'float32' or 'float64', got '{dtype}'."
+          }
+        }
+      ],
+      "preconditions": [
+        "embedding is a non-empty list of finite float values",
+        "dtype is 'float32' or 'float64'"
+      ],
+      "postconditions": [
+        "Returned array has shape (len(embedding),)",
+        "Returned array has the specified dtype",
+        "Returned array values match the input list values within floating-point precision"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "ndarray_to_embedding",
+      "description": "Helper function to convert a numpy ndarray embedding vector into a list[float] suitable for storage in Signal.embeddings (Pydantic v2 frozen model serialization-safe format).",
+      "inputs": [
+        {
+          "name": "array",
+          "type_ref": "NdArray",
+          "required": true,
+          "default": "",
+          "description": "A 1-D numpy ndarray embedding vector.",
+          "validators": []
+        }
+      ],
+      "output_type": "FloatList",
+      "error_cases": [
+        {
+          "name": "not_1d_array",
+          "condition": "array.ndim != 1",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Expected 1-D array, got {ndim}-D array."
+          }
+        },
+        {
+          "name": "invalid_dtype",
+          "condition": "array.dtype not in {float32, float64}",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected float32 or float64 dtype, got {dtype}."
+          }
+        },
+        {
+          "name": "non_finite_values",
+          "condition": "array contains NaN or Inf values",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Array contains non-finite values (NaN or Inf)."
+          }
+        }
+      ],
+      "preconditions": [
+        "array is a 1-D numpy ndarray",
+        "array has dtype float32 or float64",
+        "array contains only finite values"
+      ],
+      "postconditions": [
+        "Returned list has length equal to array.shape[0]",
+        "Each element is a Python float",
+        "Values match the input array within floating-point precision"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "description": "Convenience method that runs embed_all on a signal and returns a new Signal instance with the embeddings dict populated. Since Signal is a frozen Pydantic model, this creates a copy with updated embeddings. Embeddings are converted from ndarray to list[float] for serialization safety.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed and populate.",
+          "validators": []
+        }
+      ],
+      "output_type": "Signal",
+      "error_cases": [
+        {
+          "name": "no_strategies_registered",
+          "condition": "Registry has no strategies registered",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "message": "No strategies registered. Register at least one strategy before calling populate_signal_embeddings()."
+          }
+        },
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance, got {type}."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance",
+        "At least one strategy is registered"
+      ],
+      "postconditions": [
+        "Returned Signal is a new instance (frozen model copy) with embeddings populated",
+        "Returned Signal.embeddings keys are the names of strategies that succeeded",
+        "Each embedding in the returned Signal has length == registry.dimensions",
+        "All non-embedding fields of the returned Signal are identical to the input Signal",
+        "Original signal is not mutated"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warnings for any strategies that fail during embedding",
+        "May invoke external services or models depending on strategy implementations"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All embedding vectors produced by any registered strategy and stored in Signal.embeddings have exactly registry.dimensions elements",
+    "All embedding vectors have dtype float32 or float64 when in ndarray form",
+    "The 'semantic' strategy, when registered, preserves backward-compatible behavior of the original single-strategy embedding system",
+    "Strategy names are unique within a registry instance and match the pattern ^[a-z][a-z0-9_]{0,63}$",
+    "Signal.embeddings stores vectors as list[float] (not numpy arrays) for Pydantic v2 frozen model serialization safety",
+    "project_to_dim always produces L2-normalized vectors (norm ≈ 1.0) unless the input is a zero vector",
+    "embed_all never raises due to individual strategy failures — failures are logged and reported in the result",
+    "EmbeddingStrategyRegistry is a plain class, not a singleton — multiple independent registries can coexist",
+    "All registered strategies must pass the @runtime_checkable isinstance check and inspect.iscoroutinefunction check at registration time",
+    "embed_all executes all strategies concurrently via asyncio.gather, not sequentially"
+  ],
+  "requires": []
+}

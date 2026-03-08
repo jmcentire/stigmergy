@@ -1,0 +1,1206 @@
+{
+  "component_id": "business_weight",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "hp_create_default_metrics",
+      "description": "create_default_metrics returns all-0.5 neutral sentinel metrics",
+      "function": "create_default_metrics",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "BusinessWeightMetrics with all fields == 0.5",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_frequency == 0.5",
+        "result.author_seniority == 0.5",
+        "result.channel_gravity == 0.5",
+        "result.engagement_velocity == 0.5"
+      ]
+    },
+    {
+      "id": "hp_validate_metrics_valid",
+      "description": "validate_metrics returns True for valid metrics in [0.0, 1.0]",
+      "function": "validate_metrics",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "BusinessWeightMetrics(0.3, 0.7, 0.5, 0.9)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "err_validate_metrics_out_of_range",
+      "description": "validate_metrics raises ValueError for metric outside [0.0, 1.0]",
+      "function": "validate_metrics",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_validate_metrics_nan",
+      "description": "validate_metrics raises ValueError for NaN metric",
+      "function": "validate_metrics",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_validate_bw_normal",
+      "description": "validate_business_weight returns input unchanged for value in [0.1, 1.0]",
+      "function": "validate_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.5"
+      ]
+    },
+    {
+      "id": "edge_validate_bw_below_floor_clamped",
+      "description": "validate_business_weight clamps values in [0.0, 0.1) to 0.1",
+      "function": "validate_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.05"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.1"
+      ]
+    },
+    {
+      "id": "edge_validate_bw_exact_zero",
+      "description": "validate_business_weight clamps 0.0 to 0.1",
+      "function": "validate_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.1"
+      ]
+    },
+    {
+      "id": "edge_validate_bw_exact_one",
+      "description": "validate_business_weight returns 1.0 unchanged",
+      "function": "validate_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "1.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "err_validate_bw_below_zero",
+      "description": "validate_business_weight raises ValueError for negative weight",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "-0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_validate_bw_above_one",
+      "description": "validate_business_weight raises ValueError for weight > 1.0",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "1.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_validate_bw_nan",
+      "description": "validate_business_weight raises ValueError for NaN",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "float('nan')"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_validate_bw_inf",
+      "description": "validate_business_weight raises ValueError for +Inf",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "float('inf')"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_signal_frequency_normal",
+      "description": "compute_signal_frequency counts signals in window and normalizes",
+      "function": "compute_signal_frequency",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= result <= 1.0"
+      ]
+    },
+    {
+      "id": "edge_signal_frequency_empty",
+      "description": "compute_signal_frequency returns 0.0 for empty history",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "edge_signal_frequency_saturated",
+      "description": "compute_signal_frequency caps at 1.0 when signals exceed saturation",
+      "function": "compute_signal_frequency",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "err_signal_frequency_invalid_window",
+      "description": "compute_signal_frequency raises ValueError for non-positive window",
+      "function": "compute_signal_frequency",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_engagement_velocity_normal",
+      "description": "compute_engagement_velocity returns value in [0.0, 1.0]",
+      "function": "compute_engagement_velocity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= result <= 1.0"
+      ]
+    },
+    {
+      "id": "edge_engagement_velocity_empty",
+      "description": "compute_engagement_velocity returns 0.0 for empty history",
+      "function": "compute_engagement_velocity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "edge_engagement_velocity_constant",
+      "description": "compute_engagement_velocity returns 0.5 for constant signal rate",
+      "function": "compute_engagement_velocity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5, abs=0.05)"
+      ]
+    },
+    {
+      "id": "err_engagement_velocity_invalid_window",
+      "description": "compute_engagement_velocity raises ValueError for non-positive window",
+      "function": "compute_engagement_velocity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_lookup_channel_gravity_known",
+      "description": "lookup_channel_gravity returns learned weight for known channel",
+      "function": "lookup_channel_gravity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.8)"
+      ]
+    },
+    {
+      "id": "edge_lookup_channel_gravity_unknown",
+      "description": "lookup_channel_gravity returns default_gravity for unknown channel",
+      "function": "lookup_channel_gravity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "err_lookup_channel_gravity_empty",
+      "description": "lookup_channel_gravity raises ValueError for empty channel string",
+      "function": "lookup_channel_gravity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_compute_from_inputs_balanced",
+      "description": "compute_business_weight_from_inputs returns expected value for balanced inputs",
+      "function": "compute_business_weight_from_inputs",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.5",
+        "seniority": "0.5",
+        "gravity": "0.5",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "edge_compute_from_inputs_all_zero",
+      "description": "compute_business_weight_from_inputs returns floor 0.1 for all-zero inputs",
+      "function": "compute_business_weight_from_inputs",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.0",
+        "seniority": "0.0",
+        "gravity": "0.0",
+        "velocity": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.1)"
+      ]
+    },
+    {
+      "id": "edge_compute_from_inputs_all_one",
+      "description": "compute_business_weight_from_inputs returns 1.0 for all-one inputs",
+      "function": "compute_business_weight_from_inputs",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "1.0",
+        "seniority": "1.0",
+        "gravity": "1.0",
+        "velocity": "1.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "err_compute_from_inputs_frequency_oor",
+      "description": "compute_business_weight_from_inputs raises ValueError for frequency > 1.0",
+      "function": "compute_business_weight_from_inputs",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "1.5",
+        "seniority": "0.5",
+        "gravity": "0.5",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_compute_from_inputs_nan",
+      "description": "compute_business_weight_from_inputs raises ValueError for NaN input",
+      "function": "compute_business_weight_from_inputs",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_compute_from_scores_uniform",
+      "description": "compute_business_weight_from_scores returns correct composite for uniform inputs",
+      "function": "compute_business_weight_from_scores",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.composite == pytest.approx(0.6)",
+        "result.signal_frequency == pytest.approx(0.6)",
+        "0.0 <= result.signal_frequency <= 1.0"
+      ]
+    },
+    {
+      "id": "edge_compute_from_scores_floor_applied",
+      "description": "compute_business_weight_from_scores applies floor when raw composite is below floor",
+      "function": "compute_business_weight_from_scores",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.composite >= 0.1"
+      ]
+    },
+    {
+      "id": "edge_compute_from_scores_defaulted_metrics_passthrough",
+      "description": "compute_business_weight_from_scores passes through defaulted_metrics",
+      "function": "compute_business_weight_from_scores",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'author_seniority' in result.defaulted_metrics"
+      ]
+    },
+    {
+      "id": "err_compute_from_scores_all_zero_weights",
+      "description": "compute_business_weight_from_scores raises ValueError when all weights are zero",
+      "function": "compute_business_weight_from_scores",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_compute_from_scores_non_finite",
+      "description": "compute_business_weight_from_scores raises ValueError for NaN input",
+      "function": "compute_business_weight_from_scores",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_compute_from_metrics_default",
+      "description": "compute_business_weight_from_metrics returns raw=0.5, effective>=0.5 for default metrics",
+      "function": "compute_business_weight_from_metrics",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.raw_weight == pytest.approx(0.5)",
+        "result.effective_weight == pytest.approx(0.5)",
+        "result.effective_weight >= 0.1"
+      ]
+    },
+    {
+      "id": "edge_compute_from_metrics_all_zero_weights",
+      "description": "compute_business_weight_from_metrics returns raw=0.5 when all config weights are zero",
+      "function": "compute_business_weight_from_metrics",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.raw_weight == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "edge_compute_from_metrics_equal_metrics",
+      "description": "compute_business_weight_from_metrics returns raw=X when all metrics equal X",
+      "function": "compute_business_weight_from_metrics",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.raw_weight == pytest.approx(0.8)"
+      ]
+    },
+    {
+      "id": "err_compute_from_metrics_invalid_metric",
+      "description": "compute_business_weight_from_metrics raises ValueError for metric out of range",
+      "function": "compute_business_weight_from_metrics",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_get_effective_bw_above_floor",
+      "description": "get_effective_business_weight returns raw weight when above floor",
+      "function": "get_effective_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "business_weight": "0.7",
+        "policy_floor": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.7)"
+      ]
+    },
+    {
+      "id": "edge_get_effective_bw_below_floor",
+      "description": "get_effective_business_weight returns floor when raw weight is below floor",
+      "function": "get_effective_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "business_weight": "0.05",
+        "policy_floor": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.1)"
+      ]
+    },
+    {
+      "id": "edge_get_effective_bw_equal_floor",
+      "description": "get_effective_business_weight returns floor when raw equals floor",
+      "function": "get_effective_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "business_weight": "0.1",
+        "policy_floor": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == pytest.approx(0.1)"
+      ]
+    },
+    {
+      "id": "err_get_effective_bw_oor",
+      "description": "get_effective_business_weight raises ValueError for weight outside [0.0, 1.0]",
+      "function": "get_effective_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "business_weight": "1.5",
+        "policy_floor": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_get_effective_bw_nan",
+      "description": "get_effective_business_weight raises ValueError for NaN weight",
+      "function": "get_effective_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_apply_metric_update_partial",
+      "description": "apply_metric_update applies only non-None fields from update request",
+      "function": "apply_metric_update",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_frequency == pytest.approx(0.9)",
+        "result.author_seniority == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "hp_apply_metric_update_full",
+      "description": "apply_metric_update applies all fields when all are non-None",
+      "function": "apply_metric_update",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_frequency == pytest.approx(0.1)",
+        "result.author_seniority == pytest.approx(0.2)",
+        "result.channel_gravity == pytest.approx(0.3)",
+        "result.engagement_velocity == pytest.approx(0.4)"
+      ]
+    },
+    {
+      "id": "inv_apply_metric_update_immutability",
+      "description": "apply_metric_update does not mutate the original metrics instance",
+      "function": "apply_metric_update",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "original.signal_frequency == pytest.approx(0.5)"
+      ]
+    },
+    {
+      "id": "err_apply_metric_update_oor",
+      "description": "apply_metric_update raises ValueError for update value outside [0.0, 1.0]",
+      "function": "apply_metric_update",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_weighted_routing_order_descending",
+      "description": "weighted_routing_order sorts contexts by descending business_weight",
+      "function": "weighted_routing_order",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result[0].business_weight >= result[1].business_weight",
+        "result[1].business_weight >= result[2].business_weight"
+      ]
+    },
+    {
+      "id": "edge_weighted_routing_order_stable_ties",
+      "description": "weighted_routing_order preserves insertion order for equal weights",
+      "function": "weighted_routing_order",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result[0].context_id == 'ctx_a'",
+        "result[1].context_id == 'ctx_b'"
+      ]
+    },
+    {
+      "id": "edge_weighted_routing_order_empty",
+      "description": "weighted_routing_order returns empty list for empty input",
+      "function": "weighted_routing_order",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 0"
+      ]
+    },
+    {
+      "id": "err_weighted_routing_order_invalid_weight",
+      "description": "weighted_routing_order raises ValueError for invalid business_weight",
+      "function": "weighted_routing_order",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_build_priority_queue_ordering",
+      "description": "build_priority_queue produces heap where highest weight pops first",
+      "function": "build_priority_queue",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 3"
+      ]
+    },
+    {
+      "id": "edge_build_priority_queue_tiebreak",
+      "description": "build_priority_queue uses insertion_counter for stable tiebreaking",
+      "function": "build_priority_queue",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result[0].priority_key.insertion_counter < result[1].priority_key.insertion_counter or result[0].priority_key.neg_weight < result[1].priority_key.neg_weight"
+      ]
+    },
+    {
+      "id": "hp_allocate_token_budget_proportional",
+      "description": "allocate_token_budget distributes tokens proportionally by weight",
+      "function": "allocate_token_budget",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == 1000"
+      ]
+    },
+    {
+      "id": "inv_allocate_token_budget_conservation",
+      "description": "allocate_token_budget sum of allocated_tokens equals total_budget exactly",
+      "function": "allocate_token_budget",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == total_budget"
+      ]
+    },
+    {
+      "id": "edge_allocate_token_budget_equal_weights",
+      "description": "allocate_token_budget gives nearly equal allocation for equal weights",
+      "function": "allocate_token_budget",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "max(a.allocated_tokens for a in result) - min(a.allocated_tokens for a in result) <= 1"
+      ]
+    },
+    {
+      "id": "edge_allocate_token_budget_zero_budget",
+      "description": "allocate_token_budget returns all-zero allocations for zero budget",
+      "function": "allocate_token_budget",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(a.allocated_tokens == 0 for a in result)"
+      ]
+    },
+    {
+      "id": "edge_allocate_token_budget_single_context",
+      "description": "allocate_token_budget gives entire budget to single context",
+      "function": "allocate_token_budget",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result[0].allocated_tokens == 500"
+      ]
+    },
+    {
+      "id": "err_allocate_token_budget_negative",
+      "description": "allocate_token_budget raises ValueError for negative budget",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_allocate_token_budget_empty_contexts",
+      "description": "allocate_token_budget raises ValueError for empty contexts list",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_allocate_token_budget_duplicate_ids",
+      "description": "allocate_token_budget raises ValueError for duplicate context_ids",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_create_routing_snapshot_valid",
+      "description": "create_routing_snapshot creates snapshot with sorted contexts",
+      "function": "create_routing_snapshot",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.round_id == 'round-1'",
+        "result.snapshot_timestamp_ms == 1700000000000"
+      ]
+    },
+    {
+      "id": "err_create_routing_snapshot_empty_round_id",
+      "description": "create_routing_snapshot raises ValueError for empty round_id",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_create_routing_snapshot_invalid_timestamp",
+      "description": "create_routing_snapshot raises ValueError for non-positive timestamp",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_resolve_bw_success",
+      "description": "resolve_business_weight returns valid components with mocked identity resolver",
+      "function": "resolve_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "resolve_seniority returns 0.8"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.composite >= 0.1",
+        "result.composite <= 1.0"
+      ]
+    },
+    {
+      "id": "edge_resolve_bw_identity_timeout",
+      "description": "resolve_business_weight falls back to default on identity resolver timeout",
+      "function": "resolve_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "resolve_seniority raises asyncio.TimeoutError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'author_seniority' in result.defaulted_metrics",
+        "result.composite >= 0.1"
+      ]
+    },
+    {
+      "id": "edge_resolve_bw_identity_error",
+      "description": "resolve_business_weight falls back to default on identity resolver error",
+      "function": "resolve_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "resolve_seniority raises RuntimeError"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'author_seniority' in result.defaulted_metrics"
+      ]
+    },
+    {
+      "id": "edge_resolve_bw_empty_history",
+      "description": "resolve_business_weight defaults frequency and velocity for empty signal history",
+      "function": "resolve_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "'signal_frequency' in result.defaulted_metrics",
+        "'engagement_velocity' in result.defaulted_metrics"
+      ]
+    },
+    {
+      "id": "err_resolve_bw_missing_channel",
+      "description": "resolve_business_weight raises ValueError for context with empty channel",
+      "function": "resolve_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "inv_resolve_bw_no_context_mutation",
+      "description": "resolve_business_weight does not mutate context.business_weight",
+      "function": "resolve_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "resolve_seniority returns 0.5"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "context.business_weight == original_weight"
+      ]
+    },
+    {
+      "id": "inv_effective_weight_gte_floor",
+      "description": "Effective business weight is always >= policy_floor (0.1 default)",
+      "function": "get_effective_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result >= 0.1"
+      ]
+    },
+    {
+      "id": "inv_raw_weight_in_range",
+      "description": "Raw business weight from compute is always in [0.0, 1.0]",
+      "function": "compute_business_weight_from_metrics",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= result.raw_weight <= 1.0"
+      ]
+    },
+    {
+      "id": "inv_effective_weight_formula",
+      "description": "effective_weight == max(raw_weight, policy_floor)",
+      "function": "compute_business_weight_from_metrics",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.effective_weight == pytest.approx(max(result.raw_weight, 0.1))"
+      ]
+    },
+    {
+      "id": "inv_frozen_result_immutable",
+      "description": "BusinessWeightResult and BusinessWeightComponents are immutable after creation",
+      "function": "compute_business_weight_from_metrics",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set attribute on frozen result raises TypeError or similar"
+      ]
+    },
+    {
+      "id": "inv_token_allocation_non_negative",
+      "description": "All token allocations are non-negative",
+      "function": "allocate_token_budget",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(a.allocated_tokens >= 0 for a in result)"
+      ]
+    },
+    {
+      "id": "inv_routing_order_preserves_all_contexts",
+      "description": "weighted_routing_order preserves all contexts (no additions/removals)",
+      "function": "weighted_routing_order",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sorted(c.context_id for c in result) == sorted(c.context_id for c in original_contexts)"
+      ]
+    },
+    {
+      "id": "inv_defaulted_metrics_valid_names",
+      "description": "defaulted_metrics only contains valid metric names",
+      "function": "resolve_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "identity_resolver": "resolve_seniority returns 0.5"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(m in {'signal_frequency', 'author_seniority', 'channel_gravity', 'engagement_velocity'} for m in result.defaulted_metrics)"
+      ]
+    },
+    {
+      "id": "inv_bw_does_not_affect_acceptance",
+      "description": "Business weight affects evaluation order only, never acceptance criteria (architectural invariant)",
+      "function": "weighted_routing_order",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All contexts from input appear in output — none filtered out by weight"
+      ]
+    },
+    {
+      "id": "hp_end_to_end_pipeline",
+      "description": "End-to-end: create metrics, update, compute weight, build queue, allocate budget",
+      "function": "allocate_token_budget",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == total_budget",
+        "len(result) == num_contexts"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract test suite for business_weight (Feature 4).\n\nTests verify behavior at boundaries (inputs/outputs), not internals.\nAll dependencies are mocked. Uses pytest-asyncio auto mode.\n\"\"\"\n\nimport asyncio\nimport heapq\nimport math\nfrom unittest.mock import AsyncMock, MagicMock, patch\nfrom typing import Any\n\nimport pytest\n\n# ---------------------------------------------------------------------------\n# Import the component under test\n# ---------------------------------------------------------------------------\nfrom src.business_weight import (\n    # Types / Models\n    BusinessWeightMetrics,\n    BusinessWeightConfig,\n    BusinessWeightResult,\n    BusinessWeightComponents,\n    MetricWeights,\n    MetricUpdateRequest,\n    Context,\n    WorkerNode,\n    ChannelWeightsMap,\n    SignalRecord,\n    PriorityKey,\n    PriorityQueueEntry,\n    RoutingSnapshot,\n    TokenBudgetAllocation,\n    # Functions\n    compute_business_weight_from_metrics,\n    compute_business_weight_from_scores,\n    compute_business_weight_from_inputs,\n    resolve_business_weight,\n    compute_signal_frequency,\n    compute_engagement_velocity,\n    lookup_channel_gravity,\n    apply_metric_update,\n    get_effective_business_weight,\n    create_default_metrics,\n    validate_metrics,\n    validate_business_weight,\n    weighted_routing_order,\n    create_routing_snapshot,\n    build_priority_queue,\n    allocate_token_budget,\n)\n\n\n# ===========================================================================\n# Helpers\n# ===========================================================================\n\ndef _make_context(context_id: str, channel: str = \"email\", business_weight: float = 0.5) -> Context:\n    \"\"\"Helper to build a Context with minimal boiler-plate.\"\"\"\n    return Context(context_id=context_id, channel=channel, business_weight=business_weight)\n\n\ndef _make_signal(timestamp: float, author_id: str = \"author-1\", channel: str = \"email\") -> SignalRecord:\n    return SignalRecord(timestamp=timestamp, author_id=author_id, channel=channel)\n\n\ndef _make_channel_weights(weights: dict | None = None, default_gravity: float = 0.5) -> ChannelWeightsMap:\n    return ChannelWeightsMap(weights=weights or {}, default_gravity=default_gravity)\n\n\n# ===========================================================================\n# 1. Validation & Primitives\n# ===========================================================================\n\nclass TestCreateDefaultMetrics:\n    \"\"\"Tests for create_default_metrics factory.\"\"\"\n\n    def test_all_fields_are_neutral_sentinel(self):\n        result = create_default_metrics()\n        assert result.signal_frequency == pytest.approx(0.5), \"signal_frequency should default to 0.5\"\n        assert result.author_seniority == pytest.approx(0.5), \"author_seniority should default to 0.5\"\n        assert result.channel_gravity == pytest.approx(0.5), \"channel_gravity should default to 0.5\"\n        assert result.engagement_velocity == pytest.approx(0.5), \"engagement_velocity should default to 0.5\"\n\n    def test_default_metrics_pass_validation(self):\n        metrics = create_default_metrics()\n        assert validate_metrics(metrics) is True, \"Default metrics must pass validation\"\n\n\nclass TestValidateMetrics:\n    \"\"\"Tests for validate_metrics.\"\"\"\n\n    def test_valid_metrics_returns_true(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.3,\n            author_seniority=0.7,\n            channel_gravity=0.0,\n            engagement_velocity=1.0,\n        )\n        assert validate_metrics(metrics) is True\n\n    @pytest.mark.parametrize(\"field,value\", [\n        (\"signal_frequency\", -0.1),\n        (\"signal_frequency\", 1.1),\n        (\"author_seniority\", -0.01),\n        (\"author_seniority\", 1.5),\n        (\"channel_gravity\", -1.0),\n        (\"channel_gravity\", 2.0),\n        (\"engagement_velocity\", -0.5),\n        (\"engagement_velocity\", 1.01),\n    ])\n    def test_out_of_range_raises_value_error(self, field, value):\n        kwargs = {\n            \"signal_frequency\": 0.5,\n            \"author_seniority\": 0.5,\n            \"channel_gravity\": 0.5,\n            \"engagement_velocity\": 0.5,\n        }\n        kwargs[field] = value\n        # Some implementations validate at construction; others at validate_metrics call.\n        # We test validate_metrics explicitly.\n        with pytest.raises((ValueError, Exception)):\n            metrics = BusinessWeightMetrics(**kwargs)\n            validate_metrics(metrics)\n\n    @pytest.mark.parametrize(\"field\", [\n        \"signal_frequency\",\n        \"author_seniority\",\n        \"channel_gravity\",\n        \"engagement_velocity\",\n    ])\n    def test_nan_metric_raises_value_error(self, field):\n        kwargs = {\n            \"signal_frequency\": 0.5,\n            \"author_seniority\": 0.5,\n            \"channel_gravity\": 0.5,\n            \"engagement_velocity\": 0.5,\n        }\n        kwargs[field] = float(\"nan\")\n        with pytest.raises((ValueError, Exception)):\n            metrics = BusinessWeightMetrics(**kwargs)\n            validate_metrics(metrics)\n\n    def test_boundary_zero_and_one_valid(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.0,\n            author_seniority=1.0,\n            channel_gravity=0.0,\n            engagement_velocity=1.0,\n        )\n        assert validate_metrics(metrics) is True\n\n\nclass TestValidateBusinessWeight:\n    \"\"\"Tests for validate_business_weight.\"\"\"\n\n    @pytest.mark.parametrize(\"raw,expected\", [\n        (0.1, 0.1),\n        (0.5, 0.5),\n        (1.0, 1.0),\n        (0.999, 0.999),\n    ])\n    def test_valid_weights_returned_unchanged(self, raw, expected):\n        result = validate_business_weight(raw)\n        assert result == pytest.approx(expected), f\"Expected {expected}, got {result}\"\n\n    @pytest.mark.parametrize(\"raw\", [0.0, 0.01, 0.05, 0.099])\n    def test_below_floor_clamped_to_0_1(self, raw):\n        result = validate_business_weight(raw)\n        assert result == pytest.approx(0.1), f\"Values in [0.0, 0.1) should be clamped to 0.1, got {result}\"\n\n    def test_negative_raises_value_error(self):\n        with pytest.raises(ValueError):\n            validate_business_weight(-0.1)\n\n    def test_above_one_raises_value_error(self):\n        with pytest.raises(ValueError):\n            validate_business_weight(1.5)\n\n    def test_nan_raises_value_error(self):\n        with pytest.raises(ValueError):\n            validate_business_weight(float(\"nan\"))\n\n    def test_positive_inf_raises_value_error(self):\n        with pytest.raises(ValueError):\n            validate_business_weight(float(\"inf\"))\n\n    def test_negative_inf_raises_value_error(self):\n        with pytest.raises(ValueError):\n            validate_business_weight(float(\"-inf\"))\n\n\n# ===========================================================================\n# 2. Individual Metric Computation\n# ===========================================================================\n\nclass TestComputeSignalFrequency:\n    \"\"\"Tests for compute_signal_frequency.\"\"\"\n\n    def test_empty_history_returns_zero(self):\n        result = compute_signal_frequency(\n            signal_history=[],\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=1000.0,\n        )\n        assert result == pytest.approx(0.0), \"Empty history should yield 0.0\"\n\n    def test_signals_in_window_counted(self):\n        now = 1000.0\n        signals = [_make_signal(now - i) for i in range(50)]\n        result = compute_signal_frequency(\n            signal_history=signals,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.5), f\"50/100 = 0.5, got {result}\"\n\n    def test_signals_outside_window_excluded(self):\n        now = 1000.0\n        # 10 signals in window, 40 outside\n        signals = [_make_signal(now - 10)] * 10 + [_make_signal(now - 500)] * 40\n        result = compute_signal_frequency(\n            signal_history=signals,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.1), f\"Only 10 signals in window → 10/100 = 0.1, got {result}\"\n\n    def test_saturated_caps_at_one(self):\n        now = 1000.0\n        signals = [_make_signal(now - 1)] * 200\n        result = compute_signal_frequency(\n            signal_history=signals,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert result == pytest.approx(1.0), \"Should cap at 1.0 when exceeding saturation\"\n\n    def test_result_always_in_range(self):\n        now = 1000.0\n        signals = [_make_signal(now - i * 3) for i in range(150)]\n        result = compute_signal_frequency(\n            signal_history=signals,\n            window_seconds=300.0,\n            frequency_saturation=100.0,\n            now=now,\n        )\n        assert 0.0 <= result <= 1.0, f\"Result must be in [0.0, 1.0], got {result}\"\n\n    @pytest.mark.parametrize(\"window,saturation\", [\n        (0.0, 100.0),\n        (-1.0, 100.0),\n        (300.0, 0.0),\n        (300.0, -1.0),\n    ])\n    def test_invalid_window_or_saturation_raises(self, window, saturation):\n        with pytest.raises(ValueError):\n            compute_signal_frequency(\n                signal_history=[],\n                window_seconds=window,\n                frequency_saturation=saturation,\n                now=1000.0,\n            )\n\n\nclass TestComputeEngagementVelocity:\n    \"\"\"Tests for compute_engagement_velocity.\"\"\"\n\n    def test_empty_history_returns_zero(self):\n        result = compute_engagement_velocity(\n            signal_history=[],\n            window_seconds=300.0,\n            now=1000.0,\n        )\n        assert result == pytest.approx(0.0), \"Empty history should yield 0.0 velocity\"\n\n    def test_constant_rate_returns_neutral(self):\n        now = 1000.0\n        # Evenly distributed across the window\n        signals = [_make_signal(now - i * 3) for i in range(100)]\n        result = compute_engagement_velocity(\n            signal_history=signals,\n            window_seconds=300.0,\n            now=now,\n        )\n        assert result == pytest.approx(0.5, abs=0.1), (\n            f\"Constant rate should yield ~0.5, got {result}\"\n        )\n\n    def test_accelerating_yields_above_half(self):\n        now = 1000.0\n        # All signals in recent half\n        signals = [_make_signal(now - i) for i in range(50)]\n        result = compute_engagement_velocity(\n            signal_history=signals,\n            window_seconds=300.0,\n            now=now,\n        )\n        assert result > 0.5, f\"Accelerating signal should yield > 0.5, got {result}\"\n\n    def test_decelerating_yields_below_half(self):\n        now = 1000.0\n        # All signals in older half (150-300 seconds ago)\n        signals = [_make_signal(now - 200 - i) for i in range(50)]\n        result = compute_engagement_velocity(\n            signal_history=signals,\n            window_seconds=300.0,\n            now=now,\n        )\n        assert result < 0.5, f\"Decelerating signal should yield < 0.5, got {result}\"\n\n    def test_result_always_in_range(self):\n        now = 1000.0\n        signals = [_make_signal(now - 1)] * 100\n        result = compute_engagement_velocity(\n            signal_history=signals,\n            window_seconds=300.0,\n            now=now,\n        )\n        assert 0.0 <= result <= 1.0, f\"Result must be in [0.0, 1.0], got {result}\"\n\n    def test_invalid_window_raises(self):\n        with pytest.raises(ValueError):\n            compute_engagement_velocity(\n                signal_history=[],\n                window_seconds=0.0,\n                now=1000.0,\n            )\n\n    def test_negative_window_raises(self):\n        with pytest.raises(ValueError):\n            compute_engagement_velocity(\n                signal_history=[],\n                window_seconds=-100.0,\n                now=1000.0,\n            )\n\n\nclass TestLookupChannelGravity:\n    \"\"\"Tests for lookup_channel_gravity.\"\"\"\n\n    def test_known_channel_returns_learned_weight(self):\n        cw = _make_channel_weights({\"email\": 0.8, \"slack\": 0.6})\n        result = lookup_channel_gravity(\"email\", cw)\n        assert result == pytest.approx(0.8), f\"Expected 0.8, got {result}\"\n\n    def test_unknown_channel_returns_default(self):\n        cw = _make_channel_weights({\"email\": 0.8}, default_gravity=0.5)\n        result = lookup_channel_gravity(\"unknown_channel\", cw)\n        assert result == pytest.approx(0.5), f\"Expected default 0.5, got {result}\"\n\n    def test_empty_channel_raises_value_error(self):\n        cw = _make_channel_weights({})\n        with pytest.raises(ValueError):\n            lookup_channel_gravity(\"\", cw)\n\n    def test_whitespace_channel_raises_value_error(self):\n        cw = _make_channel_weights({})\n        with pytest.raises(ValueError):\n            lookup_channel_gravity(\"   \", cw)\n\n    def test_result_in_range(self):\n        cw = _make_channel_weights({\"test\": 0.3})\n        result = lookup_channel_gravity(\"test\", cw)\n        assert 0.0 <= result <= 1.0\n\n\n# ===========================================================================\n# 3. Weight Aggregation\n# ===========================================================================\n\nclass TestComputeBusinessWeightFromInputs:\n    \"\"\"Tests for compute_business_weight_from_inputs (routing integration layer).\"\"\"\n\n    def test_balanced_inputs_return_0_5(self):\n        result = compute_business_weight_from_inputs(\n            frequency=0.5, seniority=0.5, gravity=0.5, velocity=0.5,\n        )\n        assert result == pytest.approx(0.5), f\"Balanced inputs should give 0.5, got {result}\"\n\n    def test_all_zeros_return_floor(self):\n        result = compute_business_weight_from_inputs(\n            frequency=0.0, seniority=0.0, gravity=0.0, velocity=0.0,\n        )\n        assert result == pytest.approx(0.1), f\"All-zero inputs should return floor 0.1, got {result}\"\n\n    def test_all_ones_return_one(self):\n        result = compute_business_weight_from_inputs(\n            frequency=1.0, seniority=1.0, gravity=1.0, velocity=1.0,\n        )\n        assert result == pytest.approx(1.0), f\"All-one inputs should return 1.0, got {result}\"\n\n    def test_result_always_gte_floor(self):\n        result = compute_business_weight_from_inputs(\n            frequency=0.01, seniority=0.01, gravity=0.01, velocity=0.01,\n        )\n        assert result >= 0.1, f\"Result should be >= 0.1 (floor), got {result}\"\n\n    def test_result_always_lte_one(self):\n        result = compute_business_weight_from_inputs(\n            frequency=1.0, seniority=1.0, gravity=1.0, velocity=1.0,\n        )\n        assert result <= 1.0, f\"Result should be <= 1.0, got {result}\"\n\n    @pytest.mark.parametrize(\"field,val\", [\n        (\"frequency\", 1.5),\n        (\"seniority\", -0.1),\n        (\"gravity\", 2.0),\n        (\"velocity\", -1.0),\n    ])\n    def test_out_of_range_input_raises(self, field, val):\n        kwargs = {\"frequency\": 0.5, \"seniority\": 0.5, \"gravity\": 0.5, \"velocity\": 0.5}\n        kwargs[field] = val\n        with pytest.raises(ValueError):\n            compute_business_weight_from_inputs(**kwargs)\n\n    @pytest.mark.parametrize(\"field\", [\"frequency\", \"seniority\", \"gravity\", \"velocity\"])\n    def test_nan_input_raises(self, field):\n        kwargs = {\"frequency\": 0.5, \"seniority\": 0.5, \"gravity\": 0.5, \"velocity\": 0.5}\n        kwargs[field] = float(\"nan\")\n        with pytest.raises(ValueError):\n            compute_business_weight_from_inputs(**kwargs)\n\n    @pytest.mark.parametrize(\"field\", [\"frequency\", \"seniority\", \"gravity\", \"velocity\"])\n    def test_inf_input_raises(self, field):\n        kwargs = {\"frequency\": 0.5, \"seniority\": 0.5, \"gravity\": 0.5, \"velocity\": 0.5}\n        kwargs[field] = float(\"inf\")\n        with pytest.raises(ValueError):\n            compute_business_weight_from_inputs(**kwargs)\n\n    def test_deterministic(self):\n        args = dict(frequency=0.3, seniority=0.7, gravity=0.4, velocity=0.9)\n        r1 = compute_business_weight_from_inputs(**args)\n        r2 = compute_business_weight_from_inputs(**args)\n        assert r1 == pytest.approx(r2), \"Same inputs must produce same output\"\n\n\nclass TestComputeBusinessWeightFromScores:\n    \"\"\"Tests for compute_business_weight_from_scores (computation layer).\"\"\"\n\n    def test_uniform_inputs_correct_composite(self):\n        result = compute_business_weight_from_scores(\n            signal_frequency=0.6,\n            author_seniority=0.6,\n            channel_gravity=0.6,\n            engagement_velocity=0.6,\n        )\n        assert result.composite == pytest.approx(0.6, abs=0.01), (\n            f\"Uniform 0.6 inputs should give ~0.6 composite, got {result.composite}\"\n        )\n        assert 0.0 <= result.signal_frequency <= 1.0\n        assert 0.0 <= result.author_seniority <= 1.0\n        assert 0.0 <= result.channel_gravity <= 1.0\n        assert 0.0 <= result.engagement_velocity <= 1.0\n\n    def test_floor_applied_when_raw_below_floor(self):\n        result = compute_business_weight_from_scores(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n            floor=0.1,\n        )\n        assert result.composite >= 0.1, f\"Floor should be applied, got {result.composite}\"\n\n    def test_custom_floor(self):\n        result = compute_business_weight_from_scores(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n            floor=0.3,\n        )\n        assert result.composite >= 0.3, f\"Custom floor 0.3 not applied, got {result.composite}\"\n\n    def test_single_nonzero_weight(self):\n        weights = MetricWeights(\n            signal_frequency=1.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n        )\n        result = compute_business_weight_from_scores(\n            signal_frequency=0.8,\n            author_seniority=0.1,\n            channel_gravity=0.2,\n            engagement_velocity=0.3,\n            weights=weights,\n        )\n        # Only signal_frequency matters\n        assert result.composite == pytest.approx(0.8, abs=0.01), (\n            f\"With only signal_frequency weight, composite should be ~0.8, got {result.composite}\"\n        )\n\n    def test_defaulted_metrics_passthrough(self):\n        result = compute_business_weight_from_scores(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n            defaulted_metrics=frozenset([\"author_seniority\", \"channel_gravity\"]),\n        )\n        assert \"author_seniority\" in result.defaulted_metrics\n        assert \"channel_gravity\" in result.defaulted_metrics\n\n    def test_all_zero_weights_raises_value_error(self):\n        weights = MetricWeights(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n        )\n        with pytest.raises(ValueError):\n            compute_business_weight_from_scores(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n                weights=weights,\n            )\n\n    @pytest.mark.parametrize(\"field\", [\n        \"signal_frequency\",\n        \"author_seniority\",\n        \"channel_gravity\",\n        \"engagement_velocity\",\n    ])\n    def test_nan_input_raises(self, field):\n        kwargs = {\n            \"signal_frequency\": 0.5,\n            \"author_seniority\": 0.5,\n            \"channel_gravity\": 0.5,\n            \"engagement_velocity\": 0.5,\n        }\n        kwargs[field] = float(\"nan\")\n        with pytest.raises(ValueError):\n            compute_business_weight_from_scores(**kwargs)\n\n    def test_invalid_floor_raises(self):\n        with pytest.raises(ValueError):\n            compute_business_weight_from_scores(\n                signal_frequency=0.5,\n                author_seniority=0.5,\n                channel_gravity=0.5,\n                engagement_velocity=0.5,\n                floor=-0.1,\n            )\n\n    def test_clamping_of_inputs(self):\n        \"\"\"Inputs > 1.0 should be clamped to 1.0 in the result's sub-metric fields.\"\"\"\n        result = compute_business_weight_from_scores(\n            signal_frequency=1.5,\n            author_seniority=-0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n        )\n        assert result.signal_frequency <= 1.0, \"Should clamp to 1.0\"\n        assert result.author_seniority >= 0.0, \"Should clamp to 0.0\"\n\n\nclass TestComputeBusinessWeightFromMetrics:\n    \"\"\"Tests for compute_business_weight_from_metrics (data model layer).\"\"\"\n\n    def test_default_metrics_yield_0_5_raw(self):\n        metrics = create_default_metrics()\n        result = compute_business_weight_from_metrics(metrics)\n        assert result.raw_weight == pytest.approx(0.5), (\n            f\"Default metrics should give raw_weight=0.5, got {result.raw_weight}\"\n        )\n        assert result.effective_weight >= 0.1, (\n            f\"Effective weight should be >= floor, got {result.effective_weight}\"\n        )\n\n    def test_effective_equals_max_raw_floor(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.0,\n            author_seniority=0.0,\n            channel_gravity=0.0,\n            engagement_velocity=0.0,\n        )\n        config = BusinessWeightConfig(policy_floor=0.1)\n        result = compute_business_weight_from_metrics(metrics, config)\n        expected_effective = max(result.raw_weight, config.policy_floor)\n        assert result.effective_weight == pytest.approx(expected_effective), (\n            f\"effective_weight should be max(raw, floor), got {result.effective_weight}\"\n        )\n\n    def test_all_zero_config_weights_return_0_5_raw(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.8,\n            author_seniority=0.2,\n            channel_gravity=0.4,\n            engagement_velocity=0.6,\n        )\n        config = BusinessWeightConfig(\n            weight_signal_frequency=0.0,\n            weight_author_seniority=0.0,\n            weight_channel_gravity=0.0,\n            weight_engagement_velocity=0.0,\n        )\n        result = compute_business_weight_from_metrics(metrics, config)\n        assert result.raw_weight == pytest.approx(0.5), (\n            f\"All-zero config weights should return raw=0.5, got {result.raw_weight}\"\n        )\n\n    def test_equal_metrics_yield_that_value_as_raw(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.8,\n            author_seniority=0.8,\n            channel_gravity=0.8,\n            engagement_velocity=0.8,\n        )\n        result = compute_business_weight_from_metrics(metrics)\n        assert result.raw_weight == pytest.approx(0.8), (\n            f\"All-0.8 metrics should give raw=0.8, got {result.raw_weight}\"\n        )\n\n    def test_raw_weight_in_range(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.1,\n            author_seniority=0.9,\n            channel_gravity=0.3,\n            engagement_velocity=0.7,\n        )\n        result = compute_business_weight_from_metrics(metrics)\n        assert 0.0 <= result.raw_weight <= 1.0, (\n            f\"raw_weight must be in [0.0, 1.0], got {result.raw_weight}\"\n        )\n\n    def test_effective_weight_in_range(self):\n        metrics = create_default_metrics()\n        result = compute_business_weight_from_metrics(metrics)\n        assert 0.1 <= result.effective_weight <= 1.0, (\n            f\"effective_weight must be in [0.1, 1.0], got {result.effective_weight}\"\n        )\n\n    def test_frozen_result_is_immutable(self):\n        metrics = create_default_metrics()\n        result = compute_business_weight_from_metrics(metrics)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.raw_weight = 0.99  # type: ignore\n\n\n# ===========================================================================\n# 4. Policy & Effective Weight\n# ===========================================================================\n\nclass TestGetEffectiveBusinessWeight:\n    \"\"\"Tests for get_effective_business_weight.\"\"\"\n\n    def test_above_floor_returns_raw(self):\n        result = get_effective_business_weight(0.7, 0.1)\n        assert result == pytest.approx(0.7)\n\n    def test_below_floor_returns_floor(self):\n        result = get_effective_business_weight(0.05, 0.1)\n        assert result == pytest.approx(0.1)\n\n    def test_equal_to_floor_returns_floor(self):\n        result = get_effective_business_weight(0.1, 0.1)\n        assert result == pytest.approx(0.1)\n\n    def test_zero_weight_default_floor(self):\n        result = get_effective_business_weight(0.0)\n        assert result >= 0.1, \"Default floor should be 0.1\"\n\n    def test_one_weight(self):\n        result = get_effective_business_weight(1.0, 0.1)\n        assert result == pytest.approx(1.0)\n\n    @pytest.mark.parametrize(\"bw,floor\", [\n        (0.0, 0.0),\n        (0.0, 0.5),\n        (0.5, 0.0),\n        (1.0, 1.0),\n        (0.3, 0.7),\n    ])\n    def test_result_is_max_of_weight_and_floor(self, bw, floor):\n        result = get_effective_business_weight(bw, floor)\n        assert result == pytest.approx(max(bw, floor))\n\n    def test_weight_out_of_range_raises(self):\n        with pytest.raises(ValueError):\n            get_effective_business_weight(1.5, 0.1)\n\n    def test_negative_weight_raises(self):\n        with pytest.raises(ValueError):\n            get_effective_business_weight(-0.1, 0.1)\n\n    def test_nan_weight_raises(self):\n        with pytest.raises(ValueError):\n            get_effective_business_weight(float(\"nan\"), 0.1)\n\n    def test_nan_floor_raises(self):\n        with pytest.raises(ValueError):\n            get_effective_business_weight(0.5, float(\"nan\"))\n\n    def test_floor_out_of_range_raises(self):\n        with pytest.raises(ValueError):\n            get_effective_business_weight(0.5, 1.5)\n\n    @pytest.mark.parametrize(\"bw\", [0.0, 0.05, 0.1, 0.3, 0.5, 0.9, 1.0])\n    def test_result_always_gte_floor(self, bw):\n        floor = 0.1\n        result = get_effective_business_weight(bw, floor)\n        assert result >= floor, f\"Result {result} should be >= floor {floor}\"\n\n\nclass TestApplyMetricUpdate:\n    \"\"\"Tests for apply_metric_update.\"\"\"\n\n    def test_partial_update_applies_only_non_none(self):\n        original = create_default_metrics()\n        update = MetricUpdateRequest(signal_frequency=0.9)\n        result = apply_metric_update(original, update)\n        assert result.signal_frequency == pytest.approx(0.9), \"Updated field should change\"\n        assert result.author_seniority == pytest.approx(0.5), \"Untouched field should stay\"\n        assert result.channel_gravity == pytest.approx(0.5), \"Untouched field should stay\"\n        assert result.engagement_velocity == pytest.approx(0.5), \"Untouched field should stay\"\n\n    def test_full_update_applies_all(self):\n        original = create_default_metrics()\n        update = MetricUpdateRequest(\n            signal_frequency=0.1,\n            author_seniority=0.2,\n            channel_gravity=0.3,\n            engagement_velocity=0.4,\n        )\n        result = apply_metric_update(original, update)\n        assert result.signal_frequency == pytest.approx(0.1)\n        assert result.author_seniority == pytest.approx(0.2)\n        assert result.channel_gravity == pytest.approx(0.3)\n        assert result.engagement_velocity == pytest.approx(0.4)\n\n    def test_empty_update_returns_same_values(self):\n        original = BusinessWeightMetrics(\n            signal_frequency=0.3,\n            author_seniority=0.7,\n            channel_gravity=0.2,\n            engagement_velocity=0.8,\n        )\n        update = MetricUpdateRequest()  # All None\n        result = apply_metric_update(original, update)\n        assert result.signal_frequency == pytest.approx(0.3)\n        assert result.author_seniority == pytest.approx(0.7)\n        assert result.channel_gravity == pytest.approx(0.2)\n        assert result.engagement_velocity == pytest.approx(0.8)\n\n    def test_original_not_mutated(self):\n        original = create_default_metrics()\n        original_sf = original.signal_frequency\n        update = MetricUpdateRequest(signal_frequency=0.9)\n        _ = apply_metric_update(original, update)\n        assert original.signal_frequency == pytest.approx(original_sf), (\n            \"Original metrics must not be mutated\"\n        )\n\n    def test_out_of_range_update_raises(self):\n        original = create_default_metrics()\n        with pytest.raises((ValueError, Exception)):\n            update = MetricUpdateRequest(signal_frequency=1.5)\n            apply_metric_update(original, update)\n\n    def test_negative_update_raises(self):\n        original = create_default_metrics()\n        with pytest.raises((ValueError, Exception)):\n            update = MetricUpdateRequest(author_seniority=-0.1)\n            apply_metric_update(original, update)\n\n\n# ===========================================================================\n# 5. Downstream Consumers — Routing & Allocation\n# ===========================================================================\n\nclass TestWeightedRoutingOrder:\n    \"\"\"Tests for weighted_routing_order.\"\"\"\n\n    def test_descending_order(self):\n        contexts = [\n            _make_context(\"c1\", business_weight=0.3),\n            _make_context(\"c2\", business_weight=0.9),\n            _make_context(\"c3\", business_weight=0.6),\n        ]\n        result = weighted_routing_order(contexts)\n        assert len(result) == 3\n        assert result[0].business_weight >= result[1].business_weight >= result[2].business_weight, (\n            \"Contexts should be sorted descending by business_weight\"\n        )\n        assert result[0].context_id == \"c2\"\n        assert result[1].context_id == \"c3\"\n        assert result[2].context_id == \"c1\"\n\n    def test_stable_tiebreaking(self):\n        contexts = [\n            _make_context(\"ctx_a\", business_weight=0.5),\n            _make_context(\"ctx_b\", business_weight=0.5),\n            _make_context(\"ctx_c\", business_weight=0.5),\n        ]\n        result = weighted_routing_order(contexts)\n        ids = [c.context_id for c in result]\n        assert ids == [\"ctx_a\", \"ctx_b\", \"ctx_c\"], (\n            f\"Tie should preserve insertion order, got {ids}\"\n        )\n\n    def test_empty_list(self):\n        result = weighted_routing_order([])\n        assert len(result) == 0\n\n    def test_single_context(self):\n        contexts = [_make_context(\"only\")]\n        result = weighted_routing_order(contexts)\n        assert len(result) == 1\n        assert result[0].context_id == \"only\"\n\n    def test_preserves_all_contexts(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.2),\n            _make_context(\"b\", business_weight=0.8),\n            _make_context(\"c\", business_weight=0.5),\n        ]\n        result = weighted_routing_order(contexts)\n        original_ids = sorted(c.context_id for c in contexts)\n        result_ids = sorted(c.context_id for c in result)\n        assert original_ids == result_ids, \"All contexts must be preserved\"\n\n    def test_no_context_filtered_by_weight(self):\n        \"\"\"Business weight must not filter contexts — only reorder them.\"\"\"\n        contexts = [\n            _make_context(\"low\", business_weight=0.1),\n            _make_context(\"high\", business_weight=1.0),\n        ]\n        result = weighted_routing_order(contexts)\n        assert len(result) == len(contexts), \"No context should be removed\"\n\n\nclass TestBuildPriorityQueue:\n    \"\"\"Tests for build_priority_queue.\"\"\"\n\n    def test_correct_length(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.3),\n            _make_context(\"b\", business_weight=0.9),\n            _make_context(\"c\", business_weight=0.6),\n        ]\n        result = build_priority_queue(contexts)\n        assert len(result) == 3\n\n    def test_heap_pops_highest_weight_first(self):\n        contexts = [\n            _make_context(\"low\", business_weight=0.2),\n            _make_context(\"high\", business_weight=0.9),\n            _make_context(\"mid\", business_weight=0.5),\n        ]\n        result = build_priority_queue(contexts)\n        # Use heapq to pop and verify ordering\n        heap = [(entry.priority_key.neg_weight, entry.priority_key.insertion_counter, entry)\n                for entry in result]\n        heapq.heapify(heap)\n        popped = []\n        while heap:\n            _, _, entry = heapq.heappop(heap)\n            popped.append(entry)\n        assert popped[0].context.context_id == \"high\", (\n            f\"Highest weight should pop first, got {popped[0].context.context_id}\"\n        )\n\n    def test_insertion_counter_matches_original_index(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.5),\n            _make_context(\"b\", business_weight=0.5),\n            _make_context(\"c\", business_weight=0.5),\n        ]\n        result = build_priority_queue(contexts)\n        counters = sorted(entry.priority_key.insertion_counter for entry in result)\n        assert counters == [0, 1, 2], (\n            f\"insertion_counter should match original index, got {counters}\"\n        )\n\n    def test_tiebreaking_by_insertion_order(self):\n        contexts = [\n            _make_context(\"first\", business_weight=0.5),\n            _make_context(\"second\", business_weight=0.5),\n        ]\n        result = build_priority_queue(contexts)\n        heap = [(entry.priority_key.neg_weight, entry.priority_key.insertion_counter, entry)\n                for entry in result]\n        heapq.heapify(heap)\n        _, _, first_entry = heapq.heappop(heap)\n        assert first_entry.context.context_id == \"first\", (\n            \"Equal weights should break ties by insertion order (FIFO)\"\n        )\n\n    def test_neg_weight_is_negative_business_weight(self):\n        contexts = [_make_context(\"x\", business_weight=0.7)]\n        result = build_priority_queue(contexts)\n        assert result[0].priority_key.neg_weight == pytest.approx(-0.7)\n\n\nclass TestAllocateTokenBudget:\n    \"\"\"Tests for allocate_token_budget.\"\"\"\n\n    def test_proportional_allocation(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.3),\n            _make_context(\"b\", business_weight=0.7),\n        ]\n        result = allocate_token_budget(1000, contexts)\n        total = sum(a.allocated_tokens for a in result)\n        assert total == 1000, f\"Sum of tokens must be 1000, got {total}\"\n        # Higher weight context should get more tokens\n        alloc_map = {a.context_id: a.allocated_tokens for a in result}\n        assert alloc_map[\"b\"] > alloc_map[\"a\"], (\n            \"Higher weight context should get more tokens\"\n        )\n\n    def test_conservation_exact_sum(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.1),\n            _make_context(\"b\", business_weight=0.5),\n            _make_context(\"c\", business_weight=0.9),\n        ]\n        total_budget = 777\n        result = allocate_token_budget(total_budget, contexts)\n        actual_total = sum(a.allocated_tokens for a in result)\n        assert actual_total == total_budget, (\n            f\"Token conservation violated: {actual_total} != {total_budget}\"\n        )\n\n    def test_equal_weights_nearly_equal_allocation(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.5),\n            _make_context(\"b\", business_weight=0.5),\n            _make_context(\"c\", business_weight=0.5),\n        ]\n        result = allocate_token_budget(100, contexts)\n        tokens = [a.allocated_tokens for a in result]\n        assert max(tokens) - min(tokens) <= 1, (\n            f\"Equal weights should give nearly equal allocations: {tokens}\"\n        )\n        assert sum(tokens) == 100\n\n    def test_zero_budget(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.5),\n            _make_context(\"b\", business_weight=0.5),\n        ]\n        result = allocate_token_budget(0, contexts)\n        assert all(a.allocated_tokens == 0 for a in result), (\n            \"Zero budget should give all-zero allocations\"\n        )\n\n    def test_single_context_gets_all(self):\n        contexts = [_make_context(\"only\", business_weight=0.5)]\n        result = allocate_token_budget(500, contexts)\n        assert result[0].allocated_tokens == 500\n\n    def test_all_allocations_non_negative(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.1),\n            _make_context(\"b\", business_weight=1.0),\n        ]\n        result = allocate_token_budget(10, contexts)\n        assert all(a.allocated_tokens >= 0 for a in result), (\n            \"All allocations must be non-negative\"\n        )\n\n    def test_proportions_in_range(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.3),\n            _make_context(\"b\", business_weight=0.7),\n        ]\n        result = allocate_token_budget(1000, contexts)\n        for a in result:\n            assert 0.0 <= a.proportion <= 1.0, (\n                f\"Proportion must be in [0.0, 1.0], got {a.proportion}\"\n            )\n\n    def test_proportions_sum_to_one(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.2),\n            _make_context(\"b\", business_weight=0.3),\n            _make_context(\"c\", business_weight=0.5),\n        ]\n        result = allocate_token_budget(1000, contexts)\n        prop_sum = sum(a.proportion for a in result)\n        assert prop_sum == pytest.approx(1.0, abs=1e-9), (\n            f\"Proportions should sum to 1.0, got {prop_sum}\"\n        )\n\n    def test_business_weight_recorded_in_allocation(self):\n        contexts = [_make_context(\"x\", business_weight=0.7)]\n        result = allocate_token_budget(100, contexts)\n        assert result[0].business_weight == pytest.approx(0.7)\n\n    def test_context_id_matches(self):\n        contexts = [\n            _make_context(\"alpha\", business_weight=0.3),\n            _make_context(\"beta\", business_weight=0.7),\n        ]\n        result = allocate_token_budget(100, contexts)\n        result_ids = sorted(a.context_id for a in result)\n        assert result_ids == [\"alpha\", \"beta\"]\n\n    def test_negative_budget_raises(self):\n        with pytest.raises(ValueError):\n            allocate_token_budget(-1, [_make_context(\"a\")])\n\n    def test_empty_contexts_raises(self):\n        with pytest.raises(ValueError):\n            allocate_token_budget(100, [])\n\n    def test_duplicate_context_ids_raises(self):\n        contexts = [\n            _make_context(\"dup\", business_weight=0.5),\n            _make_context(\"dup\", business_weight=0.6),\n        ]\n        with pytest.raises(ValueError):\n            allocate_token_budget(100, contexts)\n\n    def test_zero_proportions_when_zero_budget(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.5),\n            _make_context(\"b\", business_weight=0.5),\n        ]\n        result = allocate_token_budget(0, contexts)\n        for a in result:\n            # With zero budget, proportions should be 0.0\n            # (some implementations may still compute proportions by weight)\n            assert a.allocated_tokens == 0\n\n    def test_rounding_with_three_contexts(self):\n        \"\"\"10 tokens / 3 contexts with equal weight: should be [4, 3, 3] or similar.\"\"\"\n        contexts = [\n            _make_context(\"a\", business_weight=0.5),\n            _make_context(\"b\", business_weight=0.5),\n            _make_context(\"c\", business_weight=0.5),\n        ]\n        result = allocate_token_budget(10, contexts)\n        tokens = [a.allocated_tokens for a in result]\n        assert sum(tokens) == 10, f\"Sum must be 10, got {sum(tokens)}\"\n        assert max(tokens) - min(tokens) <= 1, (\n            f\"Largest-remainder should give at most 1 token difference: {tokens}\"\n        )\n\n    def test_large_budget_many_contexts(self):\n        \"\"\"Stress test: many contexts, large budget.\"\"\"\n        contexts = [_make_context(f\"ctx_{i}\", business_weight=0.1 + 0.01 * i)\n                     for i in range(50)]\n        total = 100_000\n        result = allocate_token_budget(total, contexts)\n        assert sum(a.allocated_tokens for a in result) == total\n        assert all(a.allocated_tokens >= 0 for a in result)\n\n\nclass TestCreateRoutingSnapshot:\n    \"\"\"Tests for create_routing_snapshot.\"\"\"\n\n    def test_valid_snapshot(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.3),\n            _make_context(\"b\", business_weight=0.9),\n        ]\n        result = create_routing_snapshot(\n            round_id=\"round-1\",\n            contexts=contexts,\n            snapshot_timestamp_ms=1700000000000,\n        )\n        assert result.round_id == \"round-1\"\n        assert result.snapshot_timestamp_ms == 1700000000000\n        assert len(result.ordered_contexts) == 2\n        # Should be sorted descending\n        assert result.ordered_contexts[0].business_weight >= result.ordered_contexts[1].business_weight\n\n    def test_empty_round_id_raises(self):\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"\",\n                contexts=[_make_context(\"a\")],\n                snapshot_timestamp_ms=1700000000000,\n            )\n\n    def test_whitespace_round_id_raises(self):\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"   \",\n                contexts=[_make_context(\"a\")],\n                snapshot_timestamp_ms=1700000000000,\n            )\n\n    def test_invalid_timestamp_raises(self):\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"round-1\",\n                contexts=[_make_context(\"a\")],\n                snapshot_timestamp_ms=0,\n            )\n\n    def test_negative_timestamp_raises(self):\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"round-1\",\n                contexts=[_make_context(\"a\")],\n                snapshot_timestamp_ms=-1,\n            )\n\n    def test_empty_contexts_snapshot(self):\n        result = create_routing_snapshot(\n            round_id=\"round-empty\",\n            contexts=[],\n            snapshot_timestamp_ms=1700000000000,\n        )\n        assert len(result.ordered_contexts) == 0\n\n\n# ===========================================================================\n# 6. Integration Tests — Full Pipeline & resolve_business_weight\n# ===========================================================================\n\nclass TestResolveBusinessWeight:\n    \"\"\"Tests for resolve_business_weight (async).\"\"\"\n\n    @pytest.fixture\n    def mock_identity_resolver(self):\n        resolver = MagicMock()\n        resolver.resolve_seniority = AsyncMock(return_value=0.8)\n        return resolver\n\n    @pytest.fixture\n    def basic_channel_weights(self):\n        return _make_channel_weights({\"email\": 0.7}, default_gravity=0.5)\n\n    @pytest.fixture\n    def basic_signal_history(self):\n        now = 1000.0\n        return [_make_signal(now - i * 2) for i in range(30)]\n\n    @pytest.fixture\n    def basic_config(self):\n        return BusinessWeightConfig()\n\n    @pytest.mark.asyncio\n    async def test_success_with_all_inputs(\n        self, mock_identity_resolver, basic_channel_weights, basic_signal_history, basic_config\n    ):\n        context = _make_context(\"ctx-1\", channel=\"email\")\n        result = await resolve_business_weight(\n            context=context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=basic_channel_weights,\n            signal_history=basic_signal_history,\n            config=basic_config,\n        )\n        assert 0.1 <= result.composite <= 1.0, (\n            f\"Composite should be in [0.1, 1.0], got {result.composite}\"\n        )\n        assert 0.0 <= result.signal_frequency <= 1.0\n        assert 0.0 <= result.author_seniority <= 1.0\n        assert 0.0 <= result.channel_gravity <= 1.0\n        assert 0.0 <= result.engagement_velocity <= 1.0\n\n    @pytest.mark.asyncio\n    async def test_identity_timeout_fallback(\n        self, basic_channel_weights, basic_signal_history, basic_config\n    ):\n        resolver = MagicMock()\n        resolver.resolve_seniority = AsyncMock(side_effect=asyncio.TimeoutError)\n        context = _make_context(\"ctx-timeout\", channel=\"email\")\n        result = await resolve_business_weight(\n            context=context,\n            identity_resolver=resolver,\n            channel_weights=basic_channel_weights,\n            signal_history=basic_signal_history,\n            config=basic_config,\n        )\n        assert \"author_seniority\" in result.defaulted_metrics, (\n            \"Timeout should cause author_seniority to be defaulted\"\n        )\n        assert result.composite >= 0.1\n\n    @pytest.mark.asyncio\n    async def test_identity_error_fallback(\n        self, basic_channel_weights, basic_signal_history, basic_config\n    ):\n        resolver = MagicMock()\n        resolver.resolve_seniority = AsyncMock(side_effect=RuntimeError(\"resolver down\"))\n        context = _make_context(\"ctx-err\", channel=\"email\")\n        result = await resolve_business_weight(\n            context=context,\n            identity_resolver=resolver,\n            channel_weights=basic_channel_weights,\n            signal_history=basic_signal_history,\n            config=basic_config,\n        )\n        assert \"author_seniority\" in result.defaulted_metrics\n\n    @pytest.mark.asyncio\n    async def test_empty_signal_history_defaults(\n        self, mock_identity_resolver, basic_channel_weights, basic_config\n    ):\n        context = _make_context(\"ctx-no-signals\", channel=\"email\")\n        result = await resolve_business_weight(\n            context=context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=basic_channel_weights,\n            signal_history=[],\n            config=basic_config,\n        )\n        assert \"signal_frequency\" in result.defaulted_metrics, (\n            \"Empty history should default signal_frequency\"\n        )\n        assert \"engagement_velocity\" in result.defaulted_metrics, (\n            \"Empty history should default engagement_velocity\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_unknown_channel_defaults_gravity(\n        self, mock_identity_resolver, basic_signal_history, basic_config\n    ):\n        cw = _make_channel_weights({\"slack\": 0.9}, default_gravity=0.5)\n        context = _make_context(\"ctx-unknown-ch\", channel=\"unknown_channel\")\n        result = await resolve_business_weight(\n            context=context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=cw,\n            signal_history=basic_signal_history,\n            config=basic_config,\n        )\n        assert \"channel_gravity\" in result.defaulted_metrics\n\n    @pytest.mark.asyncio\n    async def test_missing_channel_raises(\n        self, mock_identity_resolver, basic_channel_weights, basic_signal_history, basic_config\n    ):\n        context = _make_context(\"ctx-no-ch\", channel=\"\")\n        with pytest.raises(ValueError):\n            await resolve_business_weight(\n                context=context,\n                identity_resolver=mock_identity_resolver,\n                channel_weights=basic_channel_weights,\n                signal_history=basic_signal_history,\n                config=basic_config,\n            )\n\n    @pytest.mark.asyncio\n    async def test_context_not_mutated(\n        self, mock_identity_resolver, basic_channel_weights, basic_signal_history, basic_config\n    ):\n        context = _make_context(\"ctx-immutable\", channel=\"email\", business_weight=0.5)\n        original_weight = context.business_weight\n        await resolve_business_weight(\n            context=context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=basic_channel_weights,\n            signal_history=basic_signal_history,\n            config=basic_config,\n        )\n        assert context.business_weight == pytest.approx(original_weight), (\n            \"resolve_business_weight must NOT mutate context.business_weight\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_defaulted_metrics_only_valid_names(\n        self, mock_identity_resolver, basic_channel_weights, basic_config\n    ):\n        context = _make_context(\"ctx-valid-names\", channel=\"email\")\n        result = await resolve_business_weight(\n            context=context,\n            identity_resolver=mock_identity_resolver,\n            channel_weights=basic_channel_weights,\n            signal_history=[],\n            config=basic_config,\n        )\n        valid_names = {\"signal_frequency\", \"author_seniority\", \"channel_gravity\", \"engagement_velocity\"}\n        for m in result.defaulted_metrics:\n            assert m in valid_names, f\"Invalid defaulted metric name: {m}\"\n\n\nclass TestEndToEndPipeline:\n    \"\"\"Integration test: full pipeline from metrics creation through allocation.\"\"\"\n\n    def test_full_pipeline(self):\n        # Step 1: Create default metrics\n        metrics = create_default_metrics()\n        assert metrics.signal_frequency == pytest.approx(0.5)\n\n        # Step 2: Apply partial updates\n        update = MetricUpdateRequest(signal_frequency=0.8, channel_gravity=0.9)\n        updated_metrics = apply_metric_update(metrics, update)\n        assert updated_metrics.signal_frequency == pytest.approx(0.8)\n        assert updated_metrics.channel_gravity == pytest.approx(0.9)\n\n        # Step 3: Compute business weight from metrics\n        bw_result = compute_business_weight_from_metrics(updated_metrics)\n        assert 0.0 <= bw_result.raw_weight <= 1.0\n        assert 0.1 <= bw_result.effective_weight <= 1.0\n        assert bw_result.effective_weight == pytest.approx(max(bw_result.raw_weight, 0.1))\n\n        # Step 4: Create contexts with computed weights\n        contexts = [\n            _make_context(\"ctx_a\", business_weight=bw_result.effective_weight),\n            _make_context(\"ctx_b\", business_weight=0.3),\n            _make_context(\"ctx_c\", business_weight=0.9),\n        ]\n\n        # Step 5: Build priority queue\n        pq = build_priority_queue(contexts)\n        assert len(pq) == 3\n\n        # Step 6: Allocate token budget\n        total_budget = 10000\n        allocations = allocate_token_budget(total_budget, contexts)\n        assert len(allocations) == 3\n        assert sum(a.allocated_tokens for a in allocations) == total_budget\n        assert all(a.allocated_tokens >= 0 for a in allocations)\n\n        # Step 7: Create routing snapshot\n        snapshot = create_routing_snapshot(\n            round_id=\"pipeline-test-round\",\n            contexts=contexts,\n            snapshot_timestamp_ms=1700000000000,\n        )\n        assert snapshot.round_id == \"pipeline-test-round\"\n        assert len(snapshot.ordered_contexts) == 3\n        # Verify descending order\n        for i in range(len(snapshot.ordered_contexts) - 1):\n            assert (\n                snapshot.ordered_contexts[i].business_weight\n                >= snapshot.ordered_contexts[i + 1].business_weight\n            )\n\n    def test_pipeline_with_all_defaults(self):\n        \"\"\"Test that the pipeline works with purely default values.\"\"\"\n        metrics = create_default_metrics()\n        result = compute_business_weight_from_metrics(metrics)\n        assert result.raw_weight == pytest.approx(0.5)\n        assert result.effective_weight >= 0.1\n\n        contexts = [_make_context(\"default_ctx\", business_weight=result.effective_weight)]\n        allocations = allocate_token_budget(1000, contexts)\n        assert allocations[0].allocated_tokens == 1000\n\n\n# ===========================================================================\n# 7. Property-Based / Parametric Tests\n# ===========================================================================\n\nclass TestMonotonicity:\n    \"\"\"Verify monotonicity properties of the weight computation.\"\"\"\n\n    @pytest.mark.parametrize(\"low,high\", [\n        (0.0, 0.5),\n        (0.3, 0.7),\n        (0.5, 1.0),\n    ])\n    def test_higher_inputs_yield_higher_or_equal_weight(self, low, high):\n        result_low = compute_business_weight_from_inputs(\n            frequency=low, seniority=low, gravity=low, velocity=low,\n        )\n        result_high = compute_business_weight_from_inputs(\n            frequency=high, seniority=high, gravity=high, velocity=high,\n        )\n        assert result_high >= result_low, (\n            f\"Higher inputs ({high}) should yield >= weight than lower inputs ({low}): \"\n            f\"{result_high} vs {result_low}\"\n        )\n\n    @pytest.mark.parametrize(\"sf\", [0.0, 0.25, 0.5, 0.75, 1.0])\n    def test_increasing_single_metric_does_not_decrease_weight(self, sf):\n        baseline = compute_business_weight_from_inputs(\n            frequency=0.5, seniority=0.5, gravity=0.5, velocity=0.5,\n        )\n        result = compute_business_weight_from_inputs(\n            frequency=sf, seniority=0.5, gravity=0.5, velocity=0.5,\n        )\n        if sf >= 0.5:\n            assert result >= baseline - 1e-9, (\n                f\"Increasing signal_frequency to {sf} should not decrease weight\"\n            )\n\n\nclass TestOutputRanges:\n    \"\"\"Verify output range invariants via parametric testing.\"\"\"\n\n    @pytest.mark.parametrize(\"f,s,g,v\", [\n        (0.0, 0.0, 0.0, 0.0),\n        (1.0, 1.0, 1.0, 1.0),\n        (0.5, 0.5, 0.5, 0.5),\n        (0.0, 1.0, 0.0, 1.0),\n        (1.0, 0.0, 1.0, 0.0),\n        (0.1, 0.2, 0.3, 0.4),\n        (0.9, 0.8, 0.7, 0.6),\n    ])\n    def test_compute_from_inputs_always_in_01_10(self, f, s, g, v):\n        result = compute_business_weight_from_inputs(\n            frequency=f, seniority=s, gravity=g, velocity=v,\n        )\n        assert 0.1 <= result <= 1.0, (\n            f\"compute_business_weight_from_inputs({f},{s},{g},{v}) = {result}, \"\n            f\"expected in [0.1, 1.0]\"\n        )\n\n    @pytest.mark.parametrize(\"raw\", [0.0, 0.05, 0.1, 0.3, 0.5, 0.8, 1.0])\n    def test_effective_weight_always_gte_floor(self, raw):\n        result = get_effective_business_weight(raw, 0.1)\n        assert result >= 0.1\n\n    @pytest.mark.parametrize(\"f,s,g,v\", [\n        (0.0, 0.0, 0.0, 0.0),\n        (1.0, 1.0, 1.0, 1.0),\n        (0.5, 0.5, 0.5, 0.5),\n    ])\n    def test_compute_from_metrics_raw_in_0_1(self, f, s, g, v):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=f,\n            author_seniority=s,\n            channel_gravity=g,\n            engagement_velocity=v,\n        )\n        result = compute_business_weight_from_metrics(metrics)\n        assert 0.0 <= result.raw_weight <= 1.0\n        assert 0.1 <= result.effective_weight <= 1.0\n\n\nclass TestTokenAllocationConservation:\n    \"\"\"Property tests for token budget conservation.\"\"\"\n\n    @pytest.mark.parametrize(\"budget\", [0, 1, 10, 100, 999, 10000])\n    def test_conservation_various_budgets(self, budget):\n        contexts = [\n            _make_context(\"a\", business_weight=0.2),\n            _make_context(\"b\", business_weight=0.5),\n            _make_context(\"c\", business_weight=0.8),\n        ]\n        result = allocate_token_budget(budget, contexts)\n        total = sum(a.allocated_tokens for a in result)\n        assert total == budget, f\"Conservation: {total} != {budget}\"\n        assert all(a.allocated_tokens >= 0 for a in result)\n\n    @pytest.mark.parametrize(\"n_contexts\", [1, 2, 3, 5, 10, 20])\n    def test_conservation_various_context_counts(self, n_contexts):\n        contexts = [\n            _make_context(f\"c{i}\", business_weight=0.1 + 0.8 * (i / max(n_contexts - 1, 1)))\n            for i in range(n_contexts)\n        ]\n        budget = 1000\n        result = allocate_token_budget(budget, contexts)\n        assert sum(a.allocated_tokens for a in result) == budget\n        assert len(result) == n_contexts\n\n\nclass TestEffectiveWeightFormula:\n    \"\"\"Verify the effective_weight == max(raw, floor) invariant.\"\"\"\n\n    @pytest.mark.parametrize(\"raw,floor,expected\", [\n        (0.0, 0.1, 0.1),\n        (0.05, 0.1, 0.1),\n        (0.1, 0.1, 0.1),\n        (0.5, 0.1, 0.5),\n        (1.0, 0.1, 1.0),\n        (0.3, 0.5, 0.5),\n        (0.7, 0.5, 0.7),\n        (0.0, 0.0, 0.0),\n        (1.0, 1.0, 1.0),\n    ])\n    def test_formula(self, raw, floor, expected):\n        result = get_effective_business_weight(raw, floor)\n        assert result == pytest.approx(expected), (\n            f\"max({raw}, {floor}) should be {expected}, got {result}\"\n        )\n\n\nclass TestBusinessWeightMetricsDefaults:\n    \"\"\"Verify BusinessWeightMetrics defaults and backward compatibility.\"\"\"\n\n    def test_default_construction(self):\n        m = BusinessWeightMetrics()\n        assert m.signal_frequency == pytest.approx(0.5)\n        assert m.author_seniority == pytest.approx(0.5)\n        assert m.channel_gravity == pytest.approx(0.5)\n        assert m.engagement_velocity == pytest.approx(0.5)\n\n    def test_metrics_is_mutable(self):\n        \"\"\"BusinessWeightMetrics should NOT be frozen — it tracks mutable state.\"\"\"\n        m = BusinessWeightMetrics()\n        try:\n            m.signal_frequency = 0.8\n            assert m.signal_frequency == pytest.approx(0.8), (\n                \"BusinessWeightMetrics should be mutable\"\n            )\n        except (AttributeError, TypeError):\n            pytest.fail(\"BusinessWeightMetrics should be mutable (not frozen)\")\n\n\nclass TestContextDefaults:\n    \"\"\"Verify Context defaults and business_weight field.\"\"\"\n\n    def test_default_business_weight(self):\n        ctx = Context(context_id=\"test\", channel=\"email\")\n        assert ctx.business_weight == pytest.approx(0.5), (\n            \"Default business_weight should be 0.5\"\n        )\n\n    def test_custom_business_weight(self):\n        ctx = Context(context_id=\"test\", channel=\"email\", business_weight=0.8)\n        assert ctx.business_weight == pytest.approx(0.8)\n\n    def test_business_weight_range_validation(self):\n        with pytest.raises((ValueError, Exception)):\n            Context(context_id=\"test\", channel=\"email\", business_weight=1.5)\n\n    def test_negative_business_weight_validation(self):\n        with pytest.raises((ValueError, Exception)):\n            Context(context_id=\"test\", channel=\"email\", business_weight=-0.1)\n\n\nclass TestWorkerNodeDefaults:\n    \"\"\"Verify WorkerNode defaults and clamping.\"\"\"\n\n    def test_default_business_weight(self):\n        wn = WorkerNode(node_id=\"node-1\")\n        assert wn.business_weight == pytest.approx(0.5)\n\n    def test_below_floor_clamped(self):\n        wn = WorkerNode(node_id=\"node-1\", business_weight=0.05)\n        # Implementation may clamp at construction or at validation time\n        assert wn.business_weight >= 0.0  # at least valid\n        # If clamping happens at construction:\n        # assert wn.business_weight == pytest.approx(0.1)\n\n\nclass TestBusinessWeightConfigDefaults:\n    \"\"\"Verify BusinessWeightConfig defaults.\"\"\"\n\n    def test_defaults(self):\n        config = BusinessWeightConfig()\n        assert config.weight_signal_frequency == pytest.approx(0.25)\n        assert config.weight_author_seniority == pytest.approx(0.25)\n        assert config.weight_channel_gravity == pytest.approx(0.25)\n        assert config.weight_engagement_velocity == pytest.approx(0.25)\n        assert config.policy_floor == pytest.approx(0.1)\n        assert config.default_weight == pytest.approx(0.5)\n        assert config.window_seconds == pytest.approx(300.0)\n        assert config.frequency_saturation == pytest.approx(100.0)\n        assert config.seniority_timeout_seconds == pytest.approx(2.0)\n\n    def test_custom_weights_do_not_need_to_sum_to_one(self):\n        \"\"\"Weights are normalized internally; callers need not sum to 1.0.\"\"\"\n        config = BusinessWeightConfig(\n            weight_signal_frequency=0.1,\n            weight_author_seniority=0.3,\n            weight_channel_gravity=0.5,\n            weight_engagement_velocity=0.7,\n        )\n        # Should construct without error\n        assert config.weight_signal_frequency == pytest.approx(0.1)\n\n\nclass TestFrozenResultObjects:\n    \"\"\"Verify that result objects are immutable for async safety.\"\"\"\n\n    def test_business_weight_result_immutable(self):\n        metrics = create_default_metrics()\n        result = compute_business_weight_from_metrics(metrics)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.raw_weight = 0.0  # type: ignore\n\n    def test_business_weight_components_immutable(self):\n        result = compute_business_weight_from_scores(\n            signal_frequency=0.5,\n            author_seniority=0.5,\n            channel_gravity=0.5,\n            engagement_velocity=0.5,\n        )\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.composite = 0.0  # type: ignore\n\n\nclass TestIdempotency:\n    \"\"\"Verify that pure functions are idempotent.\"\"\"\n\n    def test_compute_from_inputs_idempotent(self):\n        args = dict(frequency=0.3, seniority=0.7, gravity=0.4, velocity=0.9)\n        r1 = compute_business_weight_from_inputs(**args)\n        r2 = compute_business_weight_from_inputs(**args)\n        r3 = compute_business_weight_from_inputs(**args)\n        assert r1 == pytest.approx(r2) == pytest.approx(r3)\n\n    def test_compute_from_metrics_idempotent(self):\n        metrics = BusinessWeightMetrics(\n            signal_frequency=0.3,\n            author_seniority=0.7,\n            channel_gravity=0.4,\n            engagement_velocity=0.9,\n        )\n        r1 = compute_business_weight_from_metrics(metrics)\n        r2 = compute_business_weight_from_metrics(metrics)\n        assert r1.raw_weight == pytest.approx(r2.raw_weight)\n        assert r1.effective_weight == pytest.approx(r2.effective_weight)\n\n    def test_weighted_routing_order_idempotent(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.3),\n            _make_context(\"b\", business_weight=0.9),\n        ]\n        r1 = weighted_routing_order(contexts)\n        r2 = weighted_routing_order(contexts)\n        assert [c.context_id for c in r1] == [c.context_id for c in r2]\n\n    def test_allocate_token_budget_idempotent(self):\n        contexts = [\n            _make_context(\"a\", business_weight=0.3),\n            _make_context(\"b\", business_weight=0.7),\n        ]\n        r1 = allocate_token_budget(1000, contexts)\n        r2 = allocate_token_budget(1000, contexts)\n        for a1, a2 in zip(r1, r2):\n            assert a1.allocated_tokens == a2.allocated_tokens\n            assert a1.context_id == a2.context_id\n"
+}

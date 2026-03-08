@@ -1,0 +1,1366 @@
+{
+  "component_id": "identity_prompting",
+  "name": "Identity Prompting (Feature 5)",
+  "description": "When the identity resolver encounters unknown identifiers, surface them for resolution. After each run, collect unknown_identifiers from resolver, run suggest_match() for candidates, present to user in interactive mode or log in non-interactive mode. Persist confirmed mappings to AliasStore. Add --resolve-identities CLI flag. Default to non-interactive (log-and-skip) to avoid blocking CI. Implemented as a thin orchestrator layer composing identity_collection and identity_cli_integration dependencies with minimal new types.",
+  "version": 1,
+  "types": [
+    {
+      "name": "str",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "UTF-8 string primitive."
+    },
+    {
+      "name": "int",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Integer primitive."
+    },
+    {
+      "name": "float",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "IEEE 754 double-precision floating-point primitive."
+    },
+    {
+      "name": "bool",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Boolean primitive."
+    },
+    {
+      "name": "datetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "ISO-8601 datetime with timezone (UTC). Maps to Python datetime.datetime."
+    },
+    {
+      "name": "Path",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Filesystem path (pathlib.Path compatible)."
+    },
+    {
+      "name": "PresenterMode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INTERACTIVE",
+        "LOG"
+      ],
+      "inner_types": [],
+      "description": "Discriminates between the two IdentityPresenter implementations used by the orchestrator."
+    },
+    {
+      "name": "PromptingOutcomeStatus",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "RESOLVED",
+        "SKIPPED",
+        "ERRORED",
+        "ALREADY_ALIASED"
+      ],
+      "inner_types": [],
+      "description": "Status of the prompting outcome for a single unknown identifier."
+    },
+    {
+      "name": "PromptingOutcome",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "identifier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw unknown identifier string this outcome pertains to.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "identifier must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "type_ref": "PromptingOutcomeStatus",
+          "required": true,
+          "default": "",
+          "description": "The outcome status: RESOLVED if a confirmed mapping was persisted, SKIPPED if deferred, ERRORED if a failure occurred, ALREADY_ALIASED if pre-filtered.",
+          "validators": []
+        },
+        {
+          "name": "decision",
+          "type_ref": "OptionalResolutionDecision",
+          "required": false,
+          "default": "null",
+          "description": "The ResolutionDecision made for this unknown. Present when status is RESOLVED or SKIPPED. Null when ERRORED or ALREADY_ALIASED.",
+          "validators": []
+        },
+        {
+          "name": "error_message",
+          "type_ref": "OptionalStr",
+          "required": false,
+          "default": "null",
+          "description": "Human-readable error description when status is ERRORED. Null otherwise.",
+          "validators": []
+        },
+        {
+          "name": "error_context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional key-value context for debugging when status is ERRORED.",
+          "validators": []
+        },
+        {
+          "name": "processed_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when this unknown was processed by the orchestrator.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model capturing the per-unknown result of the orchestrator's prompting pipeline. Wraps the resolution decision (if any) with status and error context. Immutable after construction."
+    },
+    {
+      "name": "OptionalResolutionDecision",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "ResolutionDecision"
+      ],
+      "description": "An optional ResolutionDecision — present for resolved/skipped unknowns, null for errored/already-aliased."
+    },
+    {
+      "name": "OptionalStr",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "An optional string value."
+    },
+    {
+      "name": "PromptingOutcomeList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "PromptingOutcome",
+      "variants": [],
+      "inner_types": [],
+      "description": "Ordered list of PromptingOutcome values, one per unknown identifier processed by the orchestrator."
+    },
+    {
+      "name": "OrchestratorResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "report",
+          "type_ref": "ResolutionReport",
+          "required": true,
+          "default": "",
+          "description": "The comprehensive ResolutionReport produced by the resolution pipeline, suitable for YAML serialization.",
+          "validators": []
+        },
+        {
+          "name": "outcomes",
+          "type_ref": "PromptingOutcomeList",
+          "required": true,
+          "default": "",
+          "description": "Detailed per-unknown outcomes including status, decisions, and error context.",
+          "validators": []
+        },
+        {
+          "name": "pre_filtered_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of unknowns that were pre-filtered because they already have aliases in the AliasStore.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "pre_filtered_count must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "total_input_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of unknown identifiers passed as input, before any filtering.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "total_input_count must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "presenter_mode_used",
+          "type_ref": "PresenterMode",
+          "required": true,
+          "default": "",
+          "description": "The actual presenter mode used during this run (may differ from requested if TTY was not available).",
+          "validators": []
+        },
+        {
+          "name": "started_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the orchestrator run started.",
+          "validators": []
+        },
+        {
+          "name": "completed_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the orchestrator run completed (or was interrupted).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model wrapping the full output of IdentityPromptingOrchestrator.run(). Contains the ResolutionReport from the CLI integration layer plus the detailed per-unknown outcomes and orchestrator-level metadata."
+    },
+    {
+      "name": "IdentityPresenter",
+      "kind": "struct",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol interface (typing.Protocol) for presenting unknown identifiers and their match suggestions to a user or logging system and returning a resolution decision. Two concrete implementations: InteractivePresenter (wraps identity_cli_integration.prompt()) and LoggingPresenter (logs and returns skip decision). Structural subtyping."
+    },
+    {
+      "name": "InteractivePresenter",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "is_tty_verified",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether TTY availability was verified at construction time. Must be true for safe interactive operation.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Concrete IdentityPresenter implementation for interactive TTY mode. Delegates to identity_cli_integration.prompt() for actual user interaction. Constructed with a TTY availability check."
+    },
+    {
+      "name": "LoggingPresenter",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "logger_name",
+          "type_ref": "str",
+          "required": false,
+          "default": "stigmergy.identity.prompting",
+          "description": "The logger name used for warning output.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Concrete IdentityPresenter implementation for non-interactive (log-and-skip) mode. Logs each unknown and its suggestions as warnings and always returns a skip decision. Never blocks on stdin."
+    },
+    {
+      "name": "IdentityPromptingOrchestrator",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "unknown_collector",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An UnknownCollector instance from identity_collection, used for collecting and matching unknown identifiers.",
+          "validators": []
+        },
+        {
+          "name": "match_suggester",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "A MatchSuggester protocol implementation from identity_collection, used for generating match candidates.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An AliasStore instance from identity_collection, used for pre-filtering and persisting confirmed alias mappings.",
+          "validators": []
+        },
+        {
+          "name": "presenter",
+          "type_ref": "IdentityPresenter",
+          "required": true,
+          "default": "",
+          "description": "An IdentityPresenter implementation (InteractivePresenter or LoggingPresenter) used for surfacing unknowns and capturing decisions.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The core orchestrator class that composes UnknownCollector, MatchSuggester, AliasStore, and IdentityPresenter to execute the full identity prompting pipeline. Uses constructor injection for all dependencies. Exposes a single async run() method."
+    },
+    {
+      "name": "ResolutionDecision",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "unknown",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The UnknownIdentifier this decision pertains to (from identity_cli_integration).",
+          "validators": []
+        },
+        {
+          "name": "action",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The resolution action taken: confirm, reject, skip, or manual.",
+          "validators": []
+        },
+        {
+          "name": "resolved_person_id",
+          "type_ref": "OptionalStr",
+          "required": false,
+          "default": "null",
+          "description": "The person_id the unknown was resolved to. Required when action is confirm or manual. Null when reject or skip.",
+          "validators": []
+        },
+        {
+          "name": "matched_suggestion",
+          "type_ref": "any",
+          "required": false,
+          "default": "null",
+          "description": "The MatchSuggestion that was confirmed, if action is confirm. Null for other actions.",
+          "validators": []
+        },
+        {
+          "name": "decided_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when this decision was made.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Frozen Pydantic v2 model capturing the decision made for a single unknown identifier resolution attempt."
+    },
+    {
+      "name": "ResolutionReport",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Schema version for this report format.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "schema_version must be >= 1"
+            }
+          ]
+        },
+        {
+          "name": "decisions",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "All resolution decisions made during this session.",
+          "validators": []
+        },
+        {
+          "name": "unresolved",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Identifiers that remain unresolved after this session.",
+          "validators": []
+        },
+        {
+          "name": "auto_confirmed",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Count of identifiers auto-confirmed.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "auto_confirmed must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "user_confirmed",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Count of identifiers explicitly confirmed by the user.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "user_confirmed must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "total_processed",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of unknown identifiers processed.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0",
+              "error_message": "total_processed must be non-negative"
+            }
+          ]
+        },
+        {
+          "name": "interrupted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "True if the session was interrupted (e.g. Ctrl+C).",
+          "validators": []
+        },
+        {
+          "name": "started_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the resolution session started.",
+          "validators": []
+        },
+        {
+          "name": "completed_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp when the resolution session ended or was interrupted.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Frozen Pydantic v2 model summarizing the outcome of a complete identity resolution session."
+    },
+    {
+      "name": "IdentityResolutionConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "auto_confirm_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.95",
+          "description": "Suggestions at or above this confidence are auto-confirmed.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0.0,le=1.0",
+              "error_message": "auto_confirm_threshold must be in [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "unknown_count_threshold",
+          "type_ref": "int",
+          "required": false,
+          "default": "5",
+          "description": "When unknowns exceed this threshold, auto-trigger interactive prompting if TTY available.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "unknown_count_threshold must be >= 1"
+            }
+          ]
+        },
+        {
+          "name": "output_path",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path where the YAML unresolved identities file is written.",
+          "validators": []
+        },
+        {
+          "name": "interactive",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "When true, use TTY interactive prompts. When false (default), log warnings and write YAML file.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Frozen Pydantic v2 configuration model for the identity resolution subsystem."
+    },
+    {
+      "name": "PromptMode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INTERACTIVE",
+        "NON_INTERACTIVE"
+      ],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Discriminates between interactive and non-interactive identity prompting modes."
+    },
+    {
+      "name": "CLIFlags",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "resolve_identities",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "Whether --resolve-identities was passed.",
+          "validators": []
+        },
+        {
+          "name": "auto_confirm_above",
+          "type_ref": "OptionalFloat",
+          "required": false,
+          "default": "null",
+          "description": "Value of --auto-confirm-above flag.",
+          "validators": []
+        },
+        {
+          "name": "unknown_threshold",
+          "type_ref": "OptionalInt",
+          "required": false,
+          "default": "null",
+          "description": "Value of --unknown-threshold flag.",
+          "validators": []
+        },
+        {
+          "name": "output_path",
+          "type_ref": "OptionalPath",
+          "required": false,
+          "default": "null",
+          "description": "Value of --identity-output-path flag.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Parsed CLI flags relevant to identity resolution."
+    },
+    {
+      "name": "OptionalFloat",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "float"
+      ],
+      "description": "An optional float value."
+    },
+    {
+      "name": "OptionalInt",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "int"
+      ],
+      "description": "An optional int value."
+    },
+    {
+      "name": "OptionalPath",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "Path"
+      ],
+      "description": "An optional Path value."
+    },
+    {
+      "name": "PartialProgress",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "completed_decisions",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Decisions made so far before interruption.",
+          "validators": []
+        },
+        {
+          "name": "remaining_unknowns",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "Identifiers not yet processed at time of interruption.",
+          "validators": []
+        },
+        {
+          "name": "persisted_to_store",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether completed confirm/manual decisions were flushed to AliasStore.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Snapshot of resolution progress captured before persisting on interruption."
+    },
+    {
+      "name": "IdentityResolutionError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "kind",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Classification of the error (maps to IdentityResolutionErrorKind enum values).",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error description.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value context data for debugging.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Structured error type for unexpected failures in the identity prompting orchestrator. Re-exported from identity_cli_integration with the same structure."
+    },
+    {
+      "name": "MatchSuggestionList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "any",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. Ordered list of MatchSuggestion values sorted by descending confidence."
+    },
+    {
+      "name": "UnknownIdentifierList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "any",
+      "variants": [],
+      "inner_types": [],
+      "description": "Re-exported from identity_cli_integration. List of unknown identifiers."
+    }
+  ],
+  "functions": [
+    {
+      "name": "IdentityPromptingOrchestrator.__init__",
+      "description": "Constructor for the orchestrator. Accepts all dependencies via constructor injection. Validates that required dependencies satisfy their respective protocol interfaces. Stores dependencies as instance attributes.",
+      "inputs": [
+        {
+          "name": "unknown_collector",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An UnknownCollector instance from identity_collection. Must have collect_and_match() and confirm_match() async methods.",
+          "validators": []
+        },
+        {
+          "name": "match_suggester",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "A MatchSuggester protocol implementation from identity_collection. Must have suggest_match() async method.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An AliasStore instance from identity_collection. Must have has_alias() and write_alias() async methods.",
+          "validators": []
+        },
+        {
+          "name": "presenter",
+          "type_ref": "IdentityPresenter",
+          "required": true,
+          "default": "",
+          "description": "An IdentityPresenter implementation (InteractivePresenter or LoggingPresenter).",
+          "validators": []
+        }
+      ],
+      "output_type": "IdentityPromptingOrchestrator",
+      "error_cases": [
+        {
+          "name": "invalid_dependency",
+          "condition": "One or more dependencies do not satisfy their respective protocol interface",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid",
+            "message": "Dependency does not satisfy required protocol"
+          }
+        }
+      ],
+      "preconditions": [
+        "unknown_collector satisfies the UnknownCollector interface (has collect_and_match and confirm_match async methods)",
+        "match_suggester satisfies the MatchSuggester protocol (has suggest_match async method)",
+        "alias_store satisfies the AliasStore interface (has has_alias and write_alias async methods)",
+        "presenter satisfies the IdentityPresenter protocol (has present async method)"
+      ],
+      "postconditions": [
+        "IdentityPromptingOrchestrator instance is initialized and ready for run()",
+        "All dependencies are stored as instance attributes (not copied)",
+        "No I/O or side effects occur during construction"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "IdentityPromptingOrchestrator.run",
+      "description": "Async. The primary entrypoint for the identity prompting pipeline. Executes the full orchestration: (1) collect unknowns via UnknownCollector.collect_and_match(), (2) pre-filter identifiers already in AliasStore, (3) sort remaining unknowns deterministically by identifier, (4) for each unknown, call presenter.present() to get a ResolutionDecision, (5) persist confirmed mappings to AliasStore via UnknownCollector.confirm_match(), (6) build and return an OrchestratorResult containing the ResolutionReport and per-unknown PromptingOutcomes. Handles per-unknown errors gracefully by recording them in outcomes without aborting the batch. Supports Ctrl+C interruption with partial progress persistence via persist_partial_progress() from identity_cli_integration.",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "IdentityPromptingOrchestrator",
+          "required": true,
+          "default": "",
+          "description": "The orchestrator instance.",
+          "validators": []
+        },
+        {
+          "name": "unknown_identifiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "A list of raw unknown identifier strings to process. May be empty (early return). Duplicates are collapsed via frozenset conversion internally.",
+          "validators": []
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The origin context for the unknown identifiers (e.g., 'git_log', 'post_run_scan').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "source must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "config",
+          "type_ref": "IdentityResolutionConfig",
+          "required": true,
+          "default": "",
+          "description": "The identity resolution configuration controlling thresholds, output path, and interactive mode.",
+          "validators": []
+        }
+      ],
+      "output_type": "OrchestratorResult",
+      "error_cases": [
+        {
+          "name": "alias_store_unreachable",
+          "condition": "The AliasStore is unreachable during the pre-filter phase (all has_alias calls fail)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "store_read_failed",
+            "message": "AliasStore is unreachable during pre-filter phase"
+          }
+        },
+        {
+          "name": "all_suggestions_failed",
+          "condition": "Every suggest_match() call fails — no match results can be produced for any unknown",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "resolver_unavailable",
+            "message": "All suggestion calls failed — no results available"
+          }
+        },
+        {
+          "name": "config_invalid",
+          "condition": "Config validation fails at runtime (e.g., output_path parent does not exist for non-interactive mode)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid",
+            "message": "Runtime config validation failed"
+          }
+        },
+        {
+          "name": "orchestrator_interrupted",
+          "condition": "User sends Ctrl+C (KeyboardInterrupt) during the run — partial progress is persisted best-effort before the error propagates as an OrchestratorResult with interrupted=true",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "interrupted",
+            "message": "Identity resolution interrupted by user"
+          }
+        }
+      ],
+      "preconditions": [
+        "The orchestrator has been properly initialized via __init__ with all dependencies",
+        "config is a valid IdentityResolutionConfig instance",
+        "source is a non-empty string",
+        "config.output_path parent directory exists and is writable (if non-interactive mode)"
+      ],
+      "postconditions": [
+        "If unknown_identifiers is empty, returns an OrchestratorResult with empty report (zero totals, no decisions, not interrupted) and empty outcomes",
+        "result.total_input_count equals len(set(unknown_identifiers)) (deduplicated count)",
+        "result.pre_filtered_count equals the number of identifiers already in AliasStore",
+        "result.outcomes contains one PromptingOutcome per deduplicated input identifier",
+        "Every PromptingOutcome with status RESOLVED has its confirmed mapping persisted to AliasStore",
+        "result.report.total_processed equals total_input_count minus pre_filtered_count",
+        "Unknowns are processed in sorted order by identifier string for reproducibility",
+        "Per-unknown errors are recorded as ERRORED outcomes and do not abort the batch",
+        "result.started_at <= result.completed_at",
+        "If the run was interrupted, result.report.interrupted is true and partial progress was persisted (best-effort)",
+        "result.presenter_mode_used reflects the actual mode used (may differ from config.interactive if TTY was unavailable)"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Reads from AliasStore to pre-filter known aliases",
+        "Invokes MatchSuggester.suggest_match() concurrently for each unknown identifier",
+        "Calls presenter.present() for each unknown (may write to stdout/stderr or log)",
+        "Persists confirmed alias mappings to AliasStore via UnknownCollector.confirm_match()",
+        "In non-interactive mode: may write YAML file at config.output_path via serialize_report_to_yaml()",
+        "On interruption: calls persist_partial_progress() to save partial state (best-effort)"
+      ]
+    },
+    {
+      "name": "IdentityPresenter.present",
+      "description": "Async protocol method. Present a single unknown identifier and its match suggestions to the user (interactive) or logging system (non-interactive) and return a resolution decision. This is the single method on the IdentityPresenter protocol. Implementations are InteractivePresenter (delegates to identity_cli_integration.prompt()) and LoggingPresenter (logs and returns skip).",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "IdentityPresenter",
+          "required": true,
+          "default": "",
+          "description": "The presenter instance.",
+          "validators": []
+        },
+        {
+          "name": "unknown",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The UnknownIdentifier (from identity_cli_integration) to present for resolution.",
+          "validators": []
+        },
+        {
+          "name": "suggestions",
+          "type_ref": "MatchSuggestionList",
+          "required": true,
+          "default": "",
+          "description": "Ordered list of MatchSuggestion values sorted by descending confidence. May be empty.",
+          "validators": []
+        }
+      ],
+      "output_type": "ResolutionDecision",
+      "error_cases": [
+        {
+          "name": "prompt_io_error",
+          "condition": "Interactive mode and stdin/stdout IO fails (e.g., broken pipe, closed TTY)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "prompt_io_error",
+            "message": "I/O error during interactive prompt"
+          }
+        },
+        {
+          "name": "interrupted",
+          "condition": "User sends Ctrl+C (KeyboardInterrupt) during interactive prompt",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "interrupted",
+            "message": "User interrupted during prompt"
+          }
+        }
+      ],
+      "preconditions": [
+        "unknown is a valid UnknownIdentifier instance from identity_cli_integration",
+        "suggestions list is sorted by confidence descending",
+        "For InteractivePresenter: stdout is a TTY (verified at construction time)"
+      ],
+      "postconditions": [
+        "Returned ResolutionDecision.unknown equals input unknown",
+        "If action is 'confirm', resolved_person_id matches a candidate_person_id from suggestions",
+        "If action is 'manual', resolved_person_id is a non-empty string",
+        "If action is 'reject' or 'skip', resolved_person_id is null",
+        "decided_at is set to current UTC time",
+        "LoggingPresenter always returns action='skip' with resolved_person_id=null"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "InteractivePresenter: writes prompt text to stdout, reads from stdin",
+        "LoggingPresenter: writes warning to logger"
+      ]
+    },
+    {
+      "name": "create_presenter",
+      "description": "Factory function to create the appropriate IdentityPresenter implementation based on the requested PromptMode and TTY availability. If INTERACTIVE mode is requested but is_tty is false, downgrades to LOG mode and logs a warning. Returns the concrete presenter instance and the actual mode used.",
+      "inputs": [
+        {
+          "name": "mode",
+          "type_ref": "PromptMode",
+          "required": true,
+          "default": "",
+          "description": "The requested prompting mode: INTERACTIVE or NON_INTERACTIVE.",
+          "validators": []
+        },
+        {
+          "name": "is_tty",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether stdout is a TTY. If false and mode is INTERACTIVE, the factory silently downgrades to LoggingPresenter.",
+          "validators": []
+        }
+      ],
+      "output_type": "PresenterFactoryResult",
+      "error_cases": [],
+      "preconditions": [
+        "mode is a valid PromptMode enum value"
+      ],
+      "postconditions": [
+        "If mode is INTERACTIVE and is_tty is true, returns (InteractivePresenter, PresenterMode.INTERACTIVE)",
+        "If mode is INTERACTIVE and is_tty is false, returns (LoggingPresenter, PresenterMode.LOG) and logs a warning",
+        "If mode is NON_INTERACTIVE, returns (LoggingPresenter, PresenterMode.LOG) regardless of is_tty"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs a warning if interactive mode was requested but TTY is not available"
+      ]
+    },
+    {
+      "name": "build_orchestrator_from_cli",
+      "description": "High-level factory function that constructs a fully-wired IdentityPromptingOrchestrator from CLI flags and runtime context. Parses CLI flags via parse_cli_flags_to_struct(), builds config via build_config_from_cli(), creates the appropriate presenter via create_presenter(), and assembles the orchestrator with injected dependencies. This is the main CLI entry point integration function.",
+      "inputs": [
+        {
+          "name": "cli_namespace",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The parsed argparse.Namespace from the CLI, which must have had register_identity_cli_flags() applied.",
+          "validators": []
+        },
+        {
+          "name": "match_suggester",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "A MatchSuggester protocol implementation.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An AliasStore instance.",
+          "validators": []
+        },
+        {
+          "name": "is_tty",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether stdout is a TTY.",
+          "validators": []
+        },
+        {
+          "name": "default_output_path",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "Default filesystem path for YAML output if not overridden by CLI flags.",
+          "validators": []
+        }
+      ],
+      "output_type": "OrchestratorWithConfig",
+      "error_cases": [
+        {
+          "name": "config_invalid",
+          "condition": "CLI flag values fail validation (e.g., auto_confirm_above outside 0.0-1.0, unknown_threshold < 1, conflicting flags)",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid",
+            "message": "Invalid CLI flag values for identity resolution"
+          }
+        }
+      ],
+      "preconditions": [
+        "cli_namespace was produced by a parser that had register_identity_cli_flags() applied",
+        "match_suggester satisfies the MatchSuggester protocol",
+        "alias_store satisfies the AliasStore interface",
+        "default_output_path parent directory exists"
+      ],
+      "postconditions": [
+        "Returns a fully-wired OrchestratorWithConfig containing the orchestrator and its resolved config",
+        "If CLI flags request interactive mode but is_tty is false, config.interactive is forced to false",
+        "The orchestrator's presenter matches the resolved config.interactive setting"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs a warning if interactive mode was requested but stdout is not a TTY"
+      ]
+    },
+    {
+      "name": "run_identity_prompting_from_cli",
+      "description": "Async. Top-level CLI integration function that orchestrates the full identity prompting pipeline from CLI invocation. Checks if --resolve-identities was passed or if auto-trigger conditions are met (via should_auto_trigger_interactive()), builds the orchestrator via build_orchestrator_from_cli(), runs the pipeline, serializes the report to YAML if in non-interactive mode, and returns the OrchestratorResult. This is the function called from cli/run_cmd.py after a stigmergy run completes.",
+      "inputs": [
+        {
+          "name": "cli_namespace",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The parsed argparse.Namespace with identity CLI flags.",
+          "validators": []
+        },
+        {
+          "name": "unknown_identifiers",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of raw unknown identifier strings collected from the identity resolver after the run.",
+          "validators": []
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The origin context for the unknowns (e.g., 'post_run_scan').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "source must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "match_suggester",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "A MatchSuggester protocol implementation.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An AliasStore instance.",
+          "validators": []
+        },
+        {
+          "name": "is_tty",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether stdout is a TTY.",
+          "validators": []
+        },
+        {
+          "name": "default_output_path",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "Default filesystem path for YAML output.",
+          "validators": []
+        }
+      ],
+      "output_type": "OrchestratorResult",
+      "error_cases": [
+        {
+          "name": "config_invalid",
+          "condition": "CLI flag values fail validation",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "config_invalid",
+            "message": "Invalid CLI configuration for identity resolution"
+          }
+        },
+        {
+          "name": "alias_store_unreachable",
+          "condition": "AliasStore is unreachable during the pipeline",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "store_read_failed",
+            "message": "AliasStore unreachable during identity prompting pipeline"
+          }
+        },
+        {
+          "name": "yaml_write_failed",
+          "condition": "Writing YAML output file fails in non-interactive mode",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "file_write_failed",
+            "message": "Failed to write YAML report file"
+          }
+        },
+        {
+          "name": "interrupted",
+          "condition": "User sends Ctrl+C during the pipeline — partial progress persisted best-effort",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "kind": "interrupted",
+            "message": "Identity prompting interrupted by user"
+          }
+        }
+      ],
+      "preconditions": [
+        "cli_namespace was produced by a parser that had register_identity_cli_flags() applied",
+        "match_suggester satisfies the MatchSuggester protocol",
+        "alias_store satisfies the AliasStore interface",
+        "default_output_path parent directory exists"
+      ],
+      "postconditions": [
+        "If --resolve-identities was not passed and auto-trigger conditions are not met, returns an empty OrchestratorResult with zero totals",
+        "If unknown_identifiers is empty, returns an empty OrchestratorResult with zero totals",
+        "Otherwise, returns the full OrchestratorResult from the orchestrator pipeline",
+        "In non-interactive mode with unresolved identifiers: YAML file written at config.output_path",
+        "All confirmed mappings are persisted to AliasStore before return"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Reads from AliasStore for pre-filtering",
+        "Invokes MatchSuggester.suggest_match() for each unknown",
+        "May write to stdout/stderr (interactive mode) or logger (non-interactive mode)",
+        "Persists confirmed alias mappings to AliasStore",
+        "May write YAML file at config.output_path",
+        "On interruption: persists partial progress best-effort"
+      ]
+    },
+    {
+      "name": "convert_match_result_to_suggestions",
+      "description": "Convert a MatchResult (from identity_collection) to a MatchSuggestionList (from identity_cli_integration) for presentation. Maps MatchCandidate fields to MatchSuggestion fields, preserving ordering by descending confidence. This bridges the type gap between the two dependency contracts.",
+      "inputs": [
+        {
+          "name": "match_result",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "A MatchResult from identity_collection containing the unknown identifier and its match candidates.",
+          "validators": []
+        }
+      ],
+      "output_type": "MatchSuggestionList",
+      "error_cases": [],
+      "preconditions": [
+        "match_result is a valid MatchResult instance from identity_collection",
+        "match_result.candidates is sorted by descending confidence"
+      ],
+      "postconditions": [
+        "Returned MatchSuggestionList has same length as match_result.candidates",
+        "Each MatchSuggestion.candidate_person_id equals the corresponding MatchCandidate.canonical_id",
+        "Each MatchSuggestion.confidence equals the corresponding MatchCandidate.confidence",
+        "Each MatchSuggestion.evidence contains the match_method as a single evidence string",
+        "Ordering is preserved (descending confidence)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "convert_collection_unknown_to_cli_unknown",
+      "description": "Convert an UnknownIdentifier (from identity_collection) to an UnknownIdentifier (from identity_cli_integration) for presentation. Maps the collection-layer fields to the CLI-layer fields, bridging the two dependency type systems.",
+      "inputs": [
+        {
+          "name": "collection_unknown",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "An UnknownIdentifier from identity_collection with identifier, source, and discovered_at fields.",
+          "validators": []
+        },
+        {
+          "name": "occurrence_count",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "The occurrence count for the CLI-layer UnknownIdentifier. Defaults to 1 if not tracked.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "occurrence_count must be >= 1"
+            }
+          ]
+        }
+      ],
+      "output_type": "any",
+      "error_cases": [],
+      "preconditions": [
+        "collection_unknown is a valid UnknownIdentifier from identity_collection",
+        "occurrence_count >= 1"
+      ],
+      "postconditions": [
+        "Returned UnknownIdentifier (CLI layer) has handle == collection_unknown.identifier",
+        "Returned UnknownIdentifier has source == collection_unknown.source",
+        "Returned UnknownIdentifier has first_seen == collection_unknown.discovered_at",
+        "Returned UnknownIdentifier has occurrence_count == input occurrence_count"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [
+    "identity_collection",
+    "identity_cli_integration"
+  ],
+  "dependency_contracts": {
+    "identity_collection": [
+      "UnknownIdentifier",
+      "MatchCandidate",
+      "MatchCandidateTuple",
+      "MatchResult",
+      "MatchResultTuple",
+      "ConfirmationResult",
+      "ConfirmationResultTuple",
+      "IdentityResolutionError",
+      "StoreWriteError",
+      "MatchSuggestionError",
+      "MatchSuggester",
+      "ResolutionHandler",
+      "AliasStore",
+      "UnknownCollector",
+      "FrozenStringSet"
+    ],
+    "identity_cli_integration": [
+      "UnknownIdentifier",
+      "MatchSuggestion",
+      "MatchSuggestionList",
+      "ResolutionAction",
+      "ResolutionDecision",
+      "ResolutionDecisionList",
+      "UnknownIdentifierList",
+      "ResolutionReport",
+      "IdentityResolutionConfig",
+      "PromptMode",
+      "IdentityResolutionErrorKind",
+      "IdentityResolutionError",
+      "CLIFlags",
+      "PartialProgress",
+      "EvidenceList",
+      "OptionalStr",
+      "OptionalMatchSuggestion",
+      "OptionalFloat",
+      "OptionalInt",
+      "OptionalPath",
+      "prompt",
+      "resolve_identity_unknowns",
+      "build_config_from_cli",
+      "serialize_report_to_yaml",
+      "deserialize_report_from_yaml",
+      "persist_partial_progress",
+      "should_auto_trigger_interactive",
+      "register_identity_cli_flags",
+      "parse_cli_flags_to_struct"
+    ]
+  },
+  "invariants": [
+    "IdentityPromptingOrchestrator uses constructor injection for all dependencies — never inheritance",
+    "The orchestrator pipeline is always: collect unknowns → filter already-aliased → suggest matches → present (interactive or log) → persist confirmed → build report",
+    "Non-interactive mode (PromptMode.LOG) is the default and never blocks on stdin or raises for individual unknown failures",
+    "Interactive mode requires a TTY on stdout; if no TTY is detected, the orchestrator silently downgrades to non-interactive mode",
+    "Per-unknown errors are caught and recorded in the ResolutionReport — they do not abort the entire batch",
+    "Orchestrator-level fatal errors raise IdentityResolutionError",
+    "Unknowns are processed in deterministic sorted order (sorted by identifier string) for reproducibility",
+    "Zero unknowns results in an early return with an empty ResolutionReport (no errors, no side effects)",
+    "Pre-filtering via AliasStore.has_alias() is always performed before suggest_match() to avoid redundant work",
+    "All datetime values are UTC",
+    "PromptingOutcome is frozen/immutable after construction",
+    "IdentityPresenter implementations are stateless — all state is passed via method parameters",
+    "InteractivePresenter delegates to identity_cli_integration.prompt() for actual TTY I/O",
+    "LoggingPresenter always returns a ResolutionDecision with action=SKIP and resolved_person_id=null",
+    "Confirmed mappings are persisted to AliasStore before being included in the ResolutionReport",
+    "Partial progress is persisted on Ctrl+C via persist_partial_progress() from identity_cli_integration — best-effort, failures are logged not raised",
+    "The --resolve-identities CLI flag defaults to false (non-interactive log-and-skip)",
+    "YAML serialization of reports is deterministic: same input produces byte-identical output"
+  ],
+  "requires": [
+    "identity_collection provides UnknownCollector, MatchSuggester, AliasStore, and all value types for collection and matching",
+    "identity_cli_integration provides prompt(), resolve_identity_unknowns(), build_config_from_cli(), serialize/deserialize YAML, persist_partial_progress(), CLI flag registration, and all resolution/report types",
+    "Python 3.11+ with asyncio support",
+    "argparse ArgumentParser instance available at CLI setup time",
+    "Pydantic v2 for frozen model construction"
+  ]
+}

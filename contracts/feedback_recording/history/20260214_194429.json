@@ -1,0 +1,920 @@
+{
+  "component_id": "feedback_recording",
+  "name": "Feedback Recording & Storage",
+  "description": "Records insights/findings with unique feedback_ids and metadata, stores them in JSONL files, and provides async read/write APIs for feedback data. Findings are recorded at surfacing time with a minted feedback_id (fb-* prefix). Users can later rate findings (helpful, already_knew, wrong, irrelevant). All records are frozen Pydantic v2 models persisted to .stigmergy/findings.jsonl and .stigmergy/feedback.jsonl with in-memory dict indexes for O(1) lookups. Write serialization via asyncio.Lock. Defensive JSONL parsing skips blank/malformed lines with warnings. Re-rating is supported with append-only semantics (latest rating wins). Rating-to-calibration mapping is NOT in this component — it lives in attention/calibration.py.",
+  "version": 1,
+  "types": [
+    {
+      "name": "Rating",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "helpful",
+        "already_knew",
+        "wrong",
+        "irrelevant"
+      ],
+      "inner_types": [],
+      "description": "Literal rating type for findings. Implemented as Literal['helpful', 'already_knew', 'wrong', 'irrelevant'] in Python (not an Enum class). 'helpful' = positive signal, 'already_knew' = mild positive (correct but low novelty), 'wrong' = negative signal, 'irrelevant' = negative signal."
+    },
+    {
+      "name": "FindingRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for this finding, auto-generated with 'fb-' prefix via mint_feedback_id(). Displayed to user for later rating.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fb-[a-zA-Z0-9_-]{4,}$",
+              "error_message": "feedback_id must start with 'fb-' followed by at least 4 alphanumeric/dash/underscore characters"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the signal that produced this finding.",
+          "validators": []
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the context in which the finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the agent that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 datetime string of when the finding was surfaced. Stored as datetime in Python model, serialized as ISO string in JSONL.",
+          "validators": []
+        },
+        {
+          "name": "content_summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Brief summary of the finding content. Maximum 500 characters.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "content_summary must be between 1 and 500 characters"
+            }
+          ]
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility and future migrations.",
+          "validators": []
+        },
+        {
+          "name": "rated",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "Whether this finding has been rated. This is a computed/cached field in the in-memory index, not persisted to findings.jsonl.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable (frozen=True) Pydantic v2 BaseModel representing a surfaced finding. Created at finding-surfacing time with a minted feedback_id. Stored in .stigmergy/findings.jsonl. Config: frozen=True, extra='ignore'."
+    },
+    {
+      "name": "FeedbackRecord",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the FindingRecord's feedback_id.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fb-[a-zA-Z0-9_-]{4,}$",
+              "error_message": "feedback_id must start with 'fb-' followed by at least 4 alphanumeric/dash/underscore characters"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: signal that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: context of the finding.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: agent that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: ISO 8601 datetime when finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "content_summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Denormalized from FindingRecord: brief summary of the finding content.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "content_summary must be between 1 and 500 characters"
+            }
+          ]
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility.",
+          "validators": []
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": true,
+          "default": "",
+          "description": "The user's rating of the finding: helpful, already_knew, wrong, or irrelevant.",
+          "validators": []
+        },
+        {
+          "name": "feedback_timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 datetime string of when the feedback/rating was submitted. Must be >= the finding's timestamp.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Immutable (frozen=True) Pydantic v2 BaseModel representing a user's feedback on a finding. Denormalized: contains all FindingRecord fields plus rating and feedback_timestamp. This is what gets written to .stigmergy/feedback.jsonl. Config: frozen=True, extra='ignore'. Re-rating appends a new line; latest wins on read."
+    },
+    {
+      "name": "FeedbackStoreConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "data_dir",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy",
+          "description": "Root directory for JSONL data files. Auto-created on first write.",
+          "validators": []
+        },
+        {
+          "name": "findings_filename",
+          "type_ref": "str",
+          "required": false,
+          "default": "findings.jsonl",
+          "description": "Filename for the findings JSONL file within data_dir.",
+          "validators": []
+        },
+        {
+          "name": "feedback_filename",
+          "type_ref": "str",
+          "required": false,
+          "default": "feedback.jsonl",
+          "description": "Filename for the feedback JSONL file within data_dir.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for FeedbackStore initialization."
+    },
+    {
+      "name": "FeedbackListFilter",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Filter feedback records by agent_id. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": false,
+          "default": "",
+          "description": "Filter feedback records by rating. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "since",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "ISO 8601 datetime. Return only feedback with feedback_timestamp >= this value. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "limit",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Maximum number of records to return. 0 means no limit.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0..10000",
+              "error_message": "limit must be between 0 and 10000"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Optional filter criteria for list_feedback(). All fields are optional; unset fields are not filtered."
+    },
+    {
+      "name": "FeedbackSummary",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "total_findings",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of findings recorded.",
+          "validators": []
+        },
+        {
+          "name": "total_rated",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings that have received at least one rating.",
+          "validators": []
+        },
+        {
+          "name": "helpful_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as helpful.",
+          "validators": []
+        },
+        {
+          "name": "already_knew_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as already_knew.",
+          "validators": []
+        },
+        {
+          "name": "wrong_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as wrong.",
+          "validators": []
+        },
+        {
+          "name": "irrelevant_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of findings currently rated as irrelevant.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Aggregated summary of feedback for a given agent or globally."
+    },
+    {
+      "name": "FindingRecordList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "FindingRecord",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FindingRecord objects."
+    },
+    {
+      "name": "FeedbackRecordList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "FeedbackRecord",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FeedbackRecord objects."
+    },
+    {
+      "name": "FeedbackError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The feedback_id involved, if applicable.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base exception for all feedback subsystem errors. Raised for general feedback operation failures (e.g., file I/O errors, serialization errors). Located in primitives/feedback.py."
+    },
+    {
+      "name": "FeedbackNotFoundError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that was not found.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when a feedback_id is not found in the store. Subclass of FeedbackError. Located in primitives/feedback.py."
+    },
+    {
+      "name": "DuplicateFeedbackError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that already exists.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when attempting to record a finding with a feedback_id that already exists (duplicate finding registration). Subclass of FeedbackError. Located in primitives/feedback.py."
+    }
+  ],
+  "functions": [
+    {
+      "name": "mint_feedback_id",
+      "description": "Generate a unique feedback_id string with the 'fb-' prefix. Uses a combination of timestamp and random bytes to ensure uniqueness. This is a standalone synchronous utility function in primitives/feedback.py. Intended to be called at finding-surfacing time.",
+      "inputs": [],
+      "output_type": "str",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned string matches pattern ^fb-[a-zA-Z0-9_-]{4,}$",
+        "Returned string is unique with extremely high probability (collision-resistant)"
+      ],
+      "idempotent": false,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.__init__",
+      "description": "Initialize the FeedbackStore with optional configuration. Sets up in-memory indexes (empty dicts for findings and feedback). Does NOT load from disk — call load() after construction. Creates asyncio.Lock for write serialization.",
+      "inputs": [
+        {
+          "name": "config",
+          "type_ref": "FeedbackStoreConfig",
+          "required": false,
+          "default": "FeedbackStoreConfig()",
+          "description": "Configuration for data directory and filenames. Defaults to .stigmergy/findings.jsonl and .stigmergy/feedback.jsonl.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "In-memory findings index is initialized as empty dict",
+        "In-memory feedback index is initialized as empty dict",
+        "asyncio.Lock is created for write serialization",
+        "No file I/O is performed during construction"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.load",
+      "description": "Async method to load existing findings and feedback records from JSONL files into in-memory indexes. Reads .stigmergy/findings.jsonl and .stigmergy/feedback.jsonl. Defensive parsing: blank lines and malformed JSON lines are skipped with a warning logged. If files do not exist, indexes remain empty (no error). For feedback records, latest entry per feedback_id wins (append-only re-rating). Uses asyncio.to_thread for file I/O.",
+      "inputs": [],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "io_error",
+          "condition": "Unrecoverable file I/O error (e.g., permission denied on existing file)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Failed to load feedback data from disk"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized via __init__"
+      ],
+      "postconditions": [
+        "In-memory findings index contains all valid FindingRecord entries from findings.jsonl",
+        "In-memory feedback index contains the latest FeedbackRecord per feedback_id from feedback.jsonl",
+        "Malformed or blank lines are skipped with warnings logged, not raised as errors",
+        "If JSONL files do not exist, indexes are empty and no error is raised"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Reads from .stigmergy/findings.jsonl via asyncio.to_thread",
+        "Reads from .stigmergy/feedback.jsonl via asyncio.to_thread",
+        "May log warnings for skipped malformed lines"
+      ]
+    },
+    {
+      "name": "FeedbackStore.record_finding",
+      "description": "Async method to record a new finding. Accepts finding metadata, creates a FindingRecord (feedback_id should already be minted via mint_feedback_id), adds it to the in-memory index, and appends the JSON-serialized record as a line to .stigmergy/findings.jsonl. Auto-creates .stigmergy/ directory on first write. Acquires asyncio.Lock for the write operation. Uses asyncio.to_thread for file I/O.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Pre-minted unique feedback_id (from mint_feedback_id()).",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fb-[a-zA-Z0-9_-]{4,}$",
+              "error_message": "feedback_id must match fb-* pattern"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the signal that produced this finding.",
+          "validators": []
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the context in which the finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Identifier of the agent that produced the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ISO 8601 datetime string of when the finding was surfaced.",
+          "validators": []
+        },
+        {
+          "name": "content_summary",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Brief summary of the finding content. Max 500 characters.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "1..500",
+              "error_message": "content_summary must be between 1 and 500 characters"
+            }
+          ]
+        }
+      ],
+      "output_type": "FindingRecord",
+      "error_cases": [
+        {
+          "name": "duplicate_finding",
+          "condition": "A FindingRecord with the given feedback_id already exists in the index",
+          "error_type": "DuplicateFeedbackError",
+          "error_data": {
+            "feedback_id": "The duplicate feedback_id"
+          }
+        },
+        {
+          "name": "invalid_feedback_id",
+          "condition": "feedback_id does not match the required fb-* pattern",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid feedback_id format"
+          }
+        },
+        {
+          "name": "content_summary_too_long",
+          "condition": "content_summary exceeds 500 characters",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "content_summary exceeds maximum length of 500 characters"
+          }
+        },
+        {
+          "name": "io_write_error",
+          "condition": "Failed to write to findings.jsonl (e.g., disk full, permission denied)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Failed to persist finding record to disk"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called",
+        "feedback_id has been minted via mint_feedback_id()",
+        "feedback_id does not already exist in the findings index"
+      ],
+      "postconditions": [
+        "A FindingRecord with the given fields is stored in the in-memory findings index keyed by feedback_id",
+        "The JSON-serialized FindingRecord is appended as a new line to .stigmergy/findings.jsonl",
+        "The returned FindingRecord is frozen and has schema_version=1",
+        "The .stigmergy/ directory exists after this call"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to .stigmergy/findings.jsonl via asyncio.to_thread",
+        "May create .stigmergy/ directory if it does not exist",
+        "Acquires and releases asyncio.Lock"
+      ]
+    },
+    {
+      "name": "FeedbackStore.record_feedback",
+      "description": "Async method to record user feedback (rating) for an existing finding. Looks up the FindingRecord by feedback_id, constructs a denormalized FeedbackRecord with the rating and current timestamp, adds/updates the in-memory feedback index, and appends the JSON-serialized record to .stigmergy/feedback.jsonl. Re-rating is allowed: a new append overwrites the in-memory entry (latest wins). Acquires asyncio.Lock for write. Uses asyncio.to_thread for file I/O.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id of the finding to rate. Must exist in the findings index.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^fb-[a-zA-Z0-9_-]{4,}$",
+              "error_message": "feedback_id must match fb-* pattern"
+            }
+          ]
+        },
+        {
+          "name": "rating",
+          "type_ref": "Rating",
+          "required": true,
+          "default": "",
+          "description": "The user's rating: helpful, already_knew, wrong, or irrelevant.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRecord",
+      "error_cases": [
+        {
+          "name": "finding_not_found",
+          "condition": "No FindingRecord exists with the given feedback_id",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        },
+        {
+          "name": "invalid_rating",
+          "condition": "The provided rating is not one of the valid Rating values",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid rating value. Must be one of: helpful, already_knew, wrong, irrelevant"
+          }
+        },
+        {
+          "name": "io_write_error",
+          "condition": "Failed to write to feedback.jsonl (e.g., disk full, permission denied)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Failed to persist feedback record to disk"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called",
+        "A FindingRecord with the given feedback_id exists in the findings index"
+      ],
+      "postconditions": [
+        "A FeedbackRecord is stored in the in-memory feedback index keyed by feedback_id (replaces any previous entry for this feedback_id)",
+        "The JSON-serialized FeedbackRecord is appended as a new line to .stigmergy/feedback.jsonl",
+        "The returned FeedbackRecord contains all fields from the original FindingRecord plus rating and feedback_timestamp",
+        "The FeedbackRecord.feedback_timestamp >= the FindingRecord.timestamp",
+        "The corresponding FindingRecord's 'rated' status is true in the in-memory index"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to .stigmergy/feedback.jsonl via asyncio.to_thread",
+        "May create .stigmergy/ directory if it does not exist",
+        "Acquires and releases asyncio.Lock",
+        "Updates in-memory feedback index (latest rating wins for this feedback_id)"
+      ]
+    },
+    {
+      "name": "FeedbackStore.get_finding",
+      "description": "Async method to retrieve a FindingRecord by feedback_id from the in-memory index. O(1) lookup.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id to look up.",
+          "validators": []
+        }
+      ],
+      "output_type": "FindingRecord",
+      "error_cases": [
+        {
+          "name": "not_found",
+          "condition": "No FindingRecord exists with the given feedback_id in the index",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "Returns the FindingRecord matching the given feedback_id",
+        "The returned record is frozen/immutable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.get_feedback",
+      "description": "Async method to retrieve the latest FeedbackRecord for a given feedback_id from the in-memory index. O(1) lookup. Returns the most recent rating if the finding has been re-rated.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id to look up.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRecord",
+      "error_cases": [
+        {
+          "name": "not_found",
+          "condition": "No FeedbackRecord exists with the given feedback_id (either finding doesn't exist or has not been rated)",
+          "error_type": "FeedbackNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "Returns the latest FeedbackRecord matching the given feedback_id",
+        "The returned record is frozen/immutable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.list_feedback",
+      "description": "Async method to list FeedbackRecords from the in-memory index with optional filtering by agent_id, rating, time range, and a result limit. Returns only the latest rating per feedback_id. Results are ordered by feedback_timestamp descending (most recent first).",
+      "inputs": [
+        {
+          "name": "filter",
+          "type_ref": "FeedbackListFilter",
+          "required": false,
+          "default": "FeedbackListFilter()",
+          "description": "Optional filter criteria. If not provided, returns all feedback records up to default limit.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRecordList",
+      "error_cases": [
+        {
+          "name": "invalid_filter",
+          "condition": "Filter contains invalid values (e.g., invalid rating string, unparseable since datetime)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Invalid filter criteria"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "Returned list contains only FeedbackRecords matching all specified filter criteria",
+        "Returned list has at most 'limit' entries (or all matching if limit=0)",
+        "Returned list is ordered by feedback_timestamp descending",
+        "Each entry in the returned list represents the latest rating for its feedback_id"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.list_findings",
+      "description": "Async method to list all FindingRecords from the in-memory index, optionally filtered by agent_id and/or rated status. Returns results ordered by timestamp descending.",
+      "inputs": [
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Filter findings by agent_id. Empty string means no filter.",
+          "validators": []
+        },
+        {
+          "name": "rated_only",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "If true, return only findings that have been rated.",
+          "validators": []
+        },
+        {
+          "name": "unrated_only",
+          "type_ref": "bool",
+          "required": false,
+          "default": "false",
+          "description": "If true, return only findings that have NOT been rated. Mutually exclusive with rated_only.",
+          "validators": []
+        },
+        {
+          "name": "limit",
+          "type_ref": "int",
+          "required": false,
+          "default": "100",
+          "description": "Maximum number of records to return. 0 means no limit.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0..10000",
+              "error_message": "limit must be between 0 and 10000"
+            }
+          ]
+        }
+      ],
+      "output_type": "FindingRecordList",
+      "error_cases": [
+        {
+          "name": "conflicting_filters",
+          "condition": "Both rated_only and unrated_only are set to true",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "rated_only and unrated_only are mutually exclusive"
+          }
+        }
+      ],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called",
+        "rated_only and unrated_only are not both true"
+      ],
+      "postconditions": [
+        "Returned list contains only FindingRecords matching all specified filter criteria",
+        "Returned list has at most 'limit' entries (or all matching if limit=0)",
+        "Returned list is ordered by timestamp descending"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "FeedbackStore.get_summary",
+      "description": "Async method to compute a FeedbackSummary of all findings and feedback, optionally filtered by agent_id. Provides counts of total findings, rated findings, and breakdown by rating category. Computed from in-memory indexes.",
+      "inputs": [
+        {
+          "name": "agent_id",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Filter summary by agent_id. Empty string means global summary across all agents.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackSummary",
+      "error_cases": [],
+      "preconditions": [
+        "FeedbackStore has been initialized and load() has been called"
+      ],
+      "postconditions": [
+        "total_findings >= total_rated",
+        "total_rated == helpful_count + already_knew_count + wrong_count + irrelevant_count",
+        "All counts are >= 0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "Every feedback_id starts with the prefix 'fb-' followed by a unique identifier",
+    "FindingRecord and FeedbackRecord are frozen (immutable) once created",
+    "FeedbackRecord is a denormalized superset of FindingRecord fields plus rating and feedback_timestamp",
+    "The in-memory index is always consistent with the on-disk JSONL files after successful writes",
+    "A FeedbackRecord can only exist for a feedback_id that has a corresponding FindingRecord",
+    "Re-rating a finding appends a new FeedbackRecord line; get_feedback returns the latest rating for a given feedback_id",
+    "Write operations are serialized via asyncio.Lock (single-process concurrency model)",
+    "Blank and malformed JSONL lines are skipped with a warning during file reads — never cause crashes",
+    "schema_version field enables future migration of stored records",
+    "content_summary is limited to 500 characters maximum",
+    "File I/O is performed via asyncio.to_thread to avoid blocking the event loop",
+    "Directory .stigmergy/ is auto-created on first write if it does not exist"
+  ],
+  "requires": [
+    "primitives/feedback.py must define Rating, FindingRecord, FeedbackRecord, and exception classes",
+    "attention/feedback_store.py must define FeedbackStore class",
+    ".stigmergy/ directory is the data root (auto-created on first write)",
+    "Python 3.11+ with asyncio, pydantic v2",
+    "rating-to-calibration mapping is handled externally in attention/calibration.py"
+  ]
+}

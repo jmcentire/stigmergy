@@ -1,0 +1,2702 @@
+{
+  "component_id": "multi_strategy_embeddings",
+  "name": "Multi-Strategy Embeddings (Feature 3)",
+  "description": "Extend the embedding system to support multiple named strategies that populate Signal.embeddings dict. Define EmbeddingStrategy protocol. Implement at least 3 strategies: semantic (general LLM, fallback to keyword vectors), technical (code-aware keyword extraction + TF-IDF), social (author/mention graph embedding). All strategies produce same fixed dimensionality (EMBEDDING_DIM=64). Each context learns which dimensions are most predictive via feedback. Familiarity score uses per-context dimension weights. Composes three sub-contracts: embedding_strategy_protocol (registry + protocol), embedding_strategy_implementations (semantic/technical/social strategies), and embedding_context_weights (per-context dimension weight learning).",
+  "version": 1,
+  "types": [
+    {
+      "name": "StrategyNameEnum",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "semantic",
+        "technical",
+        "social"
+      ],
+      "inner_types": [],
+      "description": "The canonical name identifiers for the three concrete embedding strategies."
+    },
+    {
+      "name": "NdArrayDtype",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "float32",
+        "float64"
+      ],
+      "inner_types": [],
+      "description": "Allowed numpy dtypes for embedding vectors."
+    },
+    {
+      "name": "CodePatternType",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "function_definition",
+        "import_statement",
+        "api_path",
+        "error_pattern",
+        "class_definition",
+        "variable_assignment",
+        "dotted_path",
+        "decorator"
+      ],
+      "inner_types": [],
+      "description": "Types of code patterns detected by TechnicalStrategy's regex-based pattern detectors. Each maps to a dedicated range of embedding dimensions."
+    },
+    {
+      "name": "SocialEntityType",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "author",
+        "mention",
+        "channel",
+        "author_mention_pair"
+      ],
+      "inner_types": [],
+      "description": "Types of social entities extracted from signal metadata for SocialStrategy embedding."
+    },
+    {
+      "name": "MentionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of mentioned entity identifiers (strings)."
+    },
+    {
+      "name": "TagsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of tag strings associated with a signal."
+    },
+    {
+      "name": "FloatList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "float",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of float values representing vector components."
+    },
+    {
+      "name": "IntTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "int",
+      "variants": [],
+      "inner_types": [],
+      "description": "A tuple of integers representing array shape. For embedding vectors this is a single-element list [dimensions]."
+    },
+    {
+      "name": "TokenList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of extracted tokens (strings)."
+    },
+    {
+      "name": "MatchesList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of matched pattern strings."
+    },
+    {
+      "name": "StrategyInfoList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "StrategyInfo",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of StrategyInfo entries for all registered strategies."
+    },
+    {
+      "name": "StrategyFailureList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "StrategyFailure",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of strategy failures from an embed_all execution."
+    },
+    {
+      "name": "DetectedPatternsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "DetectedPatterns",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of detected code patterns."
+    },
+    {
+      "name": "StrategyNameList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of strategy name strings."
+    },
+    {
+      "name": "OptionalLLMService",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "LLMService"
+      ],
+      "description": "Optional LLM service interface. When None, SemanticStrategy falls back to deterministic feature hashing."
+    },
+    {
+      "name": "OptionalEmbeddingDimensionWeights",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "EmbeddingDimensionWeights"
+      ],
+      "description": "Optional per-context dimension weights. When None, compute_weighted_embedding_similarity returns 0.0."
+    },
+    {
+      "name": "OptionalStrategyNameList",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "StrategyNameList"
+      ],
+      "description": "Optional list of strategy names. When None, uses all strategies present in logits."
+    },
+    {
+      "name": "Signal",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Unique identifier for the signal.",
+          "validators": []
+        },
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Primary textual content of the signal.",
+          "validators": []
+        },
+        {
+          "name": "author",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "Author or originator of the signal. Empty string if unknown.",
+          "validators": []
+        },
+        {
+          "name": "mentions",
+          "type_ref": "MentionsList",
+          "required": false,
+          "default": "[]",
+          "description": "List of user/entity mentions referenced in the signal.",
+          "validators": []
+        },
+        {
+          "name": "metadata",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Arbitrary key-value metadata associated with the signal.",
+          "validators": []
+        },
+        {
+          "name": "embeddings",
+          "type_ref": "EmbeddingsDict",
+          "required": false,
+          "default": "{}",
+          "description": "Strategy-keyed embedding vectors stored as list[float]. Keys are strategy names, values are float lists of length equal to registry dimensions.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Core signal model representing an incoming piece of information to be embedded. Pydantic v2 frozen model. The embeddings field stores strategy-keyed vectors as lists of floats for serialization safety."
+    },
+    {
+      "name": "EmbeddingsDict",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to embedding vector (list[float]). All vectors should share the same dimensionality.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(k, str) and len(k) > 0 and isinstance(v, list) and all(isinstance(x, float) for x in v) for k, v in value.items())",
+              "error_message": "All keys must be non-empty strings and all values must be lists of floats."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict[str, list[float]] mapping strategy names to embedding vectors stored as plain float lists. Keys must be valid strategy names (lowercase alphanumeric + underscores). Each value list must have length equal to the registry's configured dimensions."
+    },
+    {
+      "name": "NdArray",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "shape",
+          "type_ref": "IntTuple",
+          "required": true,
+          "default": "",
+          "description": "Shape tuple of the array. For embedding vectors this must be (dimensions,) — a 1-D vector.",
+          "validators": []
+        },
+        {
+          "name": "dtype",
+          "type_ref": "NdArrayDtype",
+          "required": true,
+          "default": "",
+          "description": "Data type of array elements.",
+          "validators": []
+        },
+        {
+          "name": "data",
+          "type_ref": "FloatList",
+          "required": true,
+          "default": "",
+          "description": "The raw float data of the vector.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Represents a numpy ndarray vector. In Python this is numpy.ndarray with dtype float32 or float64. Used as function input/output type for embedding operations."
+    },
+    {
+      "name": "EmbeddingVector",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "data",
+          "type_ref": "FloatList",
+          "required": true,
+          "default": "",
+          "description": "Flat list of float64 values of length EMBEDDING_DIM (64). Represents the underlying numpy array content.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) == 64",
+              "error_message": "Embedding vector must have exactly 64 elements."
+            },
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(v, float) and not math.isnan(v) and not math.isinf(v) for v in value)",
+              "error_message": "All elements must be finite floats (no NaN, no Inf)."
+            },
+            {
+              "kind": "custom",
+              "expression": "abs(sum(v**2 for v in value) - 1.0) < 1e-6 or all(v == 0.0 for v in value)",
+              "error_message": "Vector must be either L2-normalized (unit length) or the zero vector."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A fixed-dimensionality numpy float64 array of shape (EMBEDDING_DIM=64,). Either L2-normalized (unit length) or the zero vector (no-information sentinel). Never contains NaN or Inf values."
+    },
+    {
+      "name": "SignalMetadata",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "content",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The textual content of the signal. May be empty string.",
+          "validators": []
+        },
+        {
+          "name": "signal_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The type/kind of the signal (e.g., 'message', 'code_snippet', 'event').",
+          "validators": []
+        },
+        {
+          "name": "author",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The author/creator identifier. May be empty if unknown.",
+          "validators": []
+        },
+        {
+          "name": "channel",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The channel or context identifier where the signal originated. May be empty.",
+          "validators": []
+        },
+        {
+          "name": "mentions",
+          "type_ref": "MentionsList",
+          "required": false,
+          "default": "[]",
+          "description": "List of @mentioned user/entity identifiers.",
+          "validators": []
+        },
+        {
+          "name": "tags",
+          "type_ref": "TagsList",
+          "required": false,
+          "default": "[]",
+          "description": "List of tags or labels associated with the signal.",
+          "validators": []
+        },
+        {
+          "name": "extra",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Additional key-value metadata pairs.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Metadata extracted from a Signal object relevant to embedding strategies. Represents the subset of Signal fields consumed by the strategies."
+    },
+    {
+      "name": "EmbedAllResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "embeddings",
+          "type_ref": "StrategyEmbeddingMap",
+          "required": true,
+          "default": "",
+          "description": "Map of strategy name to successfully computed embedding vector. Only includes strategies that succeeded.",
+          "validators": []
+        },
+        {
+          "name": "failures",
+          "type_ref": "StrategyFailureList",
+          "required": true,
+          "default": "",
+          "description": "List of strategy failures with details.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of running all registered strategies on a signal. Contains successfully computed embeddings and information about any strategies that failed."
+    },
+    {
+      "name": "StrategyEmbeddingMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to NdArray embedding vector.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict[str, NdArray] mapping strategy names to their computed embedding vectors."
+    },
+    {
+      "name": "StrategyFailure",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "strategy_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Name of the strategy that failed.",
+          "validators": []
+        },
+        {
+          "name": "error_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The exception type name (e.g., 'ValueError', 'TimeoutError').",
+          "validators": []
+        },
+        {
+          "name": "error_message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message from the exception.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Details about a strategy that failed during embed_all execution."
+    },
+    {
+      "name": "StrategyInfo",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Registered name of the strategy.",
+          "validators": []
+        },
+        {
+          "name": "strategy_type",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Fully qualified class name of the strategy implementation.",
+          "validators": []
+        },
+        {
+          "name": "is_available",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the strategy is currently available and registered.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Information about a registered strategy, returned by introspection methods."
+    },
+    {
+      "name": "RegistryConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Fixed dimensionality for all embedding vectors produced by this registry.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "dimensions must be an integer between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for constructing an EmbeddingStrategyRegistry."
+    },
+    {
+      "name": "HashResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "bucket",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The hash bucket index in range [0, num_buckets).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "Bucket must be non-negative."
+            }
+          ]
+        },
+        {
+          "name": "sign",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The sign value, either +1 or -1.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value in (-1, 1)",
+              "error_message": "Sign must be -1 or +1."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of the signed hashing utility. Produces a bucket index and a sign (+1 or -1) from two slices of an MD5 hash digest."
+    },
+    {
+      "name": "DetectedPatterns",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "pattern_type",
+          "type_ref": "CodePatternType",
+          "required": true,
+          "default": "",
+          "description": "The type of code pattern detected.",
+          "validators": []
+        },
+        {
+          "name": "matches",
+          "type_ref": "MatchesList",
+          "required": true,
+          "default": "",
+          "description": "List of matched strings/tokens for this pattern type.",
+          "validators": []
+        },
+        {
+          "name": "count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of occurrences of this pattern type.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "Count must be non-negative."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Collection of code patterns detected in signal content by TechnicalStrategy."
+    },
+    {
+      "name": "LLMService",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "embed_text",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "Async callable: async (text: str) -> list[float]. The LLM embedding function.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Optional LLM service interface injected into SemanticStrategy. Provides async text-to-embedding capability. When None/absent, SemanticStrategy falls back to deterministic feature hashing."
+    },
+    {
+      "name": "EmbeddingStrategyInfo",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "name",
+          "type_ref": "StrategyNameEnum",
+          "required": true,
+          "default": "",
+          "description": "The canonical name of this strategy.",
+          "validators": []
+        },
+        {
+          "name": "description",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of what this strategy captures.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The dimensionality of vectors produced. Always equals EMBEDDING_DIM (64).",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value == 64",
+              "error_message": "Dimension must equal EMBEDDING_DIM (64)."
+            }
+          ]
+        },
+        {
+          "name": "requires_external_service",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether this strategy requires an external service (e.g., LLM). False means fully self-contained heuristic.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Descriptive information about an embedding strategy instance, useful for introspection and registration."
+    },
+    {
+      "name": "EmbeddingDimensionWeights",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "logits",
+          "type_ref": "StrategyLogitsMap",
+          "required": true,
+          "default": "",
+          "description": "Per-strategy unnormalized log-weights. Keys are strategy names, values are finite floats. Missing strategies treated as logit 0.0 on read.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(v, float) and math.isfinite(v) for v in value.values())",
+              "error_message": "All logit values must be finite floats."
+            }
+          ]
+        },
+        {
+          "name": "learning_rate",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.05",
+          "description": "Initial learning rate for logit updates. Effective rate decays as learning_rate / (1 + update_count * 0.01).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 < value <= 1.0",
+              "error_message": "learning_rate must be in (0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "update_count",
+          "type_ref": "int",
+          "required": false,
+          "default": "0",
+          "description": "Number of weight updates applied so far. Monotonically increasing. Used for learning rate decay.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value >= 0",
+              "error_message": "update_count must be non-negative."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mutable Pydantic BaseModel storing per-strategy logits with softmax-normalized weights. Composed into Context as an optional field, lazily initialized with equal weights (logit 0.0). Learning rate decays with update_count for ART stability."
+    },
+    {
+      "name": "StrategyLogitsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to logit value (float). All keys must be non-empty strings, all values must be finite floats.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(k, str) and len(k) > 0 and isinstance(v, float) and math.isfinite(v) for k, v in value.items())",
+              "error_message": "All keys must be non-empty strings and all values must be finite floats."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, float] representing strategy name to logit value mapping. All values must be finite floats."
+    },
+    {
+      "name": "NormalizedWeightsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to normalized weight (float). Values sum to 1.0. Each value is in (0.0, 1.0).",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "abs(sum(value.values()) - 1.0) < 1e-9 and all(0.0 < v < 1.0 for v in value.values())",
+              "error_message": "Normalized weights must sum to 1.0 and each must be in (0.0, 1.0)."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, float] representing strategy name to softmax-normalized weight. All values are in (0.0, 1.0) and sum to 1.0."
+    },
+    {
+      "name": "StrategyContributionsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to similarity contribution (float). All values must be finite.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(k, str) and len(k) > 0 and isinstance(v, float) and math.isfinite(v) for k, v in value.items())",
+              "error_message": "All keys must be non-empty strings and all values must be finite floats."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, float] representing per-strategy similarity contributions used during weight updates."
+    },
+    {
+      "name": "WeightedSimilarityResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "similarity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The weighted similarity score. In [0.0, 1.0] when inputs are unit-normalized. Returns 0.0 when the intersection of available strategies is empty.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "math.isfinite(value)",
+              "error_message": "Similarity must be a finite float."
+            }
+          ]
+        },
+        {
+          "name": "per_strategy_similarities",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name to its individual cosine similarity. Only strategies present in the intersection are included.",
+          "validators": []
+        },
+        {
+          "name": "strategies_used",
+          "type_ref": "StrategyNameList",
+          "required": true,
+          "default": "",
+          "description": "List of strategy names present in the intersection of signal embeddings, context prototypes, and weights.",
+          "validators": []
+        },
+        {
+          "name": "effective_weights",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "The re-normalized weights used for only the intersecting strategies. Sums to 1.0 over the intersection. Empty dict if no intersection.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of computing a weighted embedding similarity, including the aggregate score and per-strategy breakdown for diagnostic and learning purposes."
+    },
+    {
+      "name": "DimensionWeightsUpdateResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The updated EmbeddingDimensionWeights instance (same reference if mutated in-place).",
+          "validators": []
+        },
+        {
+          "name": "effective_learning_rate",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The effective (decayed) learning rate that was used for this update.",
+          "validators": []
+        },
+        {
+          "name": "logit_deltas",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name to the delta applied to its logit during this update.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of a weight update operation, capturing both the updated weights object and diagnostic information about the update."
+    },
+    {
+      "name": "SerializedDimensionWeights",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "logits",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Serialized dict[str, float] of strategy logits.",
+          "validators": []
+        },
+        {
+          "name": "learning_rate",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The learning rate value.",
+          "validators": []
+        },
+        {
+          "name": "update_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The update count value.",
+          "validators": []
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility of the serialized format.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "JSON-safe serialized form of EmbeddingDimensionWeights. Includes schema_version for forward compatibility."
+    },
+    {
+      "name": "SerializedEmbeddings",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "embeddings",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Serialized dict[str, list[float]] of strategy embeddings.",
+          "validators": []
+        },
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The dimensionality of all embedding vectors.",
+          "validators": []
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "JSON-safe serialized form of Signal.embeddings at serialization boundaries. dict[str, list[float]] with schema version for forward compatibility."
+    },
+    {
+      "name": "PopulateResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "New Signal instance with embeddings populated via model_copy(update=...).",
+          "validators": []
+        },
+        {
+          "name": "failures",
+          "type_ref": "StrategyFailureList",
+          "required": true,
+          "default": "",
+          "description": "List of strategy failures during embedding population.",
+          "validators": []
+        },
+        {
+          "name": "strategies_succeeded",
+          "type_ref": "StrategyNameList",
+          "required": true,
+          "default": "",
+          "description": "Names of strategies that produced successful embeddings.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of populating signal embeddings, including the new signal and diagnostic information about failures."
+    }
+  ],
+  "functions": [
+    {
+      "name": "create_registry",
+      "description": "Factory function to create and configure an EmbeddingStrategyRegistry with all three standard strategies (semantic, technical, social) pre-registered. Uses EMBEDDING_DIM=64 as the fixed dimensionality. Optionally accepts an LLM service for the semantic strategy; if None, semantic strategy operates in heuristic-only fallback mode.",
+      "inputs": [
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": false,
+          "default": "64",
+          "description": "Fixed dimensionality for all embedding vectors. Defaults to EMBEDDING_DIM (64).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "dimensions must be an integer between 1 and 4096 inclusive."
+            }
+          ]
+        },
+        {
+          "name": "llm_service",
+          "type_ref": "OptionalLLMService",
+          "required": false,
+          "default": "None",
+          "description": "Optional LLM service for the semantic strategy. If None, semantic falls back to deterministic feature hashing.",
+          "validators": []
+        },
+        {
+          "name": "register_defaults",
+          "type_ref": "bool",
+          "required": false,
+          "default": "true",
+          "description": "If true, registers the three default strategies (semantic, technical, social) during creation.",
+          "validators": []
+        }
+      ],
+      "output_type": "any",
+      "error_cases": [
+        {
+          "name": "invalid_dimensions",
+          "condition": "dimensions < 1 or dimensions > 4096 or not isinstance(dimensions, int)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "dimensions must be an integer between 1 and 4096 inclusive."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimensions is a positive integer within [1, 4096]"
+      ],
+      "postconditions": [
+        "Returned registry has dimensions == dimensions",
+        "If register_defaults is true, registry has_strategy('semantic') and has_strategy('technical') and has_strategy('social')",
+        "If register_defaults is false, registry has no registered strategies",
+        "SemanticStrategy is constructed with the provided llm_service (may be None)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "register_strategy",
+      "description": "Register a named embedding strategy with a registry. Validates name format, protocol conformance via @runtime_checkable isinstance check, and async embed method via inspect.iscoroutinefunction. Raises on invalid name, protocol non-conformance, or duplicate name.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance to register the strategy with.",
+          "validators": []
+        },
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The strategy name. Must match ^[a-z][a-z0-9_]{0,63}$.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^[a-z][a-z0-9_]{0,63}$",
+              "error_message": "Strategy name must start with a lowercase letter and contain only lowercase alphanumeric characters and underscores (1-64 chars)."
+            }
+          ]
+        },
+        {
+          "name": "strategy",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The strategy object. Must satisfy the EmbeddingStrategy @runtime_checkable Protocol with name property and async embed() method.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "invalid_name_format",
+          "condition": "name does not match ^[a-z][a-z0-9_]{0,63}$",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Strategy name must start with a lowercase letter and contain only lowercase alphanumeric characters and underscores (1-64 chars)."
+          }
+        },
+        {
+          "name": "protocol_not_satisfied",
+          "condition": "not isinstance(strategy, EmbeddingStrategy) — the object does not have an embed method with the correct signature",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Strategy does not satisfy the EmbeddingStrategy protocol. Must have an 'embed(self, signal: Signal) -> np.ndarray' method."
+          }
+        },
+        {
+          "name": "embed_not_async",
+          "condition": "strategy has an embed method but inspect.iscoroutinefunction(strategy.embed) is False",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Strategy.embed must be an async coroutine function (defined with 'async def')."
+          }
+        },
+        {
+          "name": "duplicate_name",
+          "condition": "A strategy with the same name is already registered",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "A strategy with this name is already registered. Use unregister() first to replace it."
+          }
+        }
+      ],
+      "preconditions": [
+        "name matches ^[a-z][a-z0-9_]{0,63}$",
+        "strategy satisfies isinstance(strategy, EmbeddingStrategy) via @runtime_checkable",
+        "strategy.embed is a coroutine function (inspect.iscoroutinefunction(strategy.embed) is True)",
+        "name is not already registered in this registry"
+      ],
+      "postconditions": [
+        "Strategy is stored in the registry under the given name",
+        "registry.has_strategy(name) returns True",
+        "registry.list_strategies() includes the newly registered strategy"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Adds the strategy to the internal strategy registry mapping"
+      ]
+    },
+    {
+      "name": "unregister_strategy",
+      "description": "Remove a previously registered strategy by name from a registry. Allows re-registration of the same name with a different implementation.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance.",
+          "validators": []
+        },
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The name of the strategy to unregister.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "strategy_not_found",
+          "condition": "No strategy with the given name is registered",
+          "error_type": "KeyError",
+          "error_data": {
+            "message": "No strategy registered with the given name."
+          }
+        }
+      ],
+      "preconditions": [
+        "name is currently registered in the registry"
+      ],
+      "postconditions": [
+        "Strategy with the given name is removed from the registry",
+        "registry.has_strategy(name) returns False",
+        "registry.list_strategies() no longer includes this strategy name"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Removes the strategy from the internal strategy registry mapping"
+      ]
+    },
+    {
+      "name": "embed_all",
+      "description": "Run all registered strategies concurrently on the given signal using asyncio.gather(return_exceptions=True). Validates each result for correct shape and dtype. Strategies that raise exceptions or produce invalid output are recorded as failures. Returns EmbedAllResult with successful embeddings and failure details. Never raises for individual strategy failures.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance with registered strategies.",
+          "validators": []
+        },
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to compute embeddings for.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbedAllResult",
+      "error_cases": [
+        {
+          "name": "no_strategies_registered",
+          "condition": "Registry has no strategies registered",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "message": "No strategies registered. Register at least one strategy before calling embed_all()."
+          }
+        },
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance",
+        "At least one strategy is registered in the registry"
+      ],
+      "postconditions": [
+        "Result.embeddings contains only vectors with shape (dimensions,) and dtype in {float32, float64}",
+        "Result.embeddings keys are a subset of registered strategy names",
+        "len(Result.failures) + len(Result.embeddings.entries) == number of registered strategies",
+        "All strategies were invoked concurrently via asyncio.gather",
+        "Failed strategies are logged at WARNING level and included in Result.failures",
+        "No exception is raised for individual strategy failures"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warnings for each strategy that fails or produces invalid output",
+        "May invoke external services or models depending on strategy implementations"
+      ]
+    },
+    {
+      "name": "embed_single",
+      "description": "Run a single named strategy on the given signal. Defaults to 'semantic' for backward compatibility. Validates the output shape and dtype. Convenience wrapper for invoking one strategy at a time.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance.",
+          "validators": []
+        },
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to compute an embedding for.",
+          "validators": []
+        },
+        {
+          "name": "strategy_name",
+          "type_ref": "str",
+          "required": false,
+          "default": "semantic",
+          "description": "Name of the strategy to use. Defaults to 'semantic' for backward compatibility.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "strategy_not_found",
+          "condition": "No strategy with the given name is registered",
+          "error_type": "KeyError",
+          "error_data": {
+            "message": "No strategy registered with the given name."
+          }
+        },
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance."
+          }
+        },
+        {
+          "name": "strategy_execution_failed",
+          "condition": "The strategy's embed() method raises an exception",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "message": "Strategy execution failed."
+          }
+        },
+        {
+          "name": "invalid_output_shape",
+          "condition": "Strategy returned a vector with shape != (dimensions,)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Strategy returned vector with unexpected shape."
+          }
+        },
+        {
+          "name": "invalid_output_dtype",
+          "condition": "Strategy returned a vector with dtype not in {float32, float64}",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Strategy returned vector with unexpected dtype."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance",
+        "strategy_name is registered in the registry"
+      ],
+      "postconditions": [
+        "Returned vector has shape (dimensions,)",
+        "Returned vector has dtype float32 or float64",
+        "Returned vector is L2-normalized (norm ≈ 1.0 within 1e-6) unless the input produces a zero vector"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke external services or models depending on strategy implementation"
+      ]
+    },
+    {
+      "name": "populate_signal_embeddings",
+      "description": "Convenience method that runs embed_all on a signal and returns a PopulateResult containing a new Signal instance with the embeddings dict populated. Since Signal is a frozen Pydantic model, this creates a copy via model_copy(update=...) with updated embeddings. Embeddings are converted from ndarray to list[float] for serialization safety. Partial results are preserved — if some strategies fail, the successful ones are still populated.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance with registered strategies.",
+          "validators": []
+        },
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to populate embeddings for.",
+          "validators": []
+        }
+      ],
+      "output_type": "PopulateResult",
+      "error_cases": [
+        {
+          "name": "no_strategies_registered",
+          "condition": "Registry has no strategies registered",
+          "error_type": "RuntimeError",
+          "error_data": {
+            "message": "No strategies registered. Register at least one strategy before calling populate_signal_embeddings()."
+          }
+        },
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance",
+        "At least one strategy is registered"
+      ],
+      "postconditions": [
+        "Returned PopulateResult.signal is a new frozen Signal instance with embeddings populated",
+        "Returned signal.embeddings keys are the names of strategies that succeeded",
+        "Each embedding in the returned Signal has length == registry.dimensions",
+        "All non-embedding fields of the returned Signal are identical to the input Signal",
+        "Original signal is not mutated",
+        "PopulateResult.failures contains details of any failed strategies",
+        "PopulateResult.strategies_succeeded lists names of strategies that produced embeddings"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warnings for any strategies that fail during embedding",
+        "May invoke external services or models depending on strategy implementations"
+      ]
+    },
+    {
+      "name": "list_strategies",
+      "description": "Return information about all currently registered strategies in the registry.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance.",
+          "validators": []
+        }
+      ],
+      "output_type": "StrategyInfoList",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned list has one entry per registered strategy",
+        "Each entry has the correct name, type, and availability status",
+        "List is sorted alphabetically by strategy name"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "has_strategy",
+      "description": "Check whether a strategy with the given name is registered in the registry.",
+      "inputs": [
+        {
+          "name": "registry",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The EmbeddingStrategyRegistry instance.",
+          "validators": []
+        },
+        {
+          "name": "name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The strategy name to check.",
+          "validators": []
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returns True if and only if a strategy with the given name is currently registered"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "project_to_dim",
+      "description": "Shared utility function for truncation/padding of a vector to a target dimensionality, followed by L2 normalization. If the input vector is longer than target_dim, it is truncated. If shorter, zero-padded on the right. After projection, the vector is L2-normalized unless it is a zero vector.",
+      "inputs": [
+        {
+          "name": "vector",
+          "type_ref": "NdArray",
+          "required": true,
+          "default": "",
+          "description": "A 1-D numpy array to project.",
+          "validators": []
+        },
+        {
+          "name": "target_dim",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Target dimensionality for the output vector.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "target_dim must be an integer between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "not_1d_array",
+          "condition": "vector.ndim != 1",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Expected 1-D array."
+          }
+        },
+        {
+          "name": "invalid_dtype",
+          "condition": "vector.dtype not in {float32, float64}",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected float32 or float64 dtype."
+          }
+        },
+        {
+          "name": "invalid_target_dim",
+          "condition": "target_dim < 1 or target_dim > 4096 or not isinstance(target_dim, int)",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "target_dim must be an integer between 1 and 4096 inclusive."
+          }
+        },
+        {
+          "name": "empty_vector",
+          "condition": "vector has length 0 (vector.shape == (0,))",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Input vector must have at least one element."
+          }
+        }
+      ],
+      "preconditions": [
+        "vector is a 1-D numpy array (vector.ndim == 1)",
+        "vector has dtype float32 or float64",
+        "target_dim is a positive integer within [1, 4096]"
+      ],
+      "postconditions": [
+        "Returned vector has shape (target_dim,)",
+        "Returned vector has the same dtype as the input vector",
+        "If input is all zeros, output is all zeros with shape (target_dim,)",
+        "L2 norm of output is approximately 1.0 (within 1e-6) or exactly 0.0 for zero vectors"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "embeddings_to_ndarray",
+      "description": "Helper function to convert a serialized embedding (list[float]) from Signal.embeddings back into a numpy ndarray. Used at computation sites where numpy operations are needed on stored embeddings.",
+      "inputs": [
+        {
+          "name": "embedding",
+          "type_ref": "FloatList",
+          "required": true,
+          "default": "",
+          "description": "A non-empty list of finite float values representing a serialized embedding vector.",
+          "validators": []
+        },
+        {
+          "name": "dtype",
+          "type_ref": "str",
+          "required": false,
+          "default": "float32",
+          "description": "Target numpy dtype. Must be 'float32' or 'float64'.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "empty_embedding",
+          "condition": "embedding is an empty list",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Embedding list must not be empty."
+          }
+        },
+        {
+          "name": "non_finite_values",
+          "condition": "embedding contains NaN or Inf values",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Embedding contains non-finite values (NaN or Inf)."
+          }
+        },
+        {
+          "name": "invalid_dtype",
+          "condition": "dtype is not 'float32' or 'float64'",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "dtype must be 'float32' or 'float64'."
+          }
+        }
+      ],
+      "preconditions": [
+        "embedding is a non-empty list of finite float values",
+        "dtype is 'float32' or 'float64'"
+      ],
+      "postconditions": [
+        "Returned array has shape (len(embedding),)",
+        "Returned array has the specified dtype",
+        "Returned array values match the input list values within floating-point precision"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "ndarray_to_embedding",
+      "description": "Helper function to convert a numpy ndarray embedding vector into a list[float] suitable for storage in Signal.embeddings (Pydantic v2 frozen model serialization-safe format).",
+      "inputs": [
+        {
+          "name": "array",
+          "type_ref": "NdArray",
+          "required": true,
+          "default": "",
+          "description": "A 1-D numpy ndarray with dtype float32 or float64 and finite values.",
+          "validators": []
+        }
+      ],
+      "output_type": "FloatList",
+      "error_cases": [
+        {
+          "name": "not_1d_array",
+          "condition": "array.ndim != 1",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Expected 1-D array."
+          }
+        },
+        {
+          "name": "invalid_dtype",
+          "condition": "array.dtype not in {float32, float64}",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected float32 or float64 dtype."
+          }
+        },
+        {
+          "name": "non_finite_values",
+          "condition": "array contains NaN or Inf values",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Array contains non-finite values (NaN or Inf)."
+          }
+        }
+      ],
+      "preconditions": [
+        "array is a 1-D numpy ndarray",
+        "array has dtype float32 or float64",
+        "array contains only finite values"
+      ],
+      "postconditions": [
+        "Returned list has length equal to array.shape[0]",
+        "Each element is a Python float",
+        "Values match the input array within floating-point precision"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "signed_hash",
+      "description": "Shared hashing utility. Computes a deterministic (bucket, sign) pair from a token string using hashlib.md5. The MD5 digest bytes [0:8] determine the bucket index (modulo num_buckets), bytes [8:16] determine the sign (+1 or -1). Ensures cross-process reproducibility unlike built-in hash().",
+      "inputs": [
+        {
+          "name": "token",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "A valid UTF-8 string to hash.",
+          "validators": []
+        },
+        {
+          "name": "num_buckets",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of hash buckets. Must be > 0.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value > 0",
+              "error_message": "num_buckets must be a positive integer."
+            }
+          ]
+        }
+      ],
+      "output_type": "HashResult",
+      "error_cases": [
+        {
+          "name": "invalid_num_buckets",
+          "condition": "num_buckets <= 0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "num_buckets must be a positive integer."
+          }
+        }
+      ],
+      "preconditions": [
+        "token is a valid UTF-8 string",
+        "num_buckets > 0"
+      ],
+      "postconditions": [
+        "result.bucket >= 0 and result.bucket < num_buckets",
+        "result.sign in (-1, +1)",
+        "Calling with same (token, num_buckets) always produces same result (deterministic)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "l2_normalize",
+      "description": "Shared utility that L2-normalizes a numpy vector. If the vector has zero norm (all zeros), returns the zero vector unchanged. Never produces NaN values.",
+      "inputs": [
+        {
+          "name": "vector",
+          "type_ref": "NdArray",
+          "required": true,
+          "default": "",
+          "description": "A 1-D numpy array to normalize. Must have finite values.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [
+        {
+          "name": "not_1d_array",
+          "condition": "vector.ndim != 1",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Expected 1-D array."
+          }
+        },
+        {
+          "name": "non_finite_values",
+          "condition": "vector contains NaN or Inf values",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Vector contains non-finite values (NaN or Inf)."
+          }
+        }
+      ],
+      "preconditions": [
+        "vector is a 1-D numpy ndarray",
+        "vector contains no NaN or Inf values"
+      ],
+      "postconditions": [
+        "If input is zero vector, output is zero vector",
+        "If input is non-zero, output has L2 norm == 1.0 (within floating point tolerance 1e-6)",
+        "Output has same shape and dtype as input",
+        "Output contains no NaN or Inf values"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "zero_vector",
+      "description": "Returns the zero vector sentinel of shape (EMBEDDING_DIM,). This is the canonical 'no information' value. All strategies return this when they cannot produce a meaningful embedding.",
+      "inputs": [
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": false,
+          "default": "64",
+          "description": "The dimensionality of the zero vector. Defaults to EMBEDDING_DIM (64).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "dimensions must be between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "All elements of returned vector are 0.0",
+        "Returned vector has exactly 'dimensions' elements",
+        "L2 norm of returned vector is 0.0",
+        "Returned vector has dtype float64"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "create_semantic_strategy",
+      "description": "Factory function to create a SemanticStrategy instance. Accepts an optional LLM service via constructor injection. If llm_service is None, the strategy operates in pure-heuristic mode using deterministic feature hashing of tokenized text. The strategy is stateless after construction.",
+      "inputs": [
+        {
+          "name": "llm_service",
+          "type_ref": "OptionalLLMService",
+          "required": false,
+          "default": "None",
+          "description": "Optional LLM service for async text-to-embedding. When None, falls back to deterministic keyword hashing.",
+          "validators": []
+        }
+      ],
+      "output_type": "any",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned instance name property returns 'semantic'",
+        "Instance is safe for concurrent use (stateless/immutable config)",
+        "If llm_service is provided, it is stored for use in embed() calls",
+        "Instance satisfies the EmbeddingStrategy @runtime_checkable Protocol"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "create_technical_strategy",
+      "description": "Factory function to create a TechnicalStrategy instance. No external dependencies required. Compiles regex patterns for code construct detection. Stateless after construction. Fully deterministic with no external service calls.",
+      "inputs": [],
+      "output_type": "any",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned instance name property returns 'technical'",
+        "Regex patterns for all CodePatternType variants are compiled and ready",
+        "Instance is safe for concurrent use (stateless/immutable config)",
+        "Instance satisfies the EmbeddingStrategy @runtime_checkable Protocol"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "create_social_strategy",
+      "description": "Factory function to create a SocialStrategy instance. No external dependencies required. Fully heuristic-based using hash projection of social entities. Stateless after construction. Fully deterministic.",
+      "inputs": [],
+      "output_type": "any",
+      "error_cases": [],
+      "preconditions": [],
+      "postconditions": [
+        "Returned instance name property returns 'social'",
+        "Instance is safe for concurrent use (stateless/immutable config)",
+        "Instance satisfies the EmbeddingStrategy @runtime_checkable Protocol"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "semantic_embed",
+      "description": "Async method that produces a semantic embedding for the given signal. If an LLM service is available, attempts LLM-based embedding first (projecting/truncating to EMBEDDING_DIM). On LLM failure or absence, falls back to deterministic feature hashing: tokenizes signal content into words, applies signed_hash to each token to accumulate into EMBEDDING_DIM-sized vector, then L2-normalizes. Returns zero vector for empty content. Never raises to caller.",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The SemanticStrategy instance.",
+          "validators": []
+        },
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [],
+      "preconditions": [
+        "signal is a valid Signal instance"
+      ],
+      "postconditions": [
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "Returned vector is either L2-normalized or the zero vector",
+        "Returned vector contains no NaN or Inf values",
+        "If signal.content is empty and no other metadata contributes, returns zero vector",
+        "Same signal with same strategy config produces same result when using fallback (deterministic)",
+        "Function never raises an exception to the caller"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "May invoke LLM service (network call) if llm_service was provided",
+        "Logs warning on fallback or failure"
+      ]
+    },
+    {
+      "name": "technical_embed",
+      "description": "Async method that produces a technical/code-aware embedding. Pipeline: (1) Code-aware tokenization — splits camelCase, snake_case, and dotted paths into sub-tokens. (2) Regex-based pattern detection for function defs, imports, API paths, errors, classes, decorators. (3) Hash-bucketed TF-IDF approximation. (4) Dedicated dimension ranges: general tokens [0:32], pattern indicators [32:48], pattern-specific [48:64]. Final vector is L2-normalized. Returns zero vector for empty/non-technical content. Never raises.",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The TechnicalStrategy instance.",
+          "validators": []
+        },
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [],
+      "preconditions": [
+        "signal is a valid Signal instance"
+      ],
+      "postconditions": [
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "Returned vector is either L2-normalized or the zero vector",
+        "Returned vector contains no NaN or Inf values",
+        "If signal.content is empty, returns zero vector",
+        "Same signal produces same result (fully deterministic)",
+        "Function never raises an exception to the caller",
+        "Dimensions 0-31 encode general token features",
+        "Dimensions 32-47 encode pattern type indicators",
+        "Dimensions 48-63 encode pattern-specific token features"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warning on failure"
+      ]
+    },
+    {
+      "name": "social_embed",
+      "description": "Async method that produces a social/graph embedding. Extracts author, @mentions, and channel from signal metadata. Hash-projects each entity with entity-type-specific prefixes (e.g., 'author:alice', 'mention:bob', 'channel:general'). Encodes author+mention co-occurrence pairs. Final vector is L2-normalized. Returns zero vector when no social metadata is present. Never raises.",
+      "inputs": [
+        {
+          "name": "strategy",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The SocialStrategy instance.",
+          "validators": []
+        },
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The signal to embed.",
+          "validators": []
+        }
+      ],
+      "output_type": "NdArray",
+      "error_cases": [],
+      "preconditions": [
+        "signal is a valid Signal instance"
+      ],
+      "postconditions": [
+        "Returned vector has exactly EMBEDDING_DIM (64) elements",
+        "Returned vector is either L2-normalized or the zero vector",
+        "Returned vector contains no NaN or Inf values",
+        "If author is empty AND mentions is empty AND channel is empty, returns zero vector",
+        "Same signal produces same result (fully deterministic)",
+        "Function never raises an exception to the caller",
+        "Different authors hash to different dimension patterns with high probability",
+        "Author+mention co-occurrence pairs contribute distinct signal from individual entities"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Logs warning on failure"
+      ]
+    },
+    {
+      "name": "tokenize_code_aware",
+      "description": "Code-aware tokenizer that splits text into sub-tokens. Handles camelCase splitting, snake_case splitting, and dotted path splitting. Converts all tokens to lowercase. Filters out tokens shorter than 2 characters.",
+      "inputs": [
+        {
+          "name": "text",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The text to tokenize.",
+          "validators": []
+        }
+      ],
+      "output_type": "TokenList",
+      "error_cases": [],
+      "preconditions": [
+        "text is a valid string"
+      ],
+      "postconditions": [
+        "All returned tokens are lowercase",
+        "All returned tokens have length >= 2",
+        "camelCase identifiers are split into constituent words",
+        "snake_case identifiers are split at underscores",
+        "Dotted paths are split at dots"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "detect_patterns",
+      "description": "Runs all compiled regex pattern detectors against the input text. Returns a list of DetectedPatterns, one per CodePatternType that had at least one match.",
+      "inputs": [
+        {
+          "name": "text",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The text to analyze for code patterns.",
+          "validators": []
+        }
+      ],
+      "output_type": "DetectedPatternsList",
+      "error_cases": [],
+      "preconditions": [
+        "text is a valid string"
+      ],
+      "postconditions": [
+        "Each element in result has count > 0",
+        "Each element's matches list has length == count",
+        "No duplicate pattern_type values in result",
+        "Result only contains CodePatternType variants that were actually detected"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_strategy_info",
+      "description": "Returns descriptive metadata about a given strategy, useful for registration and introspection.",
+      "inputs": [
+        {
+          "name": "strategy_name",
+          "type_ref": "StrategyNameEnum",
+          "required": true,
+          "default": "",
+          "description": "The canonical strategy name to get info for.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingStrategyInfo",
+      "error_cases": [],
+      "preconditions": [
+        "strategy_name is a valid StrategyNameEnum variant"
+      ],
+      "postconditions": [
+        "Returned info.name == strategy_name",
+        "Returned info.dimension == 64",
+        "requires_external_service is True only for 'semantic' when LLM is configured"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_normalized_weights",
+      "description": "Compute softmax-normalized weights from logits in an EmbeddingDimensionWeights instance. Uses numerically stable softmax: subtract max logit before exponentiating. Missing strategies requested via the optional 'strategies' parameter are included with default logit 0.0. Pure read operation with no side effects.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The dimension weights instance containing logits to normalize.",
+          "validators": []
+        },
+        {
+          "name": "strategies",
+          "type_ref": "OptionalStrategyNameList",
+          "required": false,
+          "default": "None",
+          "description": "Optional list of strategy names to compute weights for. If None, uses all strategies present in logits. Missing strategies are included with default logit 0.0.",
+          "validators": []
+        }
+      ],
+      "output_type": "NormalizedWeightsMap",
+      "error_cases": [
+        {
+          "name": "non_finite_logit",
+          "condition": "Any logit value in the effective strategy set is NaN or Inf",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Logit values must be finite. Found non-finite value for strategy."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights with all finite logit values"
+      ],
+      "postconditions": [
+        "If the effective strategy set is non-empty, all returned weights are in (0.0, 1.0) and sum to 1.0 within floating-point tolerance (1e-9)",
+        "If the effective strategy set is empty, returns an empty dict",
+        "The dimension_weights instance is not modified (no side effects on read)",
+        "Softmax is computed with numerical stability: max logit is subtracted before exp to avoid overflow"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "compute_weighted_embedding_similarity",
+      "description": "Pure function to compute weighted cosine similarity between a signal's per-strategy embeddings and a context's per-strategy prototype embeddings, using per-strategy weights. Only the intersection of strategies present in signal_embeddings, context_prototypes, and weights is used. Weights are re-normalized over the intersection. If the intersection is empty or dimension_weights is None, returns similarity 0.0.",
+      "inputs": [
+        {
+          "name": "signal_embeddings",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Signal's per-strategy embeddings as dict[str, list[float]].",
+          "validators": []
+        },
+        {
+          "name": "context_prototypes",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Context's per-strategy prototype embeddings as dict[str, list[float]].",
+          "validators": []
+        },
+        {
+          "name": "dimension_weights",
+          "type_ref": "OptionalEmbeddingDimensionWeights",
+          "required": false,
+          "default": "None",
+          "description": "Per-context dimension weights. When None, returns 0.0 (backward-compatible fallback).",
+          "validators": []
+        }
+      ],
+      "output_type": "WeightedSimilarityResult",
+      "error_cases": [
+        {
+          "name": "dimension_mismatch",
+          "condition": "For some strategy in the intersection, signal and prototype embeddings have different lengths",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Embedding dimension mismatch for a strategy."
+          }
+        },
+        {
+          "name": "zero_norm_vector",
+          "condition": "A signal or prototype embedding vector in the intersection has zero norm",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Zero-norm embedding vector. Cosine similarity undefined."
+          }
+        },
+        {
+          "name": "non_finite_embedding",
+          "condition": "An embedding vector contains NaN or Inf values",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Non-finite values found in embedding vector."
+          }
+        },
+        {
+          "name": "negative_weight",
+          "condition": "A provided dimension weight is negative",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Negative weight found. Weights must be non-negative."
+          }
+        }
+      ],
+      "preconditions": [
+        "For each strategy in the intersection, signal_embeddings[strategy] and context_prototypes[strategy] have the same dimensionality",
+        "Embedding vectors contain only finite float values",
+        "If dimension_weights is provided, all logit values must be finite"
+      ],
+      "postconditions": [
+        "result.similarity is a finite float",
+        "If the intersection is empty or dimension_weights is None, result.similarity == 0.0 and result.strategies_used is empty",
+        "If inputs are unit-normalized, result.similarity is in [-1.0, 1.0]",
+        "result.strategies_used contains exactly the strategy names in the intersection",
+        "result.effective_weights sums to 1.0 over the intersection (or is empty if no intersection)",
+        "result.per_strategy_similarities contains one entry per strategy in the intersection",
+        "No input arguments are modified"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "record_acceptance",
+      "description": "Update dimension weights in-place based on a signal acceptance event (ART match-based learning). Computes per-strategy similarity contributions, then adjusts logits: logit_i += effective_lr * (contribution_i - mean_contribution). This is zero-sum across strategies. Effective learning rate is learning_rate / (1 + update_count * 0.01). After update, update_count is incremented. New strategies not yet in logits are inserted with default logit 0.0 before update. Mutates weights in-place.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The dimension weights instance to update in-place.",
+          "validators": []
+        },
+        {
+          "name": "strategy_contributions",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Per-strategy similarity contributions as dict[str, float]. Non-empty. All values must be finite.",
+          "validators": []
+        }
+      ],
+      "output_type": "DimensionWeightsUpdateResult",
+      "error_cases": [
+        {
+          "name": "empty_contributions",
+          "condition": "strategy_contributions is empty",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "strategy_contributions must be non-empty."
+          }
+        },
+        {
+          "name": "non_finite_contribution",
+          "condition": "Any value in strategy_contributions is NaN or Inf",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Non-finite contribution value. All contributions must be finite floats."
+          }
+        },
+        {
+          "name": "zero_learning_rate",
+          "condition": "dimension_weights.learning_rate is zero or negative",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Learning rate must be positive."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights instance",
+        "strategy_contributions is non-empty (at least one strategy contribution)",
+        "All contribution values are finite floats",
+        "dimension_weights.learning_rate > 0",
+        "dimension_weights.update_count >= 0"
+      ],
+      "postconditions": [
+        "dimension_weights.update_count has been incremented by 1",
+        "For each strategy in strategy_contributions, dimension_weights.logits[strategy] has been updated by the computed delta",
+        "The sum of all logit deltas across strategies is approximately 0.0 (zero-sum, within floating-point tolerance)",
+        "All logit values remain finite after update",
+        "result.weights is the same object as the input dimension_weights (in-place mutation)",
+        "result.effective_learning_rate == learning_rate / (1 + old_update_count * 0.01)",
+        "result.logit_deltas contains one entry per strategy in strategy_contributions"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Mutates dimension_weights.logits in-place with updated logit values",
+        "Increments dimension_weights.update_count by 1"
+      ]
+    },
+    {
+      "name": "initialize_dimension_weights",
+      "description": "Factory function to create a new EmbeddingDimensionWeights instance with equal weights (logit 0.0) for a given set of strategy names. Used for lazy initialization when a Context first needs dimension weights.",
+      "inputs": [
+        {
+          "name": "strategy_names",
+          "type_ref": "StrategyNameList",
+          "required": false,
+          "default": "[]",
+          "description": "List of strategy names to initialize. Each gets logit 0.0. If empty, creates instance with empty logits.",
+          "validators": []
+        },
+        {
+          "name": "learning_rate",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.05",
+          "description": "Initial learning rate for logit updates.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 < value <= 1.0",
+              "error_message": "learning_rate must be in (0.0, 1.0]."
+            }
+          ]
+        }
+      ],
+      "output_type": "EmbeddingDimensionWeights",
+      "error_cases": [
+        {
+          "name": "empty_strategy_name",
+          "condition": "Any strategy name in the list is an empty string",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Strategy names must be non-empty strings."
+          }
+        },
+        {
+          "name": "duplicate_strategy_name",
+          "condition": "Duplicate strategy names in the list",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Duplicate strategy name found. Strategy names must be unique."
+          }
+        },
+        {
+          "name": "invalid_learning_rate",
+          "condition": "learning_rate is not in (0.0, 1.0]",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Learning rate must be in (0.0, 1.0]."
+          }
+        }
+      ],
+      "preconditions": [
+        "All strategy names are non-empty strings",
+        "learning_rate is in (0.0, 1.0]"
+      ],
+      "postconditions": [
+        "Returned instance has logits[s] == 0.0 for every s in strategy_names",
+        "Returned instance has update_count == 0",
+        "Returned instance has learning_rate equal to the provided learning_rate",
+        "Softmax of equal logits yields equal weights: 1/len(strategy_names) for each strategy (when strategy_names is non-empty)"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "ensure_strategies_present",
+      "description": "Ensure all specified strategies are present in the dimension weights logits dict. Missing strategies are inserted with default logit 0.0. Pre-existing logit values are unchanged. Mutates the weights in-place.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The dimension weights instance to ensure strategies are present in.",
+          "validators": []
+        },
+        {
+          "name": "strategy_names",
+          "type_ref": "StrategyNameList",
+          "required": true,
+          "default": "",
+          "description": "List of strategy names that must be present.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingDimensionWeights",
+      "error_cases": [
+        {
+          "name": "empty_strategy_name",
+          "condition": "Any strategy name in the list is an empty string",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Strategy names must be non-empty strings."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights instance",
+        "All strategy names are non-empty strings"
+      ],
+      "postconditions": [
+        "For every s in strategy_names, dimension_weights.logits contains key s",
+        "Pre-existing logit values are unchanged",
+        "Newly inserted strategies have logit value 0.0",
+        "Returned instance is the same object as the input (in-place mutation)"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Mutates dimension_weights.logits in-place by inserting missing strategy keys with logit 0.0"
+      ]
+    },
+    {
+      "name": "serialize_dimension_weights",
+      "description": "Serialize an EmbeddingDimensionWeights instance to a plain dict suitable for YAML/JSON serialization. Includes schema_version for forward compatibility.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The dimension weights instance to serialize.",
+          "validators": []
+        }
+      ],
+      "output_type": "SerializedDimensionWeights",
+      "error_cases": [],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights instance with all finite logit values"
+      ],
+      "postconditions": [
+        "Returned dict has keys 'logits' (dict[str, float]), 'learning_rate' (float), 'update_count' (int), 'schema_version' (int)",
+        "All values in the 'logits' sub-dict are finite floats",
+        "The returned dict is JSON-serializable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deserialize_dimension_weights",
+      "description": "Deserialize a plain dict (from YAML/JSON) into an EmbeddingDimensionWeights instance. Validates that all logit values are finite floats. Applies Pydantic validation.",
+      "inputs": [
+        {
+          "name": "data",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "A dict containing 'logits', and optionally 'learning_rate' and 'update_count'.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingDimensionWeights",
+      "error_cases": [
+        {
+          "name": "missing_logits_key",
+          "condition": "data does not contain the 'logits' key",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Missing required key 'logits' in serialized dimension weights data."
+          }
+        },
+        {
+          "name": "non_finite_logit_value",
+          "condition": "Any value in data['logits'] is NaN, Inf, or not a float",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Non-finite or non-float logit value found."
+          }
+        },
+        {
+          "name": "invalid_learning_rate",
+          "condition": "data['learning_rate'] is present but not in (0.0, 1.0]",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Invalid learning_rate. Must be in (0.0, 1.0]."
+          }
+        },
+        {
+          "name": "invalid_update_count",
+          "condition": "data['update_count'] is present but negative or not an integer",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Invalid update_count. Must be a non-negative integer."
+          }
+        },
+        {
+          "name": "invalid_logits_type",
+          "condition": "data['logits'] is not a dict",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Expected 'logits' to be a dict."
+          }
+        }
+      ],
+      "preconditions": [
+        "data is a dict",
+        "data contains key 'logits' which is a dict[str, float]"
+      ],
+      "postconditions": [
+        "Returned EmbeddingDimensionWeights has logits matching data['logits']",
+        "If 'learning_rate' is in data, it is used; otherwise defaults to 0.05",
+        "If 'update_count' is in data, it is used; otherwise defaults to 0",
+        "All logit values are validated as finite floats"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "serialize_embeddings",
+      "description": "Serialize a Signal's embeddings dict (dict[str, list[float]]) into a JSON-safe SerializedEmbeddings structure with schema version and dimension metadata for forward compatibility.",
+      "inputs": [
+        {
+          "name": "embeddings",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "The embeddings dict from a Signal. dict[str, list[float]].",
+          "validators": []
+        },
+        {
+          "name": "dimensions",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The expected dimensionality of all embedding vectors.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "1 <= value <= 4096",
+              "error_message": "dimensions must be between 1 and 4096 inclusive."
+            }
+          ]
+        }
+      ],
+      "output_type": "SerializedEmbeddings",
+      "error_cases": [
+        {
+          "name": "dimension_mismatch",
+          "condition": "An embedding vector has length != dimensions",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Embedding vector has unexpected dimensionality."
+          }
+        },
+        {
+          "name": "non_finite_values",
+          "condition": "An embedding vector contains NaN or Inf",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "Embedding vector contains non-finite values."
+          }
+        }
+      ],
+      "preconditions": [
+        "All embedding vectors have length == dimensions",
+        "All embedding values are finite floats"
+      ],
+      "postconditions": [
+        "Returned structure is JSON-serializable",
+        "Returned structure contains all embeddings from input",
+        "schema_version is set to 1"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deserialize_embeddings",
+      "description": "Deserialize a SerializedEmbeddings structure back into a dict[str, list[float]] suitable for use in Signal.embeddings. Validates schema version and dimensionality.",
+      "inputs": [
+        {
+          "name": "data",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "A dict containing 'embeddings', 'dimensions', and optionally 'schema_version'.",
+          "validators": []
+        }
+      ],
+      "output_type": "dict",
+      "error_cases": [
+        {
+          "name": "missing_embeddings_key",
+          "condition": "data does not contain the 'embeddings' key",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Missing required key 'embeddings'."
+          }
+        },
+        {
+          "name": "missing_dimensions_key",
+          "condition": "data does not contain the 'dimensions' key",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Missing required key 'dimensions'."
+          }
+        },
+        {
+          "name": "unsupported_schema_version",
+          "condition": "schema_version > 1 and contains breaking changes",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Unsupported schema version."
+          }
+        },
+        {
+          "name": "dimension_mismatch",
+          "condition": "An embedding vector has unexpected length",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Embedding vector has unexpected dimensionality."
+          }
+        }
+      ],
+      "preconditions": [
+        "data contains key 'embeddings' which is a dict[str, list[float]]",
+        "data contains key 'dimensions' which is a positive int"
+      ],
+      "postconditions": [
+        "Returned dict maps strategy names to lists of floats",
+        "All vectors have length == data['dimensions']",
+        "All values are finite floats"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "extract_signal_metadata",
+      "description": "Extract a SignalMetadata struct from a Signal instance for use by embedding strategies. Maps Signal fields to the subset consumed by strategies.",
+      "inputs": [
+        {
+          "name": "signal",
+          "type_ref": "Signal",
+          "required": true,
+          "default": "",
+          "description": "The Signal instance to extract metadata from.",
+          "validators": []
+        }
+      ],
+      "output_type": "SignalMetadata",
+      "error_cases": [
+        {
+          "name": "invalid_signal",
+          "condition": "signal is None or not a valid Signal instance",
+          "error_type": "TypeError",
+          "error_data": {
+            "message": "Expected a Signal instance."
+          }
+        }
+      ],
+      "preconditions": [
+        "signal is a valid Signal instance"
+      ],
+      "postconditions": [
+        "Returned metadata.content == signal.content",
+        "Returned metadata.author == signal.author (or empty string if None)",
+        "Returned metadata.mentions == signal.mentions",
+        "Returned metadata is a valid SignalMetadata instance"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [
+    "embedding_strategy_protocol",
+    "embedding_strategy_implementations",
+    "embedding_context_weights"
+  ],
+  "dependency_contracts": {
+    "embedding_strategy_protocol": [
+      "Signal",
+      "EmbeddingsDict",
+      "NdArray",
+      "EmbedAllResult",
+      "StrategyEmbeddingMap",
+      "StrategyFailure",
+      "StrategyFailureList",
+      "RegistryConfig",
+      "StrategyInfo",
+      "StrategyInfoList",
+      "StrategyName",
+      "EmbeddingStrategyRegistry.__init__",
+      "EmbeddingStrategyRegistry.register",
+      "EmbeddingStrategyRegistry.unregister",
+      "EmbeddingStrategyRegistry.embed_all",
+      "EmbeddingStrategyRegistry.embed",
+      "EmbeddingStrategyRegistry.list_strategies",
+      "EmbeddingStrategyRegistry.has_strategy",
+      "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "project_to_dim",
+      "embeddings_to_ndarray",
+      "ndarray_to_embedding"
+    ],
+    "embedding_strategy_implementations": [
+      "EmbeddingDimConstant",
+      "EmbeddingVector",
+      "SignalMetadata",
+      "StrategyName",
+      "LLMService",
+      "HashResult",
+      "CodePatternType",
+      "DetectedPatterns",
+      "SocialEntity",
+      "SemanticStrategy.__init__",
+      "SemanticStrategy.name",
+      "SemanticStrategy.embed",
+      "TechnicalStrategy.__init__",
+      "TechnicalStrategy.name",
+      "TechnicalStrategy.embed",
+      "TechnicalStrategy.tokenize_code_aware",
+      "TechnicalStrategy.detect_patterns",
+      "SocialStrategy.__init__",
+      "SocialStrategy.name",
+      "SocialStrategy.embed",
+      "signed_hash",
+      "l2_normalize",
+      "zero_vector",
+      "get_strategy_info"
+    ],
+    "embedding_context_weights": [
+      "EmbeddingDimensionWeights",
+      "StrategyLogitsMap",
+      "NormalizedWeightsMap",
+      "StrategyContributionsMap",
+      "WeightedSimilarityResult",
+      "DimensionWeightsUpdateResult",
+      "get_normalized_weights",
+      "compute_weighted_embedding_similarity",
+      "record_acceptance",
+      "initialize_dimension_weights",
+      "ensure_strategies_present",
+      "serialize_dimension_weights",
+      "deserialize_dimension_weights"
+    ]
+  },
+  "invariants": [
+    "EMBEDDING_DIM is always 64 and is immutable at module level",
+    "All embedding vectors produced by any registered strategy have exactly EMBEDDING_DIM (64) dimensions when using the default configuration",
+    "All embedding vectors stored in Signal.embeddings have exactly registry.dimensions elements",
+    "All embedding vectors have dtype float32 or float64 when in ndarray form",
+    "Signal.embeddings stores vectors as list[float] (not numpy arrays) for Pydantic v2 frozen model serialization safety",
+    "EmbeddingsDict at computation boundaries uses dict[str, ndarray]; at serialization boundaries uses dict[str, list[float]]",
+    "All strategies use hashlib.md5 for hashing — never the built-in hash() function — ensuring deterministic cross-process reproducibility",
+    "All embed() methods are async and never raise exceptions to the caller; failures are logged and result in zero vector",
+    "All strategy instances are stateless or carry only immutable configuration — safe for concurrent use from multiple async tasks",
+    "Zero vector is the canonical 'no information' sentinel — never None, never NaN",
+    "embed_all never raises due to individual strategy failures — failures are logged and reported in the result",
+    "embed_all executes all strategies concurrently via asyncio.gather, not sequentially",
+    "EmbeddingStrategyRegistry is a plain class, not a singleton — multiple independent registries can coexist",
+    "All registered strategies must pass the @runtime_checkable isinstance check and inspect.iscoroutinefunction check at registration time",
+    "Strategy names are unique within a registry instance and match the pattern ^[a-z][a-z0-9_]{0,63}$",
+    "project_to_dim always produces L2-normalized vectors (norm ≈ 1.0) unless the input is a zero vector",
+    "The 'semantic' strategy, when registered, preserves backward-compatible behavior of the original single-strategy embedding system",
+    "SemanticStrategy uses constructor injection for LLM service — no global state or service locator",
+    "TechnicalStrategy and SocialStrategy require no external services and operate purely on heuristics",
+    "SemanticStrategy.embed() with no LLM service and same input always produces same output (deterministic fallback)",
+    "TechnicalStrategy.embed() always produces same output for same input (fully deterministic)",
+    "SocialStrategy.embed() always produces same output for same input (fully deterministic)",
+    "Entity-type prefixes in SocialStrategy hashing prevent cross-entity-type hash collisions (e.g., 'author:X' vs 'mention:X')",
+    "TechnicalStrategy dimension ranges are non-overlapping: general tokens [0:32], pattern indicators [32:48], pattern-specific [48:64]",
+    "Signed hashing always uses two digest slices: bytes [0:8] for bucket, bytes [8:16] for sign",
+    "No embedding vector ever contains NaN or Inf values",
+    "All logit values stored in EmbeddingDimensionWeights.logits are always finite floats (no NaN, no Inf)",
+    "update_count is always a non-negative integer and monotonically increases across the lifetime of a weights instance",
+    "learning_rate is always in the range (0.0, 1.0] and never changes after initialization",
+    "Effective learning rate is always learning_rate / (1 + update_count * 0.01), providing monotonic decay",
+    "Softmax normalization of logits always uses the numerically stable form: exp(logit_i - max(logits)) / sum(exp(logit_j - max(logits)))",
+    "Missing strategies are always treated as logit 0.0 (the neutral/equal-weight default)",
+    "Weight updates are always zero-sum across strategies: sum of logit deltas equals 0.0 (within floating-point tolerance)",
+    "An EmbeddingDimensionWeights instance with all logits equal to 0.0 produces equal normalized weights: 1/N for N strategies",
+    "When dimension_weights is None or the strategy intersection is empty, compute_weighted_embedding_similarity returns 0.0 (backward-compatible fallback)",
+    "get_normalized_weights never modifies the EmbeddingDimensionWeights instance (pure read, no side effects)",
+    "Serialization round-trip: deserialize_dimension_weights(serialize_dimension_weights(w)) produces an equivalent instance",
+    "JSON-safe dict[str, list[float]] is used for both embeddings and dimension weights at serialization boundaries",
+    "Schema version is included in serialized forms for forward compatibility"
+  ],
+  "requires": [
+    "numpy",
+    "hashlib",
+    "asyncio",
+    "inspect",
+    "typing",
+    "pydantic"
+  ]
+}

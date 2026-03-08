@@ -1,0 +1,933 @@
+{
+  "component_id": "temporal_filtering",
+  "name": "Temporal Filtering / --since Flag (Feature 6)",
+  "description": "Add --since DATETIME flag to stigmergy run CLI. Pass to all adapters to filter signals by timestamp. Store last-run timestamp in .stigmergy/state.yaml. Default: use last-run timestamp if state exists. --since all forces full reprocessing. ISO 8601 input, UTC internally, adapters convert to native format. Implements a 3-phase resolution pipeline (Parse → Resolve → Dispatch) with a Pydantic v2 discriminated union (SinceAll | SinceAbsolute | SinceFromState) using a 'policy' Literal discriminator, frozen models, a configurable overlap window for clock-skew mitigation, and structured error hierarchy. All public functions are async, all models are frozen.",
+  "version": 1,
+  "types": [
+    {
+      "name": "UtcDatetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A timezone-aware UTC datetime. Must have tzinfo set to datetime.UTC. Naive datetimes are never permitted. Serialized as ISO 8601 string (e.g. '2024-01-15T09:30:00+00:00'). This is a semantic alias for Python's datetime.datetime with UTC enforcement."
+    },
+    {
+      "name": "OptionalUtcDatetime",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "UtcDatetime",
+      "variants": [],
+      "inner_types": [],
+      "description": "An optional UTC-aware datetime. None means 'no temporal filter' (process all signals)."
+    },
+    {
+      "name": "Path",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Python pathlib.Path representing a filesystem path. Typically the project root or .stigmergy directory."
+    },
+    {
+      "name": "SincePolicy",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "all",
+        "absolute",
+        "from_state"
+      ],
+      "inner_types": [],
+      "description": "Discriminator tag for the SinceSpec union. Determines which variant of the since specification is active. Used as the Pydantic v2 Literal discriminator field."
+    },
+    {
+      "name": "SinceAll",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "policy",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Discriminator field. Always the literal string 'all'.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value == 'all'",
+              "error_message": "SinceAll.policy must be 'all'"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing '--since all': full reprocessing with no temporal filter. The policy field is always the literal 'all'. No timestamp is associated."
+    },
+    {
+      "name": "SinceAbsolute",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "policy",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Discriminator field. Always the literal string 'absolute'.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value == 'absolute'",
+              "error_message": "SinceAbsolute.policy must be 'absolute'"
+            }
+          ]
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The user-provided UTC-aware datetime parsed from the --since CLI argument. Must not be in the future.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value.tzinfo is not None and value.utcoffset() == timedelta(0)",
+              "error_message": "timestamp must be UTC-aware"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing an explicit user-provided '--since DATETIME' value. The policy field is always the literal 'absolute'. The timestamp is the user-provided UTC datetime parsed from the CLI argument."
+    },
+    {
+      "name": "SinceFromState",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "policy",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Discriminator field. Always the literal string 'from_state'.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value == 'from_state'",
+              "error_message": "SinceFromState.policy must be 'from_state'"
+            }
+          ]
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The last-run UTC-aware datetime loaded from .stigmergy/state.yaml.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value.tzinfo is not None and value.utcoffset() == timedelta(0)",
+              "error_message": "timestamp must be UTC-aware"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the since value resolved from .stigmergy/state.yaml (--since flag omitted, state file exists). The policy field is always the literal 'from_state'. The timestamp is the last-run timestamp loaded from the state file."
+    },
+    {
+      "name": "SinceSpec",
+      "kind": "union",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "SinceAll",
+        "SinceAbsolute",
+        "SinceFromState"
+      ],
+      "description": "Pydantic v2 discriminated union of all since specification variants, discriminated on the 'policy' Literal field. Exactly one of SinceAll, SinceAbsolute, or SinceFromState. This is the primary type flowing through the resolution pipeline."
+    },
+    {
+      "name": "RunState",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "last_run",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The UTC-aware datetime of the last successful run completion.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "value.tzinfo is not None and value.utcoffset() == timedelta(0)",
+              "error_message": "last_run must be UTC-aware"
+            }
+          ]
+        },
+        {
+          "name": "schema_version",
+          "type_ref": "int",
+          "required": false,
+          "default": "1",
+          "description": "Schema version for forward compatibility. Always the literal value 1 in this version.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "value == 1",
+              "error_message": "schema_version must be 1"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic model representing the persisted state in .stigmergy/state.yaml. Contains a schema version (always 1) and the last successful run timestamp. All datetime values are UTC-aware. Serialized to YAML with timestamps as ISO 8601 strings."
+    },
+    {
+      "name": "OptionalRunState",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "RunState",
+      "variants": [],
+      "inner_types": [],
+      "description": "Optional RunState. None indicates the state file does not exist or was unreadable (first run or corruption)."
+    },
+    {
+      "name": "OverlapConfig",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "overlap_seconds",
+          "type_ref": "int",
+          "required": false,
+          "default": "60",
+          "description": "Number of seconds to subtract from the since timestamp as a safety overlap window. Must be non-negative.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0 <= value <= 3600",
+              "error_message": "overlap_seconds must be between 0 and 3600 inclusive"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Configuration for the overlap window subtracted from the since timestamp before passing to adapters. The overlap compensates for clock skew between the local system and upstream APIs. Downstream deduplication handles any re-fetched signals."
+    },
+    {
+      "name": "TemporalFilterResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "since_spec",
+          "type_ref": "SinceSpec",
+          "required": true,
+          "default": "",
+          "description": "The resolved SinceSpec before overlap adjustment.",
+          "validators": []
+        },
+        {
+          "name": "effective_cutoff",
+          "type_ref": "OptionalUtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The final cutoff datetime passed to adapters, with overlap window subtracted. None means no temporal filter (fetch all).",
+          "validators": []
+        },
+        {
+          "name": "overlap_seconds_applied",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "The number of overlap seconds that were subtracted from the resolved timestamp.",
+          "validators": []
+        },
+        {
+          "name": "provenance",
+          "type_ref": "ResolutionProvenance",
+          "required": true,
+          "default": "",
+          "description": "Where the since value was resolved from.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of the full temporal filtering orchestration: the resolved since spec, the effective cutoff datetime (with overlap applied), and metadata about resolution provenance."
+    },
+    {
+      "name": "ResolutionProvenance",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "cli_explicit",
+        "cli_all",
+        "state_file",
+        "default_all"
+      ],
+      "inner_types": [],
+      "description": "Indicates the origin of the resolved since parameter value, for observability and debugging."
+    },
+    {
+      "name": "TemporalFilterError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "error_kind",
+          "type_ref": "TemporalFilterErrorKind",
+          "required": true,
+          "default": "",
+          "description": "Classification of the temporal filter error.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error description.",
+          "validators": []
+        },
+        {
+          "name": "raw_value",
+          "type_ref": "str",
+          "required": false,
+          "default": "",
+          "description": "The raw input value that caused the error, if applicable.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base error type for all temporal filtering errors. Subtypes are distinguished by the error_kind field."
+    },
+    {
+      "name": "TemporalFilterErrorKind",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "INVALID_TIMESTAMP",
+        "STATE_FILE_CORRUPT",
+        "FUTURE_TIMESTAMP",
+        "STATE_IO_ERROR",
+        "OVERLAP_CONFIG_ERROR"
+      ],
+      "inner_types": [],
+      "description": "Classification of temporal filter error subtypes."
+    },
+    {
+      "name": "AdapterCutoff",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "adapter_kind",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The adapter kind identifier (e.g. 'GITHUB_LIVE', 'SLACK_MOCK'). Maps to temporal_adapter_integration.AdapterKind.",
+          "validators": []
+        },
+        {
+          "name": "cutoff_utc",
+          "type_ref": "OptionalUtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The overlap-adjusted UTC cutoff datetime, or None for no filter.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "The resolved cutoff datetime for a specific adapter, ready for dispatch. Includes the overlap-adjusted UTC datetime and the adapter kind for routing."
+    },
+    {
+      "name": "AdapterCutoffList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "AdapterCutoff",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of per-adapter cutoff specifications for dispatch."
+    },
+    {
+      "name": "RunOrchestrationResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "filter_result",
+          "type_ref": "TemporalFilterResult",
+          "required": true,
+          "default": "",
+          "description": "The temporal filter resolution result.",
+          "validators": []
+        },
+        {
+          "name": "run_timestamp",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The UTC timestamp captured at the start of this run, to be persisted as the new last_run in state.yaml upon success.",
+          "validators": []
+        },
+        {
+          "name": "state_persisted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the new run timestamp was successfully persisted to state.yaml.",
+          "validators": []
+        },
+        {
+          "name": "adapter_results_count",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Number of adapters that were dispatched to.",
+          "validators": []
+        },
+        {
+          "name": "total_signals_fetched",
+          "type_ref": "int",
+          "required": true,
+          "default": "",
+          "description": "Total number of signals fetched across all adapters.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Full result of a temporal-filtered run orchestration, including the resolution metadata, adapter dispatch results, and the timestamp to persist as the new last-run."
+    },
+    {
+      "name": "OptionalStr",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "Optional string. Used for the raw CLI --since argument (None when flag is omitted)."
+    },
+    {
+      "name": "AdapterKindList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "List of adapter kind identifier strings."
+    }
+  ],
+  "functions": [
+    {
+      "name": "parse_since_flag",
+      "description": "Phase 1 — Parse. Async entry point that delegates to temporal_state_management.parse_since_argument. Converts the raw CLI --since argument string into a typed SinceSpec (discriminated union). None input (flag omitted) maps to SinceFromState or SinceAll depending on state availability. The string 'all' (case-insensitive) maps to SinceAll. Any other string is parsed as ISO 8601 and mapped to SinceAbsolute with a UTC-normalized datetime. Validates that explicit timestamps are not in the future.",
+      "inputs": [
+        {
+          "name": "raw_since",
+          "type_ref": "OptionalStr",
+          "required": true,
+          "default": "",
+          "description": "The raw value of the --since CLI flag. None if the flag was omitted. 'all' for full reprocessing. Otherwise an ISO 8601 datetime string.",
+          "validators": []
+        }
+      ],
+      "output_type": "SincePolicy",
+      "error_cases": [
+        {
+          "name": "invalid_iso8601",
+          "condition": "raw_since is not None, raw_since.lower() != 'all', and raw_since cannot be parsed as a valid ISO 8601 datetime string",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "INVALID_TIMESTAMP",
+            "message": "Cannot parse '{raw_since}' as ISO 8601 datetime. Expected format: YYYY-MM-DDTHH:MM:SS[+HH:MM] or 'all'."
+          }
+        },
+        {
+          "name": "empty_string",
+          "condition": "raw_since is an empty string (length 0)",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "INVALID_TIMESTAMP",
+            "message": "--since value must not be an empty string. Use 'all' for full reprocessing or provide an ISO 8601 datetime."
+          }
+        },
+        {
+          "name": "future_timestamp",
+          "condition": "raw_since parses to a valid datetime that is in the future relative to the current UTC clock",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "FUTURE_TIMESTAMP",
+            "message": "--since timestamp '{raw_since}' is in the future. Provide a past or present datetime."
+          }
+        }
+      ],
+      "preconditions": [
+        "raw_since is None, or raw_since is a non-empty string"
+      ],
+      "postconditions": [
+        "If raw_since is None, result is SincePolicy.from_state (indicating stored timestamp or default-all should be used)",
+        "If raw_since.lower() == 'all', result is SincePolicy.all",
+        "If raw_since is a valid ISO 8601 string, result is SincePolicy.absolute",
+        "This function does not perform any I/O; it is a pure parse step"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "resolve_since_spec",
+      "description": "Phase 2 — Resolve. Async function that combines the parsed SincePolicy with the persisted RunState (loaded from .stigmergy/state.yaml via temporal_state_management.load_state) to produce a fully resolved SinceSpec discriminated union variant. If policy is 'all', returns SinceAll. If policy is 'absolute', returns SinceAbsolute with the parsed timestamp. If policy is 'from_state', loads state file: if state exists, returns SinceFromState with the stored timestamp; if state is missing or corrupt, falls back to SinceAll (first run behavior). This is the core business logic of the resolution pipeline.",
+      "inputs": [
+        {
+          "name": "policy",
+          "type_ref": "SincePolicy",
+          "required": true,
+          "default": "",
+          "description": "The parsed since policy from Phase 1 (parse_since_flag).",
+          "validators": []
+        },
+        {
+          "name": "raw_since",
+          "type_ref": "OptionalStr",
+          "required": true,
+          "default": "",
+          "description": "The original raw --since CLI value, needed to extract the explicit timestamp when policy is 'absolute'.",
+          "validators": []
+        },
+        {
+          "name": "state_dir",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "The project root directory containing the .stigmergy/ state directory.",
+          "validators": []
+        }
+      ],
+      "output_type": "SinceSpec",
+      "error_cases": [
+        {
+          "name": "state_file_corrupt_hard_failure",
+          "condition": "State file exists but is critically corrupt in a way that cannot be recovered (should not normally occur as load_state handles graceful degradation, but included for completeness)",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "STATE_FILE_CORRUPT",
+            "message": "State file at {state_dir}/.stigmergy/state.yaml is corrupt and could not be read."
+          }
+        },
+        {
+          "name": "state_io_error",
+          "condition": "An unexpected I/O error occurs that prevents state file access and cannot be handled gracefully",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "STATE_IO_ERROR",
+            "message": "Unexpected I/O error accessing state file: {error}"
+          }
+        }
+      ],
+      "preconditions": [
+        "policy is a valid SincePolicy variant",
+        "If policy is 'absolute', raw_since is a valid ISO 8601 string that parses to a non-future UTC datetime",
+        "state_dir is a valid Path object"
+      ],
+      "postconditions": [
+        "If policy is 'all', result is SinceAll(policy='all')",
+        "If policy is 'absolute', result is SinceAbsolute(policy='absolute', timestamp=<parsed UTC datetime from raw_since>)",
+        "If policy is 'from_state' and state file exists with valid last_run, result is SinceFromState(policy='from_state', timestamp=<state.last_run>)",
+        "If policy is 'from_state' and state file is missing or corrupt, result is SinceAll(policy='all') — graceful first-run fallback",
+        "Result is always a frozen Pydantic model",
+        "Any timestamp in the result is UTC-aware"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Reads from filesystem: state_dir/.stigmergy/state.yaml (via temporal_state_management.load_state)",
+        "May emit warning-level log messages if state file is missing or corrupt"
+      ]
+    },
+    {
+      "name": "apply_overlap_window",
+      "description": "Applies the configurable overlap window to a resolved SinceSpec to produce the effective cutoff datetime for adapter dispatch. Subtracts overlap_seconds from the timestamp in SinceAbsolute or SinceFromState variants. SinceAll is passed through unchanged (no timestamp to adjust). The overlap compensates for clock skew between the local system and upstream APIs. Downstream deduplication handles any re-fetched signals within the overlap window.",
+      "inputs": [
+        {
+          "name": "since_spec",
+          "type_ref": "SinceSpec",
+          "required": true,
+          "default": "",
+          "description": "The resolved SinceSpec from Phase 2.",
+          "validators": []
+        },
+        {
+          "name": "overlap_seconds",
+          "type_ref": "int",
+          "required": false,
+          "default": "60",
+          "description": "Number of seconds to subtract from the since timestamp as a safety overlap. Must be between 0 and 3600.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0 <= value <= 3600",
+              "error_message": "overlap_seconds must be between 0 and 3600"
+            }
+          ]
+        }
+      ],
+      "output_type": "TemporalFilterResult",
+      "error_cases": [
+        {
+          "name": "negative_overlap",
+          "condition": "overlap_seconds is negative",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "OVERLAP_CONFIG_ERROR",
+            "message": "overlap_seconds must be non-negative, got: {overlap_seconds}"
+          }
+        },
+        {
+          "name": "excessive_overlap",
+          "condition": "overlap_seconds exceeds 3600",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "OVERLAP_CONFIG_ERROR",
+            "message": "overlap_seconds must not exceed 3600, got: {overlap_seconds}"
+          }
+        }
+      ],
+      "preconditions": [
+        "since_spec is a valid SinceSpec variant (SinceAll, SinceAbsolute, or SinceFromState)",
+        "overlap_seconds >= 0 and overlap_seconds <= 3600"
+      ],
+      "postconditions": [
+        "If since_spec is SinceAll, result.effective_cutoff is None and result.overlap_seconds_applied is 0",
+        "If since_spec is SinceAbsolute, result.effective_cutoff == since_spec.timestamp - timedelta(seconds=overlap_seconds)",
+        "If since_spec is SinceFromState, result.effective_cutoff == since_spec.timestamp - timedelta(seconds=overlap_seconds)",
+        "result.since_spec is the original since_spec (unmodified)",
+        "result.provenance matches the since_spec variant: SinceAll -> cli_all or default_all, SinceAbsolute -> cli_explicit, SinceFromState -> state_file",
+        "If result.effective_cutoff is not None, it is UTC-aware"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "prepare_adapter_cutoffs",
+      "description": "Phase 3 — Dispatch preparation. Converts the TemporalFilterResult into per-adapter cutoff specifications for dispatch to temporal_adapter_integration. Each adapter receives the same effective_cutoff datetime (or None). This function produces the data structure consumed by temporal_adapter_integration.dispatch_fetch_to_all_adapters.",
+      "inputs": [
+        {
+          "name": "filter_result",
+          "type_ref": "TemporalFilterResult",
+          "required": true,
+          "default": "",
+          "description": "The temporal filter result with overlap applied.",
+          "validators": []
+        },
+        {
+          "name": "adapter_kinds",
+          "type_ref": "AdapterKindList",
+          "required": true,
+          "default": "",
+          "description": "List of adapter kind identifiers to prepare cutoffs for.",
+          "validators": []
+        }
+      ],
+      "output_type": "AdapterCutoffList",
+      "error_cases": [
+        {
+          "name": "empty_adapter_list",
+          "condition": "adapter_kinds is an empty list",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "adapter_kinds must contain at least one adapter kind."
+          }
+        }
+      ],
+      "preconditions": [
+        "adapter_kinds is non-empty",
+        "All entries in adapter_kinds are valid adapter kind identifiers recognized by temporal_adapter_integration"
+      ],
+      "postconditions": [
+        "Result contains exactly one AdapterCutoff per entry in adapter_kinds",
+        "Every AdapterCutoff.cutoff_utc equals filter_result.effective_cutoff",
+        "Every AdapterCutoff.adapter_kind matches the corresponding entry in adapter_kinds",
+        "Order of results matches order of adapter_kinds"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "orchestrate_temporal_run",
+      "description": "Top-level async orchestration function for the temporal filtering pipeline. This is the primary entry point called from the CLI run command. Executes the full 3-phase pipeline: (1) Parse the --since CLI flag, (2) Resolve against state file, (3) Apply overlap and dispatch to adapters. After successful adapter fetching, persists the current run timestamp to .stigmergy/state.yaml via temporal_state_management.save_state. Captures the run start timestamp before dispatch and writes it after all adapters complete successfully.",
+      "inputs": [
+        {
+          "name": "raw_since",
+          "type_ref": "OptionalStr",
+          "required": true,
+          "default": "",
+          "description": "The raw value of the --since CLI flag. None if omitted, 'all' for full reprocess, or an ISO 8601 datetime string.",
+          "validators": []
+        },
+        {
+          "name": "state_dir",
+          "type_ref": "Path",
+          "required": true,
+          "default": "",
+          "description": "The project root directory containing the .stigmergy/ state directory.",
+          "validators": []
+        },
+        {
+          "name": "adapter_kinds",
+          "type_ref": "AdapterKindList",
+          "required": true,
+          "default": "",
+          "description": "List of adapter kind identifiers to dispatch to.",
+          "validators": []
+        },
+        {
+          "name": "overlap_seconds",
+          "type_ref": "int",
+          "required": false,
+          "default": "60",
+          "description": "Overlap window in seconds to subtract from the since timestamp. Default 60.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0 <= value <= 3600",
+              "error_message": "overlap_seconds must be between 0 and 3600"
+            }
+          ]
+        }
+      ],
+      "output_type": "RunOrchestrationResult",
+      "error_cases": [
+        {
+          "name": "invalid_since_flag",
+          "condition": "raw_since cannot be parsed as a valid --since value (not None, not 'all', not valid ISO 8601)",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "INVALID_TIMESTAMP",
+            "message": "Cannot parse --since value: {raw_since}"
+          }
+        },
+        {
+          "name": "future_timestamp",
+          "condition": "raw_since parses to a datetime in the future",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "FUTURE_TIMESTAMP",
+            "message": "--since timestamp is in the future: {raw_since}"
+          }
+        },
+        {
+          "name": "state_persistence_failure",
+          "condition": "Adapter dispatch succeeded but state.yaml could not be written (permissions, disk full, etc.)",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "STATE_IO_ERROR",
+            "message": "Failed to persist run timestamp to state.yaml: {error}"
+          }
+        },
+        {
+          "name": "all_adapters_failed",
+          "condition": "Every adapter in adapter_kinds raised an error during fetch",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "STATE_IO_ERROR",
+            "message": "All adapters failed to fetch signals. State not persisted."
+          }
+        },
+        {
+          "name": "empty_adapter_list",
+          "condition": "adapter_kinds is an empty list",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "adapter_kinds must contain at least one adapter kind."
+          }
+        }
+      ],
+      "preconditions": [
+        "adapter_kinds is non-empty",
+        "state_dir is a valid Path object pointing to the project root",
+        "If raw_since is not None, it is a non-empty string"
+      ],
+      "postconditions": [
+        "result.filter_result contains the resolved temporal filter with overlap applied",
+        "result.run_timestamp is a UTC-aware datetime captured at the start of orchestration (before adapter dispatch)",
+        "If all adapters succeed, result.state_persisted is True and the run_timestamp has been written to state.yaml",
+        "If adapter dispatch fails but state was not yet written, result.state_persisted is False",
+        "result.adapter_results_count equals the number of adapters in adapter_kinds",
+        "result.total_signals_fetched is the sum of signals fetched across all adapters"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Reads from filesystem: state_dir/.stigmergy/state.yaml (via temporal_state_management.load_state)",
+        "Writes to filesystem: state_dir/.stigmergy/state.yaml (via temporal_state_management.save_state) on successful completion",
+        "Creates directory state_dir/.stigmergy/ if it does not exist (via save_state)",
+        "Dispatches fetch requests to all configured adapters (via temporal_adapter_integration.dispatch_fetch_to_all_adapters)",
+        "Live adapters make HTTP requests to upstream APIs",
+        "May emit warning-level and info-level log messages"
+      ]
+    },
+    {
+      "name": "get_effective_cutoff_for_adapter",
+      "description": "Convenience function that extracts the effective cutoff UTC datetime (or None) from a TemporalFilterResult for passing to a single adapter's fetch_signals call. This is the value after overlap has been applied. If the result indicates no temporal filter (SinceAll / first run), returns None.",
+      "inputs": [
+        {
+          "name": "filter_result",
+          "type_ref": "TemporalFilterResult",
+          "required": true,
+          "default": "",
+          "description": "The temporal filter result with overlap applied.",
+          "validators": []
+        }
+      ],
+      "output_type": "OptionalUtcDatetime",
+      "error_cases": [],
+      "preconditions": [
+        "filter_result is a valid TemporalFilterResult"
+      ],
+      "postconditions": [
+        "Returns filter_result.effective_cutoff directly",
+        "If returned value is not None, it is UTC-aware"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "validate_since_timestamp",
+      "description": "Pure validation function that checks a datetime value is valid for use as a --since parameter: must be timezone-aware UTC and must not be in the future. Used internally by parse_since_flag and resolve_since_spec to enforce temporal constraints.",
+      "inputs": [
+        {
+          "name": "timestamp",
+          "type_ref": "UtcDatetime",
+          "required": true,
+          "default": "",
+          "description": "The datetime to validate.",
+          "validators": []
+        },
+        {
+          "name": "now_utc",
+          "type_ref": "UtcDatetime",
+          "required": false,
+          "default": "",
+          "description": "The current UTC time for future-check comparison. If not provided, uses datetime.now(UTC). Injected for testability.",
+          "validators": []
+        }
+      ],
+      "output_type": "UtcDatetime",
+      "error_cases": [
+        {
+          "name": "naive_datetime",
+          "condition": "timestamp has no tzinfo (naive datetime)",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "INVALID_TIMESTAMP",
+            "message": "Timestamp must be timezone-aware (UTC), got naive datetime."
+          }
+        },
+        {
+          "name": "non_utc_timezone",
+          "condition": "timestamp has tzinfo but utcoffset() != timedelta(0)",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "INVALID_TIMESTAMP",
+            "message": "Timestamp must be in UTC timezone, got offset: {timestamp.utcoffset()}."
+          }
+        },
+        {
+          "name": "future_timestamp",
+          "condition": "timestamp is strictly after now_utc",
+          "error_type": "TemporalFilterError",
+          "error_data": {
+            "error_kind": "FUTURE_TIMESTAMP",
+            "message": "Timestamp {timestamp} is in the future (current UTC: {now_utc})."
+          }
+        }
+      ],
+      "preconditions": [
+        "timestamp is a datetime object"
+      ],
+      "postconditions": [
+        "If validation passes, returns the input timestamp unchanged",
+        "The returned timestamp has tzinfo set to UTC",
+        "The returned timestamp is not in the future relative to now_utc"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [
+    "temporal_state_management",
+    "temporal_adapter_integration"
+  ],
+  "dependency_contracts": {
+    "temporal_state_management": [
+      "parse_since_argument",
+      "resolve_effective_since",
+      "load_state",
+      "save_state",
+      "SincePolicy",
+      "SinceSpec",
+      "RunState"
+    ],
+    "temporal_adapter_integration": [
+      "fetch_signals",
+      "to_native_timestamp",
+      "resolve_since_parameter",
+      "save_last_run_timestamp",
+      "load_state_file",
+      "dispatch_fetch_to_all_adapters",
+      "AdapterKind",
+      "SignalSource",
+      "Signal",
+      "FetchResult",
+      "SinceParameter",
+      "SinceProvenance",
+      "StateFile",
+      "StateEntry",
+      "AggregatedFetchResult"
+    ]
+  },
+  "invariants": [
+    "All datetime values within this component MUST have tzinfo=datetime.UTC (UTC-aware); naive datetimes are never permitted at any interface boundary",
+    "SinceSpec is a discriminated union on the 'policy' field: exactly one of SinceAll (policy='all'), SinceAbsolute (policy='absolute'), or SinceFromState (policy='from_state')",
+    "SinceAbsolute.timestamp and SinceFromState.timestamp are always non-None UTC-aware datetimes; SinceAll has no timestamp field",
+    "All SinceSpec, SinceAll, SinceAbsolute, SinceFromState, RunState, OverlapConfig, and TemporalFilterResult models are frozen (immutable) Pydantic models",
+    "The overlap window (default 60 seconds) is always subtracted from the since timestamp before passing to adapters; it is never added",
+    "State file missing on first run results in SinceAll (process everything), never an error",
+    "State file corruption results in a warning log and fallback to SinceAll (process everything), never an unhandled exception",
+    "Future timestamps provided via --since are always rejected with FutureTimestampError; they never silently pass through",
+    "All public functions in this component are async (use asyncio)",
+    "state.yaml is always serialized with timestamps as ISO 8601 strings using yaml.safe_dump, never as native YAML timestamp objects",
+    "state.yaml writes are always atomic via temp-file-then-os.replace()",
+    "All file I/O operations are wrapped in asyncio.to_thread() to avoid blocking the event loop",
+    "This component owns CLI argument parsing and pipeline orchestration; it delegates state file I/O to temporal_state_management and adapter dispatch to temporal_adapter_integration",
+    "The 3-phase pipeline (Parse → Resolve → Dispatch) is always executed in order; no phase may be skipped",
+    "The run timestamp persisted to state.yaml is captured at the start of orchestration (before adapter dispatch), not after"
+  ],
+  "requires": [
+    "temporal_state_management.parse_since_argument",
+    "temporal_state_management.resolve_effective_since",
+    "temporal_state_management.load_state",
+    "temporal_state_management.save_state",
+    "temporal_adapter_integration.dispatch_fetch_to_all_adapters",
+    "temporal_adapter_integration.fetch_signals",
+    "temporal_adapter_integration.resolve_since_parameter",
+    "temporal_adapter_integration.to_native_timestamp"
+  ]
+}

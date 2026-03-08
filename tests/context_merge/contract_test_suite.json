@@ -1,0 +1,1209 @@
+{
+  "component_id": "context_merge",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "hp_overlap_identical",
+      "description": "compute_signal_overlap returns 1.0 for identical non-empty sets",
+      "function": "compute_signal_overlap",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "[\"s1\",\"s2\",\"s3\"]",
+        "signals_b": "[\"s1\",\"s2\",\"s3\"]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "hp_overlap_partial",
+      "description": "compute_signal_overlap returns correct Jaccard for partially overlapping sets",
+      "function": "compute_signal_overlap",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "[\"s1\",\"s2\",\"s3\"]",
+        "signals_b": "[\"s2\",\"s3\",\"s4\"]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.5"
+      ]
+    },
+    {
+      "id": "edge_overlap_both_empty",
+      "description": "compute_signal_overlap returns 0.0 when both sets are empty",
+      "function": "compute_signal_overlap",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "[]",
+        "signals_b": "[]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "edge_overlap_one_empty",
+      "description": "compute_signal_overlap returns 0.0 when one set is empty",
+      "function": "compute_signal_overlap",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "[\"s1\"]",
+        "signals_b": "[]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "edge_overlap_disjoint",
+      "description": "compute_signal_overlap returns 0.0 for disjoint sets",
+      "function": "compute_signal_overlap",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "[\"s1\",\"s2\"]",
+        "signals_b": "[\"s3\",\"s4\"]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "inv_overlap_symmetric",
+      "description": "compute_signal_overlap is symmetric: f(a,b)==f(b,a)",
+      "function": "compute_signal_overlap",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signals_a": "[\"s1\",\"s2\",\"s3\"]",
+        "signals_b": "[\"s2\",\"s3\",\"s4\",\"s5\"]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result_ab == result_ba"
+      ]
+    },
+    {
+      "id": "hp_agreement_full",
+      "description": "compute_assessment_agreement returns 1.0 when all shared signals agree exactly",
+      "function": "compute_assessment_agreement",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "hp_agreement_partial",
+      "description": "compute_assessment_agreement returns correct ratio for partial agreement",
+      "function": "compute_assessment_agreement",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.5"
+      ]
+    },
+    {
+      "id": "edge_agreement_no_shared",
+      "description": "compute_assessment_agreement returns 0.0 when no shared signals",
+      "function": "compute_assessment_agreement",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.0"
+      ]
+    },
+    {
+      "id": "edge_agreement_epsilon_boundary",
+      "description": "compute_assessment_agreement respects epsilon tolerance boundary for familiarity scores",
+      "function": "compute_assessment_agreement",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result_within == 1.0",
+        "result_outside == 0.0"
+      ]
+    },
+    {
+      "id": "err_agreement_duplicate_signal",
+      "description": "compute_assessment_agreement raises ValueError on duplicate signal_id in one list",
+      "function": "compute_assessment_agreement",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_detect_candidates_above_thresholds",
+      "description": "detect_merge_candidates returns candidates for neighbors exceeding both thresholds",
+      "function": "detect_merge_candidates",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 1",
+        "result.candidates[0].context_id_a <= result.candidates[0].context_id_b"
+      ]
+    },
+    {
+      "id": "edge_detect_candidates_below_overlap",
+      "description": "detect_merge_candidates returns empty when overlap below threshold",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "edge_detect_candidates_below_agreement",
+      "description": "detect_merge_candidates returns empty when agreement below threshold",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "edge_detect_candidates_exact_threshold",
+      "description": "detect_merge_candidates excludes pairs at exact threshold (strict inequality)",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "edge_detect_candidates_non_neighbors",
+      "description": "detect_merge_candidates ignores non-neighbor pairs even with high overlap",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "edge_detect_candidates_empty_mesh",
+      "description": "detect_merge_candidates returns empty for empty mesh",
+      "function": "detect_merge_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_windows": "{}",
+        "assessments": "{}",
+        "neighbors": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.candidates) == 0"
+      ]
+    },
+    {
+      "id": "inv_detect_candidates_canonical_order",
+      "description": "detect_merge_candidates always returns candidates with context_id_a <= context_id_b",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(c.context_id_a <= c.context_id_b for c in result.candidates)"
+      ]
+    },
+    {
+      "id": "inv_detect_candidates_sorted_desc",
+      "description": "detect_merge_candidates returns candidates sorted by combined_score descending",
+      "function": "detect_merge_candidates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "scores == sorted(scores, reverse=True)"
+      ]
+    },
+    {
+      "id": "err_detect_invalid_overlap_threshold",
+      "description": "detect_merge_candidates raises ValueError for invalid overlap_threshold",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_detect_invalid_agreement_threshold",
+      "description": "detect_merge_candidates raises ValueError for invalid agreement_threshold",
+      "function": "detect_merge_candidates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_check_merge_above_thresholds",
+      "description": "check_merge returns MergeProposal when both thresholds are met",
+      "function": "check_merge",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.overlap_score > 0.7",
+        "result.agreement_score > 0.8"
+      ]
+    },
+    {
+      "id": "edge_check_merge_below_thresholds",
+      "description": "check_merge returns None when thresholds not met",
+      "function": "check_merge",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "err_check_merge_same_context",
+      "description": "check_merge raises ValueError when context_a == context_b",
+      "function": "check_merge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_check_merges_filters_non_stable",
+      "description": "check_merges only evaluates STABLE contexts",
+      "function": "check_merges",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all proposals involve only STABLE contexts"
+      ]
+    },
+    {
+      "id": "hp_resolve_surviving_higher_energy",
+      "description": "resolve_surviving_identity returns context with higher energy",
+      "function": "resolve_surviving_identity",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.id == higher_energy_ctx.id"
+      ]
+    },
+    {
+      "id": "edge_resolve_surviving_tie_lexicographic",
+      "description": "resolve_surviving_identity returns lexicographically smaller id on energy tie",
+      "function": "resolve_surviving_identity",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.id == lexicographically_smaller_id"
+      ]
+    },
+    {
+      "id": "err_resolve_surviving_same_context",
+      "description": "resolve_surviving_identity raises MergeError for same context",
+      "function": "resolve_surviving_identity",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MergeError",
+      "assertions": []
+    },
+    {
+      "id": "hp_dedup_agents_no_conflict",
+      "description": "deduplicate_agents unions disjoint agent lists",
+      "function": "deduplicate_agents",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == len(agents_a) + len(agents_b)"
+      ]
+    },
+    {
+      "id": "hp_dedup_agents_with_conflict",
+      "description": "deduplicate_agents keeps preferred context's agent on conflict",
+      "function": "deduplicate_agents",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "conflicting agent from preferred context is in result"
+      ]
+    },
+    {
+      "id": "edge_dedup_agents_both_empty",
+      "description": "deduplicate_agents returns empty list for two empty agent lists",
+      "function": "deduplicate_agents",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 0"
+      ]
+    },
+    {
+      "id": "err_dedup_invalid_preferred",
+      "description": "deduplicate_agents raises MergeError when preferred_context_id doesn't match either context",
+      "function": "deduplicate_agents",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MergeError",
+      "assertions": []
+    },
+    {
+      "id": "inv_dedup_no_duplicate_keys",
+      "description": "deduplicate_agents result has no duplicate (identity, role) pairs",
+      "function": "deduplicate_agents",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(keys) == len(set(keys))"
+      ]
+    },
+    {
+      "id": "hp_merge_vector_stores_union",
+      "description": "merge_vector_stores returns union of signal_ids with surviving store_id",
+      "function": "merge_vector_stores",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.store_id == surviving_store_id",
+        "set(result.signal_ids) == expected_union"
+      ]
+    },
+    {
+      "id": "edge_merge_vector_stores_overlap",
+      "description": "merge_vector_stores deduplicates overlapping signal_ids",
+      "function": "merge_vector_stores",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.signal_ids) == len(set(result.signal_ids))"
+      ]
+    },
+    {
+      "id": "hp_topology_updates_basic",
+      "description": "compute_topology_updates produces correct remove and add commands",
+      "function": "compute_topology_updates",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "REMOVE_NEIGHBOR commands exist for removed_id",
+        "ADD_NEIGHBOR commands exist for new connections"
+      ]
+    },
+    {
+      "id": "edge_topology_updates_no_extra_neighbors",
+      "description": "compute_topology_updates handles case where removed context has no unique neighbors",
+      "function": "compute_topology_updates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no ADD_NEIGHBOR commands for surviving_id to third parties"
+      ]
+    },
+    {
+      "id": "err_topology_same_id",
+      "description": "compute_topology_updates raises MergeError when surviving_id == removed_id",
+      "function": "compute_topology_updates",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MergeError",
+      "assertions": []
+    },
+    {
+      "id": "inv_topology_no_self_reference",
+      "description": "compute_topology_updates never produces ADD_NEIGHBOR where context_id == target_id",
+      "function": "compute_topology_updates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(u.context_id != u.target_id for u in result if u.action == ADD_NEIGHBOR)"
+      ]
+    },
+    {
+      "id": "hp_execute_merge_full",
+      "description": "execute_merge returns correct MergeResult with all fields populated",
+      "function": "execute_merge",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.surviving_context_id == proposal.target_context_id",
+        "result.removed_context_id == proposal.source_context_id",
+        "result.redirect.ttl_seconds == config.redirect_ttl_seconds"
+      ]
+    },
+    {
+      "id": "edge_execute_merge_max_energy",
+      "description": "execute_merge takes max energy of both contexts",
+      "function": "execute_merge",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.merged_energy == max(ctx_a.energy, ctx_b.energy)"
+      ]
+    },
+    {
+      "id": "err_execute_merge_id_mismatch",
+      "description": "execute_merge raises ValueError when snapshot IDs don't match proposal",
+      "function": "execute_merge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "err_execute_merge_zero_energy",
+      "description": "execute_merge raises ValueError when both contexts have zero energy",
+      "function": "execute_merge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_merge_orchestrator",
+      "description": "merge orchestrator returns correct MergeResult with energy capped at system max",
+      "function": "merge",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.merged_energy <= system_config.max_energy",
+        "result.surviving_context_id is set",
+        "result.removed_context_id is set"
+      ]
+    },
+    {
+      "id": "err_merge_same_context",
+      "description": "merge raises MergeError when both contexts are the same",
+      "function": "merge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MergeError",
+      "assertions": []
+    },
+    {
+      "id": "err_merge_not_neighbors",
+      "description": "merge raises MergeError when contexts are not neighbors",
+      "function": "merge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MergeError",
+      "assertions": []
+    },
+    {
+      "id": "err_merge_negative_energy",
+      "description": "merge raises MergeError when a context has negative energy",
+      "function": "merge",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "MergeError",
+      "assertions": []
+    },
+    {
+      "id": "hp_resolve_conflicts_no_conflict",
+      "description": "resolve_lifecycle_conflicts accepts all proposals when no conflicts",
+      "function": "resolve_lifecycle_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.accepted_proposals) == len(proposals)",
+        "len(result.rejected_proposals) == 0"
+      ]
+    },
+    {
+      "id": "hp_resolve_conflicts_fork_beats_merge",
+      "description": "resolve_lifecycle_conflicts prefers FORK over MERGE for same context",
+      "function": "resolve_lifecycle_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "fork proposal in accepted",
+        "merge proposal in rejected"
+      ]
+    },
+    {
+      "id": "hp_resolve_conflicts_merge_beats_decay",
+      "description": "resolve_lifecycle_conflicts prefers MERGE over DECAY for same context",
+      "function": "resolve_lifecycle_conflicts",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "merge proposal in accepted",
+        "decay proposal in rejected"
+      ]
+    },
+    {
+      "id": "edge_resolve_conflicts_same_priority_timestamp",
+      "description": "resolve_lifecycle_conflicts uses earlier timestamp as tiebreaker within same priority",
+      "function": "resolve_lifecycle_conflicts",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "earlier proposal in accepted",
+        "later proposal in rejected"
+      ]
+    },
+    {
+      "id": "inv_resolve_conflicts_coverage",
+      "description": "resolve_lifecycle_conflicts partitions all proposals into accepted + rejected",
+      "function": "resolve_lifecycle_conflicts",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(accepted) + len(rejected) == len(all_proposals)"
+      ]
+    },
+    {
+      "id": "inv_resolve_conflicts_no_shared_contexts",
+      "description": "resolve_lifecycle_conflicts: no two accepted proposals share an affected context",
+      "function": "resolve_lifecycle_conflicts",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no overlapping context_ids in accepted proposals"
+      ]
+    },
+    {
+      "id": "hp_detect_decay_fold",
+      "description": "detect_decay_fold_candidates returns DECAY_FOLD proposals for decaying context with forking neighbor",
+      "function": "detect_decay_fold_candidates",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all(p.kind == DECAY_FOLD for p in result)",
+        "all(p.merge_proposal.is_decay_fold for p in result)"
+      ]
+    },
+    {
+      "id": "edge_detect_decay_fold_no_match",
+      "description": "detect_decay_fold_candidates returns empty when no decay-fork pairs exist",
+      "function": "detect_decay_fold_candidates",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 0"
+      ]
+    },
+    {
+      "id": "hp_lifecycle_guard_stable",
+      "description": "check_lifecycle_guard returns True for STABLE context transitioning to MERGING",
+      "function": "check_lifecycle_guard",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "context_id": "\"ctx-1\"",
+        "desired_state": "MERGING",
+        "lifecycle_states": "{\"ctx-1\": \"STABLE\"}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "hp_lifecycle_guard_missing",
+      "description": "check_lifecycle_guard returns True for context not in state map",
+      "function": "check_lifecycle_guard",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "context_id": "\"ctx-new\"",
+        "desired_state": "MERGING",
+        "lifecycle_states": "{}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "edge_lifecycle_guard_already_merging",
+      "description": "check_lifecycle_guard returns False for context already in MERGING state",
+      "function": "check_lifecycle_guard",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "context_id": "\"ctx-1\"",
+        "desired_state": "MERGING",
+        "lifecycle_states": "{\"ctx-1\": \"MERGING\"}"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "edge_lifecycle_guard_forking",
+      "description": "check_lifecycle_guard returns False for context in FORKING state",
+      "function": "check_lifecycle_guard",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "err_lifecycle_guard_invalid_desired",
+      "description": "check_lifecycle_guard raises ValueError for STABLE or MERGED as desired_state",
+      "function": "check_lifecycle_guard",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "hp_transition_state",
+      "description": "transition_lifecycle_state sets new state in the map",
+      "function": "transition_lifecycle_state",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "lifecycle_states[context_id] == new_state"
+      ]
+    },
+    {
+      "id": "hp_resolve_redirect_no_entry",
+      "description": "resolve_signal_redirect returns original ID when no redirect exists",
+      "function": "resolve_signal_redirect",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "target_context_id": "\"ctx-alive\"",
+        "redirect_map": "{}",
+        "max_depth": "10"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 'ctx-alive'"
+      ]
+    },
+    {
+      "id": "hp_resolve_redirect_single_hop",
+      "description": "resolve_signal_redirect follows one redirect hop",
+      "function": "resolve_signal_redirect",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == surviving_id"
+      ]
+    },
+    {
+      "id": "edge_resolve_redirect_chain",
+      "description": "resolve_signal_redirect follows multi-hop redirect chain",
+      "function": "resolve_signal_redirect",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == final_surviving_id"
+      ]
+    },
+    {
+      "id": "err_resolve_redirect_too_deep",
+      "description": "resolve_signal_redirect raises RuntimeError when chain exceeds max_depth",
+      "function": "resolve_signal_redirect",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "hp_cleanup_redirects_expired",
+      "description": "cleanup_expired_redirects removes expired entries and returns count",
+      "function": "cleanup_expired_redirects",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == number_of_expired",
+        "expired keys removed from redirect_map",
+        "MERGED states removed from lifecycle_states"
+      ]
+    },
+    {
+      "id": "edge_cleanup_redirects_none_expired",
+      "description": "cleanup_expired_redirects returns 0 when nothing is expired",
+      "function": "cleanup_expired_redirects",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0",
+        "redirect_map unchanged"
+      ]
+    },
+    {
+      "id": "edge_cleanup_redirects_empty_map",
+      "description": "cleanup_expired_redirects handles empty redirect map",
+      "function": "cleanup_expired_redirects",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result == 0"
+      ]
+    },
+    {
+      "id": "hp_apply_merge_result",
+      "description": "apply_merge_result transitions states and adds redirect entry",
+      "function": "apply_merge_result",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "lifecycle_states[surviving] == STABLE",
+        "lifecycle_states[removed] == MERGED",
+        "removed_id in redirect_map"
+      ]
+    },
+    {
+      "id": "err_apply_not_merging",
+      "description": "apply_merge_result raises RuntimeError when context not in MERGING state",
+      "function": "apply_merge_result",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "hp_run_lifecycle_no_merges",
+      "description": "run_lifecycle_cycle returns empty merge_results when no candidates found",
+      "function": "run_lifecycle_cycle",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(report.merge_results) == 0",
+        "report.redirects_cleaned >= 0"
+      ]
+    },
+    {
+      "id": "hp_run_lifecycle_with_merge",
+      "description": "run_lifecycle_cycle executes a detected merge and reports it",
+      "function": "run_lifecycle_cycle",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(report.merge_results) >= 1",
+        "no context left in MERGING state"
+      ]
+    },
+    {
+      "id": "edge_run_lifecycle_cleanup",
+      "description": "run_lifecycle_cycle cleans up expired redirects",
+      "function": "run_lifecycle_cycle",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "report.redirects_cleaned >= 0"
+      ]
+    },
+    {
+      "id": "inv_energy_range",
+      "description": "Merged energy is always in [0.0, system_config.max_energy]",
+      "function": "merge",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "0.0 <= result.merged_energy <= system_config.max_energy"
+      ]
+    },
+    {
+      "id": "inv_no_merging_after_cycle",
+      "description": "No context is left in MERGING state after run_lifecycle_cycle",
+      "function": "run_lifecycle_cycle",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "MERGING not in lifecycle_states.values()"
+      ]
+    },
+    {
+      "id": "inv_redirect_finite_ttl",
+      "description": "All redirect entries have positive finite TTL",
+      "function": "execute_merge",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.redirect.ttl_seconds > 0"
+      ]
+    },
+    {
+      "id": "inv_vector_store_union_commutative",
+      "description": "Vector store union is commutative: merge(A,B) == merge(B,A) by signal_ids",
+      "function": "merge_vector_stores",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "set(result_ab.signal_ids) == set(result_ba.signal_ids)"
+      ]
+    },
+    {
+      "id": "inv_merged_neighbor_exclusion",
+      "description": "Merged context neighbor set never contains either original context ID",
+      "function": "compute_topology_updates",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "surviving_id not a target of ADD_NEIGHBOR to surviving_id",
+        "removed_id not a target of ADD_NEIGHBOR to surviving_id"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for context_merge (Feature 2) — Context Merge Lifecycle Operation.\n\nTests are organized by pipeline phase:\n  Phase 1: Detection (compute_signal_overlap, compute_assessment_agreement, detect_merge_candidates, check_merge, check_merges)\n  Phase 2: Conflict resolution (resolve_lifecycle_conflicts, detect_decay_fold_candidates)\n  Phase 3: Execution (resolve_surviving_identity, deduplicate_agents, merge_vector_stores, compute_topology_updates, execute_merge, merge)\n  Phase 4: Application & redirects (apply_merge_result, resolve_signal_redirect, cleanup_expired_redirects)\n  Phase 5: Lifecycle guard & transitions (check_lifecycle_guard, transition_lifecycle_state)\n  Phase 6: Integration (run_lifecycle_cycle)\n  Phase 7: Invariants / property-based checks\n\nAll dependencies are mocked. Frozen Pydantic v2 models are constructed via factory helpers.\n\"\"\"\nimport pytest\nimport asyncio\nfrom unittest.mock import AsyncMock, MagicMock, patch, call\nfrom datetime import datetime, timezone, timedelta\nfrom copy import deepcopy\n\n# Import the component under test\nfrom src.context_merge import (\n    compute_signal_overlap,\n    compute_assessment_agreement,\n    detect_merge_candidates,\n    detect_decay_fold_candidates,\n    resolve_surviving_identity,\n    deduplicate_agents,\n    merge_vector_stores,\n    compute_topology_updates,\n    merge,\n    check_merges,\n    check_merge,\n    resolve_lifecycle_conflicts,\n    check_lifecycle_guard,\n    transition_lifecycle_state,\n    execute_merge,\n    apply_merge_result,\n    resolve_signal_redirect,\n    cleanup_expired_redirects,\n    run_lifecycle_cycle,\n    # Types / models\n    MergeConfig,\n    SystemConfig,\n    MergeReason,\n    LifecycleState,\n    LifecycleProposalKind,\n    AssessmentDecision,\n    TopologyAction,\n    AssessmentSummary,\n    Assessment,\n    Agent,\n    AgentIdentityKey,\n    VectorStore,\n    NeighborEntry,\n    TopologyUpdate,\n    TopologyPatch,\n    Context,\n    ContextSnapshot,\n    MergeCandidate,\n    MergeDetectionResult,\n    MergeProposal,\n    MergeRedirect,\n    MergeResult,\n    LifecycleProposal,\n    LifecyclePlan,\n    LifecycleError,\n    LifecycleCycleReport,\n)\n\n# Try to import MergeError; fall back to a generic lookup\ntry:\n    from src.context_merge import MergeError\nexcept ImportError:\n    # MergeError may be defined elsewhere; tests referencing it will use string matching\n    MergeError = Exception\n\n\n# ---------------------------------------------------------------------------\n# Factory helpers\n# ---------------------------------------------------------------------------\n\ndef make_merge_config(**overrides):\n    \"\"\"Create a MergeConfig with sensible defaults.\"\"\"\n    defaults = dict(\n        overlap_threshold=0.7,\n        agreement_threshold=0.8,\n        window_seconds=300.0,\n        agreement_epsilon=0.05,\n        redirect_ttl_seconds=600.0,\n        min_signal_count=1,\n    )\n    defaults.update(overrides)\n    return MergeConfig(**defaults)\n\n\ndef make_system_config(**overrides):\n    defaults = dict(max_energy=100.0)\n    defaults.update(overrides)\n    return SystemConfig(**defaults)\n\n\ndef make_assessment(signal_id, decision=\"ACCEPT\", familiarity_score=0.9):\n    if isinstance(decision, str):\n        decision = AssessmentDecision(decision)\n    return Assessment(\n        signal_id=signal_id,\n        decision=decision,\n        familiarity_score=familiarity_score,\n    )\n\n\ndef make_assessment_summary(accepted=True, familiarity_score=0.9):\n    return AssessmentSummary(accepted=accepted, familiarity_score=familiarity_score)\n\n\ndef make_agent(identity, role, metadata=None):\n    return Agent(identity=identity, role=role, metadata=metadata or {})\n\n\ndef make_vector_store(store_id, signal_ids=None):\n    return VectorStore(store_id=store_id, signal_ids=list(signal_ids or []))\n\n\ndef make_neighbor_entry(context_id, weight=1.0):\n    return NeighborEntry(context_id=context_id, weight=weight)\n\n\ndef make_context(id, energy=50.0, agents=None, vector_store=None, neighbor_ids=None):\n    return Context(\n        id=id,\n        energy=energy,\n        agents=agents or [],\n        vector_store=vector_store or make_vector_store(f\"store-{id}\"),\n        neighbor_ids=neighbor_ids or [],\n    )\n\n\ndef make_context_snapshot(\n    context_id,\n    signal_ids=None,\n    assessments=None,\n    agent_ids=None,\n    energy=50.0,\n    neighbors=None,\n    lifecycle_state=\"STABLE\",\n):\n    if isinstance(lifecycle_state, str):\n        lifecycle_state = LifecycleState(lifecycle_state)\n    return ContextSnapshot(\n        context_id=context_id,\n        signal_ids=list(signal_ids or []),\n        assessments=assessments or [],\n        agent_ids=agent_ids or [],\n        energy=energy,\n        neighbors=neighbors or [],\n        lifecycle_state=lifecycle_state,\n    )\n\n\ndef make_merge_proposal(\n    source_context_id=\"ctx-b\",\n    target_context_id=\"ctx-a\",\n    overlap_score=0.85,\n    agreement_score=0.9,\n    timestamp=\"2024-01-01T00:00:00Z\",\n    is_decay_fold=False,\n):\n    return MergeProposal(\n        source_context_id=source_context_id,\n        target_context_id=target_context_id,\n        overlap_score=overlap_score,\n        agreement_score=agreement_score,\n        timestamp=timestamp,\n        is_decay_fold=is_decay_fold,\n    )\n\n\ndef make_merge_redirect(removed_id, surviving_id, created_at=\"2024-01-01T00:00:00Z\", ttl_seconds=600.0):\n    return MergeRedirect(\n        removed_context_id=removed_id,\n        surviving_context_id=surviving_id,\n        created_at=created_at,\n        ttl_seconds=ttl_seconds,\n    )\n\n\ndef make_lifecycle_proposal(kind, affected_context_ids, priority=20, merge_proposal=None, timestamp=\"2024-01-01T00:00:00Z\"):\n    if isinstance(kind, str):\n        kind = LifecycleProposalKind(kind)\n    return LifecycleProposal(\n        kind=kind,\n        affected_context_ids=affected_context_ids,\n        priority=priority,\n        merge_proposal=merge_proposal,\n        timestamp=timestamp,\n    )\n\n\ndef make_merge_result(\n    surviving_context_id=\"ctx-a\",\n    removed_context_id=\"ctx-b\",\n    merged_agent_ids=None,\n    merged_energy=60.0,\n    redirect=None,\n    topology_patch=None,\n    proposal=None,\n):\n    if redirect is None:\n        redirect = make_merge_redirect(removed_context_id, surviving_context_id)\n    if topology_patch is None:\n        topology_patch = TopologyPatch(\n            surviving_context_id=surviving_context_id,\n            removed_context_id=removed_context_id,\n            new_neighbors=[],\n            removed_neighbor_refs=[],\n        )\n    if proposal is None:\n        proposal = make_merge_proposal(\n            source_context_id=removed_context_id,\n            target_context_id=surviving_context_id,\n        )\n    return MergeResult(\n        surviving_context_id=surviving_context_id,\n        removed_context_id=removed_context_id,\n        merged_agent_ids=merged_agent_ids or [],\n        merged_energy=merged_energy,\n        redirect=redirect,\n        topology_patch=topology_patch,\n        proposal=proposal,\n    )\n\n\n# ===========================================================================\n# PHASE 1: DETECTION TESTS\n# ===========================================================================\n\nclass TestComputeSignalOverlap:\n    \"\"\"Tests for compute_signal_overlap (Layer 1 — Detection, pure).\"\"\"\n\n    def test_hp_overlap_identical(self):\n        \"\"\"Identical non-empty sets → 1.0.\"\"\"\n        result = compute_signal_overlap([\"s1\", \"s2\", \"s3\"], [\"s1\", \"s2\", \"s3\"])\n        assert result == 1.0, f\"Expected 1.0 for identical sets, got {result}\"\n\n    def test_hp_overlap_partial(self):\n        \"\"\"Partial overlap → correct Jaccard.\"\"\"\n        # Intersection = {s2, s3} (2), Union = {s1, s2, s3, s4} (4) → 0.5\n        result = compute_signal_overlap([\"s1\", \"s2\", \"s3\"], [\"s2\", \"s3\", \"s4\"])\n        assert result == pytest.approx(0.5), f\"Expected 0.5 Jaccard, got {result}\"\n\n    def test_edge_overlap_both_empty(self):\n        \"\"\"Both empty → 0.0.\"\"\"\n        result = compute_signal_overlap([], [])\n        assert result == 0.0, f\"Expected 0.0 for both empty, got {result}\"\n\n    def test_edge_overlap_one_empty(self):\n        \"\"\"One empty, one non-empty → 0.0.\"\"\"\n        result = compute_signal_overlap([\"s1\"], [])\n        assert result == 0.0, f\"Expected 0.0 when one set is empty, got {result}\"\n\n    def test_edge_overlap_disjoint(self):\n        \"\"\"Disjoint sets → 0.0.\"\"\"\n        result = compute_signal_overlap([\"s1\", \"s2\"], [\"s3\", \"s4\"])\n        assert result == 0.0, f\"Expected 0.0 for disjoint sets, got {result}\"\n\n    def test_inv_overlap_symmetric(self):\n        \"\"\"Overlap is symmetric: f(a, b) == f(b, a).\"\"\"\n        a, b = [\"s1\", \"s2\", \"s3\"], [\"s2\", \"s3\", \"s4\", \"s5\"]\n        result_ab = compute_signal_overlap(a, b)\n        result_ba = compute_signal_overlap(b, a)\n        assert result_ab == pytest.approx(result_ba), (\n            f\"Symmetry violated: f(a,b)={result_ab} != f(b,a)={result_ba}\"\n        )\n\n    def test_overlap_result_range(self):\n        \"\"\"Result is always in [0.0, 1.0].\"\"\"\n        result = compute_signal_overlap([\"s1\", \"s2\"], [\"s2\", \"s3\", \"s4\"])\n        assert 0.0 <= result <= 1.0, f\"Result {result} out of [0.0, 1.0]\"\n\n    def test_overlap_subset(self):\n        \"\"\"When A ⊂ B, Jaccard = |A| / |B|.\"\"\"\n        result = compute_signal_overlap([\"s1\", \"s2\"], [\"s1\", \"s2\", \"s3\", \"s4\"])\n        assert result == pytest.approx(2.0 / 4.0), f\"Expected 0.5 for subset, got {result}\"\n\n\nclass TestComputeAssessmentAgreement:\n    \"\"\"Tests for compute_assessment_agreement (Layer 1 — Detection, pure).\"\"\"\n\n    def test_hp_agreement_full(self):\n        \"\"\"All shared signals agree exactly → 1.0.\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s2\", \"REJECT\", 0.3)]\n        b = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s2\", \"REJECT\", 0.3)]\n        result = compute_assessment_agreement(a, b, epsilon=0.05)\n        assert result == pytest.approx(1.0), f\"Expected 1.0 for full agreement, got {result}\"\n\n    def test_hp_agreement_partial(self):\n        \"\"\"Only half of shared signals agree → 0.5.\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s2\", \"ACCEPT\", 0.5)]\n        b = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s2\", \"REJECT\", 0.5)]\n        result = compute_assessment_agreement(a, b, epsilon=0.05)\n        assert result == pytest.approx(0.5), f\"Expected 0.5 for partial agreement, got {result}\"\n\n    def test_edge_agreement_no_shared(self):\n        \"\"\"No shared signals → 0.0.\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9)]\n        b = [make_assessment(\"s2\", \"ACCEPT\", 0.9)]\n        result = compute_assessment_agreement(a, b, epsilon=0.05)\n        assert result == 0.0, f\"Expected 0.0 for no shared signals, got {result}\"\n\n    def test_edge_agreement_epsilon_boundary(self):\n        \"\"\"Familiarity scores within epsilon agree; outside epsilon disagree.\"\"\"\n        epsilon = 0.1\n        # Within epsilon: |0.9 - 0.85| = 0.05 <= 0.1 → agree\n        a_within = [make_assessment(\"s1\", \"ACCEPT\", 0.9)]\n        b_within = [make_assessment(\"s1\", \"ACCEPT\", 0.85)]\n        result_within = compute_assessment_agreement(a_within, b_within, epsilon=epsilon)\n        assert result_within == pytest.approx(1.0), (\n            f\"Expected 1.0 within epsilon, got {result_within}\"\n        )\n\n        # Outside epsilon: |0.9 - 0.7| = 0.2 > 0.1 → disagree\n        a_outside = [make_assessment(\"s1\", \"ACCEPT\", 0.9)]\n        b_outside = [make_assessment(\"s1\", \"ACCEPT\", 0.7)]\n        result_outside = compute_assessment_agreement(a_outside, b_outside, epsilon=epsilon)\n        assert result_outside == pytest.approx(0.0), (\n            f\"Expected 0.0 outside epsilon, got {result_outside}\"\n        )\n\n    def test_edge_agreement_different_decisions(self):\n        \"\"\"Same familiarity but different decisions → disagree.\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9)]\n        b = [make_assessment(\"s1\", \"REJECT\", 0.9)]\n        result = compute_assessment_agreement(a, b, epsilon=0.05)\n        assert result == pytest.approx(0.0), (\n            f\"Expected 0.0 for different decisions, got {result}\"\n        )\n\n    def test_err_agreement_duplicate_signal(self):\n        \"\"\"Duplicate signal_id in one assessment list → ValueError.\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s1\", \"REJECT\", 0.5)]\n        b = [make_assessment(\"s1\", \"ACCEPT\", 0.9)]\n        with pytest.raises(ValueError, match=\"duplicate\"):\n            compute_assessment_agreement(a, b, epsilon=0.05)\n\n    def test_agreement_result_range(self):\n        \"\"\"Result is always in [0.0, 1.0].\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s2\", \"REJECT\", 0.3)]\n        b = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s3\", \"ACCEPT\", 0.8)]\n        result = compute_assessment_agreement(a, b, epsilon=0.05)\n        assert 0.0 <= result <= 1.0, f\"Result {result} out of [0.0, 1.0]\"\n\n    def test_agreement_symmetric(self):\n        \"\"\"Agreement is symmetric: f(a, b, eps) == f(b, a, eps).\"\"\"\n        a = [make_assessment(\"s1\", \"ACCEPT\", 0.9), make_assessment(\"s2\", \"REJECT\", 0.3)]\n        b = [make_assessment(\"s1\", \"ACCEPT\", 0.85), make_assessment(\"s2\", \"REJECT\", 0.35)]\n        r1 = compute_assessment_agreement(a, b, epsilon=0.1)\n        r2 = compute_assessment_agreement(b, a, epsilon=0.1)\n        assert r1 == pytest.approx(r2), f\"Symmetry violated: {r1} != {r2}\"\n\n\nclass TestDetectMergeCandidates:\n    \"\"\"Tests for detect_merge_candidates (Layer 1 — Detection, pure).\"\"\"\n\n    def _build_high_overlap_mesh(self):\n        \"\"\"Helper: two neighboring contexts with >70% overlap and >80% agreement.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\", \"s6\", \"s7\", \"s8\"]\n        signal_windows = {\n            \"ctx-a\": frozenset(shared + [\"s9\"]),\n            \"ctx-b\": frozenset(shared + [\"s10\"]),\n        }\n        summary = make_assessment_summary(accepted=True, familiarity_score=0.9)\n        assessments = {\n            \"ctx-a\": {s: summary for s in shared + [\"s9\"]},\n            \"ctx-b\": {s: summary for s in shared + [\"s10\"]},\n        }\n        neighbors = {\n            \"ctx-a\": frozenset([\"ctx-b\"]),\n            \"ctx-b\": frozenset([\"ctx-a\"]),\n        }\n        return signal_windows, assessments, neighbors\n\n    def test_hp_detect_candidates_above_thresholds(self):\n        \"\"\"Neighbors exceeding both thresholds produce a candidate.\"\"\"\n        sw, asm, nb = self._build_high_overlap_mesh()\n        result = detect_merge_candidates(sw, asm, nb, overlap_threshold=0.7, agreement_threshold=0.8)\n        assert len(result.candidates) == 1, f\"Expected 1 candidate, got {len(result.candidates)}\"\n        cand = result.candidates[0]\n        assert cand.context_id_a <= cand.context_id_b, \"Canonical ordering violated\"\n\n    def test_edge_detect_candidates_below_overlap(self):\n        \"\"\"Overlap below threshold → no candidates.\"\"\"\n        signal_windows = {\n            \"ctx-a\": frozenset([\"s1\"]),\n            \"ctx-b\": frozenset([\"s2\", \"s3\", \"s4\"]),\n        }\n        summary = make_assessment_summary()\n        assessments = {\n            \"ctx-a\": {\"s1\": summary},\n            \"ctx-b\": {\"s2\": summary, \"s3\": summary, \"s4\": summary},\n        }\n        neighbors = {\"ctx-a\": frozenset([\"ctx-b\"]), \"ctx-b\": frozenset([\"ctx-a\"])}\n        result = detect_merge_candidates(signal_windows, assessments, neighbors)\n        assert len(result.candidates) == 0, \"Expected no candidates below overlap threshold\"\n\n    def test_edge_detect_candidates_below_agreement(self):\n        \"\"\"Agreement below threshold → no candidates.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\", \"s6\", \"s7\", \"s8\"]\n        signal_windows = {\n            \"ctx-a\": frozenset(shared),\n            \"ctx-b\": frozenset(shared),\n        }\n        # Different decisions on all signals → 0.0 agreement\n        assessments = {\n            \"ctx-a\": {s: make_assessment_summary(accepted=True, familiarity_score=0.9) for s in shared},\n            \"ctx-b\": {s: make_assessment_summary(accepted=False, familiarity_score=0.9) for s in shared},\n        }\n        neighbors = {\"ctx-a\": frozenset([\"ctx-b\"]), \"ctx-b\": frozenset([\"ctx-a\"])}\n        result = detect_merge_candidates(signal_windows, assessments, neighbors)\n        assert len(result.candidates) == 0, \"Expected no candidates below agreement threshold\"\n\n    def test_edge_detect_candidates_exact_threshold(self):\n        \"\"\"At exact threshold (strict inequality) → no candidate.\"\"\"\n        # Build exactly 70% overlap: 7 shared out of 10 union → Jaccard = 7/10 = 0.7\n        shared = [f\"s{i}\" for i in range(7)]\n        only_a = [\"sa1\", \"sa2\"]\n        only_b = [\"sb1\"]\n        signal_windows = {\n            \"ctx-a\": frozenset(shared + only_a),\n            \"ctx-b\": frozenset(shared + only_b),\n        }\n        summary = make_assessment_summary()\n        assessments = {\n            \"ctx-a\": {s: summary for s in shared + only_a},\n            \"ctx-b\": {s: summary for s in shared + only_b},\n        }\n        neighbors = {\"ctx-a\": frozenset([\"ctx-b\"]), \"ctx-b\": frozenset([\"ctx-a\"])}\n        result = detect_merge_candidates(signal_windows, assessments, neighbors, overlap_threshold=0.7)\n        assert len(result.candidates) == 0, (\n            \"Expected no candidates at exact threshold (strict inequality)\"\n        )\n\n    def test_edge_detect_candidates_non_neighbors(self):\n        \"\"\"Non-neighbor pairs are not evaluated even with high overlap.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"]\n        signal_windows = {\n            \"ctx-a\": frozenset(shared),\n            \"ctx-b\": frozenset(shared),\n        }\n        summary = make_assessment_summary()\n        assessments = {\n            \"ctx-a\": {s: summary for s in shared},\n            \"ctx-b\": {s: summary for s in shared},\n        }\n        # Not neighbors of each other\n        neighbors = {\"ctx-a\": frozenset(), \"ctx-b\": frozenset()}\n        result = detect_merge_candidates(signal_windows, assessments, neighbors)\n        assert len(result.candidates) == 0, \"Expected no candidates for non-neighbors\"\n\n    def test_edge_detect_candidates_empty_mesh(self):\n        \"\"\"Empty mesh → empty candidates.\"\"\"\n        result = detect_merge_candidates({}, {}, {})\n        assert len(result.candidates) == 0, \"Expected empty candidates for empty mesh\"\n\n    def test_inv_detect_candidates_canonical_order(self):\n        \"\"\"All candidates are canonically ordered: context_id_a <= context_id_b.\"\"\"\n        sw, asm, nb = self._build_high_overlap_mesh()\n        result = detect_merge_candidates(sw, asm, nb)\n        for cand in result.candidates:\n            assert cand.context_id_a <= cand.context_id_b, (\n                f\"Canonical order violated: {cand.context_id_a} > {cand.context_id_b}\"\n            )\n\n    def test_inv_detect_candidates_sorted_desc(self):\n        \"\"\"Candidates are sorted by combined_score descending.\"\"\"\n        sw, asm, nb = self._build_high_overlap_mesh()\n        result = detect_merge_candidates(sw, asm, nb)\n        scores = [c.combined_score for c in result.candidates]\n        assert scores == sorted(scores, reverse=True), (\n            f\"Candidates not sorted descending: {scores}\"\n        )\n\n    def test_inv_detect_combined_score_is_product(self):\n        \"\"\"combined_score == overlap * agreement for every candidate.\"\"\"\n        sw, asm, nb = self._build_high_overlap_mesh()\n        result = detect_merge_candidates(sw, asm, nb)\n        for c in result.candidates:\n            expected = c.overlap * c.agreement\n            assert c.combined_score == pytest.approx(expected), (\n                f\"combined_score {c.combined_score} != overlap*agreement {expected}\"\n            )\n\n    def test_err_detect_invalid_overlap_threshold(self):\n        \"\"\"Invalid overlap_threshold → ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            detect_merge_candidates({}, {}, {}, overlap_threshold=1.5)\n\n    def test_err_detect_invalid_agreement_threshold(self):\n        \"\"\"Invalid agreement_threshold → ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            detect_merge_candidates({}, {}, {}, agreement_threshold=-0.1)\n\n\nclass TestCheckMerge:\n    \"\"\"Tests for check_merge (Layer 3, pure).\"\"\"\n\n    def _make_agreeing_snapshots(self):\n        \"\"\"Two snapshots with high overlap and agreement.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"]\n        assessments = [make_assessment(s, \"ACCEPT\", 0.9) for s in shared]\n        ctx_a = make_context_snapshot(\n            \"ctx-a\", signal_ids=shared, assessments=assessments,\n            energy=60.0, neighbors=[make_neighbor_entry(\"ctx-b\")],\n        )\n        ctx_b = make_context_snapshot(\n            \"ctx-b\", signal_ids=shared, assessments=assessments,\n            energy=40.0, neighbors=[make_neighbor_entry(\"ctx-a\")],\n        )\n        return ctx_a, ctx_b\n\n    def test_hp_check_merge_above_thresholds(self):\n        \"\"\"Returns MergeProposal when both thresholds met.\"\"\"\n        ctx_a, ctx_b = self._make_agreeing_snapshots()\n        config = make_merge_config(overlap_threshold=0.7, agreement_threshold=0.8)\n        result = check_merge(ctx_a, ctx_b, config)\n        assert result is not None, \"Expected a MergeProposal, got None\"\n        assert result.overlap_score >= config.overlap_threshold\n        assert result.agreement_score >= config.agreement_threshold\n        # Higher energy → target\n        assert result.target_context_id == \"ctx-a\"\n        assert result.source_context_id == \"ctx-b\"\n\n    def test_edge_check_merge_below_thresholds(self):\n        \"\"\"Returns None when thresholds not met.\"\"\"\n        ctx_a = make_context_snapshot(\"ctx-a\", signal_ids=[\"s1\"],\n                                      neighbors=[make_neighbor_entry(\"ctx-b\")])\n        ctx_b = make_context_snapshot(\"ctx-b\", signal_ids=[\"s2\"],\n                                      neighbors=[make_neighbor_entry(\"ctx-a\")])\n        config = make_merge_config()\n        result = check_merge(ctx_a, ctx_b, config)\n        assert result is None, \"Expected None when thresholds not met\"\n\n    def test_err_check_merge_same_context(self):\n        \"\"\"Raises ValueError when both snapshots are the same context.\"\"\"\n        ctx = make_context_snapshot(\"ctx-a\")\n        config = make_merge_config()\n        with pytest.raises(ValueError, match=\"itself\"):\n            check_merge(ctx, ctx, config)\n\n\nclass TestCheckMerges:\n    \"\"\"Tests for check_merges (Layer 3, pure).\"\"\"\n\n    def test_hp_check_merges_filters_non_stable(self):\n        \"\"\"Only STABLE contexts are evaluated.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"]\n        assessments = [make_assessment(s, \"ACCEPT\", 0.9) for s in shared]\n        ctx_a = make_context_snapshot(\n            \"ctx-a\", signal_ids=shared, assessments=assessments,\n            energy=60.0, neighbors=[make_neighbor_entry(\"ctx-b\")],\n            lifecycle_state=\"STABLE\",\n        )\n        ctx_b = make_context_snapshot(\n            \"ctx-b\", signal_ids=shared, assessments=assessments,\n            energy=40.0, neighbors=[make_neighbor_entry(\"ctx-a\")],\n            lifecycle_state=\"FORKING\",  # Not STABLE → skip\n        )\n        config = make_merge_config()\n        lifecycle_states = {\"ctx-a\": \"STABLE\", \"ctx-b\": \"FORKING\"}\n        result = check_merges([ctx_a, ctx_b], config, lifecycle_states)\n        # ctx-b is FORKING, so no merge proposals should include it\n        for p in result:\n            assert \"ctx-b\" not in (p.source_context_id, p.target_context_id), (\n                \"Non-STABLE context should not appear in merge proposals\"\n            )\n\n\n# ===========================================================================\n# PHASE 2: CONFLICT RESOLUTION TESTS\n# ===========================================================================\n\nclass TestResolveLifecycleConflicts:\n    \"\"\"Tests for resolve_lifecycle_conflicts (Layer 3, pure).\"\"\"\n\n    def test_hp_no_conflict(self):\n        \"\"\"All proposals accepted when no conflicts.\"\"\"\n        proposals = [\n            make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-b\"], priority=20),\n            make_lifecycle_proposal(\"DECAY\", [\"ctx-c\"], priority=10),\n        ]\n        result = resolve_lifecycle_conflicts(proposals)\n        assert len(result.accepted_proposals) == len(proposals), (\n            f\"Expected all {len(proposals)} accepted, got {len(result.accepted_proposals)}\"\n        )\n        assert len(result.rejected_proposals) == 0\n\n    def test_hp_fork_beats_merge(self):\n        \"\"\"FORK (priority 30) beats MERGE (priority 20) for same context.\"\"\"\n        fork_p = make_lifecycle_proposal(\"FORK\", [\"ctx-a\"], priority=30, timestamp=\"2024-01-01T00:00:00Z\")\n        merge_p = make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-b\"], priority=20,\n                                          merge_proposal=make_merge_proposal(),\n                                          timestamp=\"2024-01-01T00:00:00Z\")\n        result = resolve_lifecycle_conflicts([fork_p, merge_p])\n        accepted_kinds = [p.kind for p in result.accepted_proposals]\n        rejected_kinds = [p.kind for p in result.rejected_proposals]\n        assert LifecycleProposalKind(\"FORK\") in accepted_kinds, \"FORK should be accepted\"\n        assert LifecycleProposalKind(\"MERGE\") in rejected_kinds, \"MERGE should be rejected\"\n\n    def test_hp_merge_beats_decay(self):\n        \"\"\"MERGE (priority 20) beats DECAY (priority 10) for same context.\"\"\"\n        merge_p = make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-b\"], priority=20,\n                                          merge_proposal=make_merge_proposal(),\n                                          timestamp=\"2024-01-01T00:00:00Z\")\n        decay_p = make_lifecycle_proposal(\"DECAY\", [\"ctx-a\"], priority=10, timestamp=\"2024-01-01T00:00:00Z\")\n        result = resolve_lifecycle_conflicts([merge_p, decay_p])\n        accepted_kinds = [p.kind for p in result.accepted_proposals]\n        rejected_kinds = [p.kind for p in result.rejected_proposals]\n        assert LifecycleProposalKind(\"MERGE\") in accepted_kinds, \"MERGE should be accepted\"\n        assert LifecycleProposalKind(\"DECAY\") in rejected_kinds, \"DECAY should be rejected\"\n\n    def test_edge_same_priority_timestamp_tiebreak(self):\n        \"\"\"Earlier timestamp wins within same priority.\"\"\"\n        early = make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-b\"], priority=20,\n                                        merge_proposal=make_merge_proposal(source_context_id=\"ctx-b\", target_context_id=\"ctx-a\"),\n                                        timestamp=\"2024-01-01T00:00:00Z\")\n        late = make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-c\"], priority=20,\n                                       merge_proposal=make_merge_proposal(source_context_id=\"ctx-c\", target_context_id=\"ctx-a\"),\n                                       timestamp=\"2024-01-01T00:01:00Z\")\n        result = resolve_lifecycle_conflicts([early, late])\n        # early should win because it has the earlier timestamp\n        assert early in result.accepted_proposals, \"Earlier timestamp proposal should be accepted\"\n        assert late in result.rejected_proposals, \"Later timestamp proposal should be rejected\"\n\n    def test_inv_coverage(self):\n        \"\"\"accepted + rejected == total proposals.\"\"\"\n        proposals = [\n            make_lifecycle_proposal(\"FORK\", [\"ctx-a\"], priority=30),\n            make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-b\"], priority=20,\n                                    merge_proposal=make_merge_proposal()),\n            make_lifecycle_proposal(\"DECAY\", [\"ctx-c\"], priority=10),\n        ]\n        result = resolve_lifecycle_conflicts(proposals)\n        total = len(result.accepted_proposals) + len(result.rejected_proposals)\n        assert total == len(proposals), f\"Coverage: {total} != {len(proposals)}\"\n\n    def test_inv_no_shared_contexts_in_accepted(self):\n        \"\"\"No two accepted proposals share an affected context.\"\"\"\n        proposals = [\n            make_lifecycle_proposal(\"FORK\", [\"ctx-a\"], priority=30, timestamp=\"2024-01-01T00:00:00Z\"),\n            make_lifecycle_proposal(\"MERGE\", [\"ctx-b\", \"ctx-c\"], priority=20,\n                                    merge_proposal=make_merge_proposal(source_context_id=\"ctx-c\", target_context_id=\"ctx-b\"),\n                                    timestamp=\"2024-01-01T00:00:00Z\"),\n            make_lifecycle_proposal(\"DECAY\", [\"ctx-d\"], priority=10, timestamp=\"2024-01-01T00:00:00Z\"),\n        ]\n        result = resolve_lifecycle_conflicts(proposals)\n        all_affected = []\n        for p in result.accepted_proposals:\n            all_affected.extend(p.affected_context_ids)\n        assert len(all_affected) == len(set(all_affected)), (\n            f\"Accepted proposals share contexts: {all_affected}\"\n        )\n\n    def test_inv_rejected_have_reasons(self):\n        \"\"\"All rejected proposals have conflict_reasons entries.\"\"\"\n        fork_p = make_lifecycle_proposal(\"FORK\", [\"ctx-a\"], priority=30)\n        merge_p = make_lifecycle_proposal(\"MERGE\", [\"ctx-a\", \"ctx-b\"], priority=20,\n                                          merge_proposal=make_merge_proposal())\n        result = resolve_lifecycle_conflicts([fork_p, merge_p])\n        for idx in range(len(result.rejected_proposals)):\n            assert idx in result.conflict_reasons, (\n                f\"Missing conflict reason for rejected proposal at index {idx}\"\n            )\n\n\nclass TestDetectDecayFoldCandidates:\n    \"\"\"Tests for detect_decay_fold_candidates (Layer 1, pure).\"\"\"\n\n    def test_hp_detect_decay_fold(self):\n        \"\"\"Detects DECAY_FOLD when decaying context has a forking neighbor.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"]\n        assessments = [make_assessment(s, \"ACCEPT\", 0.9) for s in shared]\n        ctx_decay = make_context_snapshot(\n            \"ctx-decay\", signal_ids=shared, assessments=assessments,\n            energy=10.0, neighbors=[make_neighbor_entry(\"ctx-fork\")],\n            lifecycle_state=\"DECAYING\",\n        )\n        ctx_fork = make_context_snapshot(\n            \"ctx-fork\", signal_ids=shared, assessments=assessments,\n            energy=80.0, neighbors=[make_neighbor_entry(\"ctx-decay\")],\n            lifecycle_state=\"FORKING\",\n        )\n        proposals = [\n            make_lifecycle_proposal(\"DECAY\", [\"ctx-decay\"], priority=10),\n            make_lifecycle_proposal(\"FORK\", [\"ctx-fork\"], priority=30),\n        ]\n        config = make_merge_config()\n        result = detect_decay_fold_candidates(proposals, [ctx_decay, ctx_fork], config)\n        for p in result:\n            assert p.kind == LifecycleProposalKind(\"DECAY_FOLD\"), (\n                f\"Expected DECAY_FOLD, got {p.kind}\"\n            )\n            assert len(p.affected_context_ids) == 2\n            assert p.merge_proposal is not None\n            assert p.merge_proposal.is_decay_fold is True\n\n    def test_edge_detect_decay_fold_no_match(self):\n        \"\"\"No decay-fork pairs → empty result.\"\"\"\n        ctx = make_context_snapshot(\"ctx-a\", lifecycle_state=\"STABLE\")\n        proposals = [make_lifecycle_proposal(\"DECAY\", [\"ctx-a\"], priority=10)]\n        config = make_merge_config()\n        result = detect_decay_fold_candidates(proposals, [ctx], config)\n        assert len(result) == 0, \"Expected no decay-fold candidates\"\n\n\n# ===========================================================================\n# PHASE 3: EXECUTION TESTS\n# ===========================================================================\n\nclass TestResolveSurvivingIdentity:\n    \"\"\"Tests for resolve_surviving_identity (Layer 2, pure).\"\"\"\n\n    def test_hp_higher_energy_wins(self):\n        \"\"\"Context with higher energy survives.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=60.0, neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=40.0, neighbor_ids=[\"ctx-a\"])\n        result = resolve_surviving_identity(ctx_a, ctx_b)\n        assert result.id == \"ctx-a\", f\"Expected ctx-a (higher energy), got {result.id}\"\n\n    def test_hp_higher_energy_wins_reversed(self):\n        \"\"\"Works regardless of argument order.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=30.0, neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=70.0, neighbor_ids=[\"ctx-a\"])\n        result = resolve_surviving_identity(ctx_a, ctx_b)\n        assert result.id == \"ctx-b\", f\"Expected ctx-b (higher energy), got {result.id}\"\n\n    def test_edge_tie_lexicographic(self):\n        \"\"\"Equal energy → lexicographically smaller ID wins.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=50.0, neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=50.0, neighbor_ids=[\"ctx-a\"])\n        result = resolve_surviving_identity(ctx_a, ctx_b)\n        assert result.id == \"ctx-a\", f\"Expected ctx-a (lexicographic tiebreak), got {result.id}\"\n\n    def test_err_same_context(self):\n        \"\"\"Same context → MergeError.\"\"\"\n        ctx = make_context(\"ctx-a\", energy=50.0)\n        with pytest.raises((MergeError, ValueError, Exception)):\n            resolve_surviving_identity(ctx, ctx)\n\n\nclass TestDeduplicateAgents:\n    \"\"\"Tests for deduplicate_agents (Layer 2, pure).\"\"\"\n\n    def test_hp_no_conflict(self):\n        \"\"\"Disjoint agent lists → union of all agents.\"\"\"\n        agents_a = [make_agent(\"alice\", \"analyst\")]\n        agents_b = [make_agent(\"bob\", \"reviewer\")]\n        result = deduplicate_agents(agents_a, agents_b, \"ctx-a\", \"ctx-a\", \"ctx-b\")\n        assert len(result) == 2, f\"Expected 2 agents, got {len(result)}\"\n\n    def test_hp_with_conflict_preferred_wins(self):\n        \"\"\"Conflicting (identity, role) → preferred context's agent kept.\"\"\"\n        agent_a = make_agent(\"alice\", \"analyst\", metadata={\"source\": \"a\"})\n        agent_b = make_agent(\"alice\", \"analyst\", metadata={\"source\": \"b\"})\n        # ctx-a is preferred\n        result = deduplicate_agents([agent_a], [agent_b], \"ctx-a\", \"ctx-a\", \"ctx-b\")\n        assert len(result) == 1, f\"Expected 1 deduplicated agent, got {len(result)}\"\n        # The kept agent should be from the preferred context (ctx-a)\n        assert result[0].metadata.get(\"source\") == \"a\", (\n            \"Preferred context's agent should be kept on conflict\"\n        )\n\n    def test_edge_both_empty(self):\n        \"\"\"Two empty agent lists → empty result.\"\"\"\n        result = deduplicate_agents([], [], \"ctx-a\", \"ctx-a\", \"ctx-b\")\n        assert len(result) == 0\n\n    def test_err_invalid_preferred(self):\n        \"\"\"preferred_context_id doesn't match either context → MergeError.\"\"\"\n        with pytest.raises((MergeError, ValueError, Exception)):\n            deduplicate_agents([], [], \"ctx-x\", \"ctx-a\", \"ctx-b\")\n\n    def test_inv_no_duplicate_keys(self):\n        \"\"\"Result never has duplicate (identity, role) pairs.\"\"\"\n        agents_a = [make_agent(\"alice\", \"analyst\"), make_agent(\"bob\", \"reviewer\")]\n        agents_b = [make_agent(\"alice\", \"analyst\"), make_agent(\"carol\", \"engineer\")]\n        result = deduplicate_agents(agents_a, agents_b, \"ctx-a\", \"ctx-a\", \"ctx-b\")\n        keys = [(a.identity, a.role) for a in result]\n        assert len(keys) == len(set(keys)), f\"Duplicate keys found: {keys}\"\n\n    def test_all_unique_keys_represented(self):\n        \"\"\"Every unique (identity, role) from both lists appears in result.\"\"\"\n        agents_a = [make_agent(\"alice\", \"analyst\"), make_agent(\"bob\", \"reviewer\")]\n        agents_b = [make_agent(\"alice\", \"analyst\"), make_agent(\"carol\", \"engineer\")]\n        result = deduplicate_agents(agents_a, agents_b, \"ctx-a\", \"ctx-a\", \"ctx-b\")\n        result_keys = {(a.identity, a.role) for a in result}\n        expected_keys = {(\"alice\", \"analyst\"), (\"bob\", \"reviewer\"), (\"carol\", \"engineer\")}\n        assert result_keys == expected_keys, f\"Missing keys: {expected_keys - result_keys}\"\n\n\nclass TestMergeVectorStores:\n    \"\"\"Tests for merge_vector_stores (Layer 2, async).\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_hp_union(self):\n        \"\"\"Union of two stores produces combined signal_ids with surviving store_id.\"\"\"\n        store_a = make_vector_store(\"store-a\", [\"s1\", \"s2\", \"s3\"])\n        store_b = make_vector_store(\"store-b\", [\"s3\", \"s4\", \"s5\"])\n        result = await merge_vector_stores(store_a, store_b, \"store-a\")\n        assert result.store_id == \"store-a\", f\"Expected store-a, got {result.store_id}\"\n        expected_union = {\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"}\n        assert set(result.signal_ids) == expected_union, (\n            f\"Expected union {expected_union}, got {set(result.signal_ids)}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_edge_overlap_dedup(self):\n        \"\"\"Overlapping signal_ids are deduplicated.\"\"\"\n        store_a = make_vector_store(\"store-a\", [\"s1\", \"s2\"])\n        store_b = make_vector_store(\"store-b\", [\"s1\", \"s2\"])\n        result = await merge_vector_stores(store_a, store_b, \"store-a\")\n        assert len(result.signal_ids) == len(set(result.signal_ids)), (\n            \"Duplicate signal_ids in result\"\n        )\n        assert set(result.signal_ids) == {\"s1\", \"s2\"}\n\n    @pytest.mark.asyncio\n    async def test_inv_commutative(self):\n        \"\"\"Union is commutative: merge(A,B) == merge(B,A) by signal_ids.\"\"\"\n        store_a = make_vector_store(\"store-a\", [\"s1\", \"s2\", \"s3\"])\n        store_b = make_vector_store(\"store-b\", [\"s2\", \"s3\", \"s4\"])\n        result_ab = await merge_vector_stores(store_a, store_b, \"store-merged\")\n        result_ba = await merge_vector_stores(store_b, store_a, \"store-merged\")\n        assert set(result_ab.signal_ids) == set(result_ba.signal_ids), (\n            \"Vector store union not commutative\"\n        )\n\n\nclass TestComputeTopologyUpdates:\n    \"\"\"Tests for compute_topology_updates (Layer 2, pure).\"\"\"\n\n    def test_hp_basic(self):\n        \"\"\"Produces REMOVE_NEIGHBOR for removed and ADD_NEIGHBOR for new connections.\"\"\"\n        # ctx-a (surviving) neighbors: [ctx-b, ctx-c]\n        # ctx-b (removed) neighbors: [ctx-a, ctx-d]\n        # After merge: ctx-d should be added to ctx-a's neighbors and vice versa\n        result = compute_topology_updates(\n            surviving_id=\"ctx-a\",\n            removed_id=\"ctx-b\",\n            surviving_neighbor_ids=[\"ctx-b\", \"ctx-c\"],\n            removed_neighbor_ids=[\"ctx-a\", \"ctx-d\"],\n        )\n        actions = [(u.context_id, u.action, u.target_id) for u in result]\n\n        # Must have REMOVE_NEIGHBOR for ctx-d removing ctx-b\n        assert any(\n            u.context_id == \"ctx-d\" and u.target_id == \"ctx-b\"\n            and u.action == TopologyAction(\"REMOVE_NEIGHBOR\")\n            for u in result\n        ), \"Missing REMOVE_NEIGHBOR for ctx-d → ctx-b\"\n\n        # Must have ADD_NEIGHBOR for ctx-d adding ctx-a\n        assert any(\n            u.context_id == \"ctx-d\" and u.target_id == \"ctx-a\"\n            and u.action == TopologyAction(\"ADD_NEIGHBOR\")\n            for u in result\n        ), \"Missing ADD_NEIGHBOR for ctx-d → ctx-a\"\n\n        # Must have REMOVE_NEIGHBOR for ctx-a removing ctx-b\n        assert any(\n            u.context_id == \"ctx-a\" and u.target_id == \"ctx-b\"\n            and u.action == TopologyAction(\"REMOVE_NEIGHBOR\")\n            for u in result\n        ), \"Missing REMOVE_NEIGHBOR for ctx-a → ctx-b\"\n\n    def test_edge_no_extra_neighbors(self):\n        \"\"\"Removed context's neighbors are subset of surviving's → no ADD_NEIGHBOR to third parties.\"\"\"\n        result = compute_topology_updates(\n            surviving_id=\"ctx-a\",\n            removed_id=\"ctx-b\",\n            surviving_neighbor_ids=[\"ctx-b\", \"ctx-c\"],\n            removed_neighbor_ids=[\"ctx-a\", \"ctx-c\"],\n        )\n        # ctx-c already knows ctx-a, so no ADD_NEIGHBOR for ctx-c → ctx-a needed\n        add_neighbor_to_surviving = [\n            u for u in result\n            if u.action == TopologyAction(\"ADD_NEIGHBOR\")\n            and u.context_id == \"ctx-c\" and u.target_id == \"ctx-a\"\n        ]\n        assert len(add_neighbor_to_surviving) == 0, (\n            \"Should not ADD_NEIGHBOR when neighbor already knows surviving context\"\n        )\n\n    def test_err_same_id(self):\n        \"\"\"surviving_id == removed_id → MergeError.\"\"\"\n        with pytest.raises((MergeError, ValueError, Exception)):\n            compute_topology_updates(\"ctx-a\", \"ctx-a\", [], [])\n\n    def test_inv_no_self_reference(self):\n        \"\"\"No ADD_NEIGHBOR where context_id == target_id.\"\"\"\n        result = compute_topology_updates(\n            surviving_id=\"ctx-a\",\n            removed_id=\"ctx-b\",\n            surviving_neighbor_ids=[\"ctx-b\"],\n            removed_neighbor_ids=[\"ctx-a\", \"ctx-c\"],\n        )\n        for u in result:\n            if u.action == TopologyAction(\"ADD_NEIGHBOR\"):\n                assert u.context_id != u.target_id, (\n                    f\"Self-referencing ADD_NEIGHBOR: {u.context_id} → {u.target_id}\"\n                )\n\n    def test_inv_no_surviving_or_removed_added_to_surviving(self):\n        \"\"\"Neither surviving_id nor removed_id should be added as neighbor of surviving.\"\"\"\n        result = compute_topology_updates(\n            surviving_id=\"ctx-a\",\n            removed_id=\"ctx-b\",\n            surviving_neighbor_ids=[\"ctx-b\", \"ctx-c\"],\n            removed_neighbor_ids=[\"ctx-a\", \"ctx-d\"],\n        )\n        for u in result:\n            if u.action == TopologyAction(\"ADD_NEIGHBOR\") and u.context_id == \"ctx-a\":\n                assert u.target_id not in (\"ctx-a\", \"ctx-b\"), (\n                    f\"Should not add {u.target_id} as neighbor of surviving ctx-a\"\n                )\n\n\nclass TestExecuteMerge:\n    \"\"\"Tests for execute_merge (Layer 3, pure).\"\"\"\n\n    def _make_snapshot_pair(self, energy_a=60.0, energy_b=40.0):\n        shared = [\"s1\", \"s2\", \"s3\"]\n        assessments = [make_assessment(s, \"ACCEPT\", 0.9) for s in shared]\n        ctx_a = make_context_snapshot(\n            \"ctx-a\", signal_ids=shared, assessments=assessments,\n            agent_ids=[\"agent-1\"], energy=energy_a,\n            neighbors=[make_neighbor_entry(\"ctx-b\")],\n        )\n        ctx_b = make_context_snapshot(\n            \"ctx-b\", signal_ids=shared + [\"s4\"], assessments=assessments + [make_assessment(\"s4\", \"ACCEPT\", 0.8)],\n            agent_ids=[\"agent-2\"], energy=energy_b,\n            neighbors=[make_neighbor_entry(\"ctx-a\")],\n        )\n        return ctx_a, ctx_b\n\n    def test_hp_full(self):\n        \"\"\"execute_merge returns correct MergeResult.\"\"\"\n        ctx_a, ctx_b = self._make_snapshot_pair()\n        proposal = make_merge_proposal(\n            source_context_id=\"ctx-b\",\n            target_context_id=\"ctx-a\",\n        )\n        config = make_merge_config(redirect_ttl_seconds=300.0)\n        result = execute_merge(ctx_a, ctx_b, proposal, config)\n        assert result.surviving_context_id == \"ctx-a\"\n        assert result.removed_context_id == \"ctx-b\"\n        assert result.redirect.removed_context_id == \"ctx-b\"\n        assert result.redirect.surviving_context_id == \"ctx-a\"\n        assert result.redirect.ttl_seconds == 300.0\n        assert result.topology_patch.surviving_context_id == \"ctx-a\"\n\n    def test_edge_max_energy(self):\n        \"\"\"Merged energy is max of both contexts.\"\"\"\n        ctx_a, ctx_b = self._make_snapshot_pair(energy_a=60.0, energy_b=40.0)\n        proposal = make_merge_proposal(source_context_id=\"ctx-b\", target_context_id=\"ctx-a\")\n        config = make_merge_config()\n        result = execute_merge(ctx_a, ctx_b, proposal, config)\n        assert result.merged_energy == pytest.approx(60.0), (\n            f\"Expected max energy 60.0, got {result.merged_energy}\"\n        )\n\n    def test_err_id_mismatch(self):\n        \"\"\"Snapshot IDs don't match proposal → ValueError.\"\"\"\n        ctx_a = make_context_snapshot(\"ctx-x\", energy=50.0)\n        ctx_b = make_context_snapshot(\"ctx-y\", energy=50.0)\n        proposal = make_merge_proposal(source_context_id=\"ctx-b\", target_context_id=\"ctx-a\")\n        config = make_merge_config()\n        with pytest.raises(ValueError):\n            execute_merge(ctx_a, ctx_b, proposal, config)\n\n    def test_err_zero_energy(self):\n        \"\"\"Both contexts with zero energy → ValueError.\"\"\"\n        ctx_a = make_context_snapshot(\"ctx-a\", energy=0.0,\n                                      neighbors=[make_neighbor_entry(\"ctx-b\")])\n        ctx_b = make_context_snapshot(\"ctx-b\", energy=0.0,\n                                      neighbors=[make_neighbor_entry(\"ctx-a\")])\n        proposal = make_merge_proposal(source_context_id=\"ctx-b\", target_context_id=\"ctx-a\")\n        config = make_merge_config()\n        with pytest.raises(ValueError):\n            execute_merge(ctx_a, ctx_b, proposal, config)\n\n    def test_inv_redirect_ttl_positive(self):\n        \"\"\"Redirect TTL is always positive.\"\"\"\n        ctx_a, ctx_b = self._make_snapshot_pair()\n        proposal = make_merge_proposal(source_context_id=\"ctx-b\", target_context_id=\"ctx-a\")\n        config = make_merge_config(redirect_ttl_seconds=600.0)\n        result = execute_merge(ctx_a, ctx_b, proposal, config)\n        assert result.redirect.ttl_seconds > 0, (\n            f\"Redirect TTL must be positive, got {result.redirect.ttl_seconds}\"\n        )\n\n    def test_all_agents_represented(self):\n        \"\"\"All agent IDs from both contexts appear in result.\"\"\"\n        ctx_a, ctx_b = self._make_snapshot_pair()\n        proposal = make_merge_proposal(source_context_id=\"ctx-b\", target_context_id=\"ctx-a\")\n        config = make_merge_config()\n        result = execute_merge(ctx_a, ctx_b, proposal, config)\n        all_agent_ids = set(ctx_a.agent_ids) | set(ctx_b.agent_ids)\n        result_agent_ids = set(result.merged_agent_ids)\n        assert all_agent_ids.issubset(result_agent_ids), (\n            f\"Missing agents: {all_agent_ids - result_agent_ids}\"\n        )\n\n\nclass TestMergeOrchestrator:\n    \"\"\"Tests for merge (Layer 2, async orchestrator).\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_hp_merge_basic(self):\n        \"\"\"merge returns MergeResult with energy capped at system max.\"\"\"\n        ctx_a = make_context(\n            \"ctx-a\", energy=90.0,\n            agents=[make_agent(\"alice\", \"analyst\")],\n            vector_store=make_vector_store(\"store-a\", [\"s1\", \"s2\"]),\n            neighbor_ids=[\"ctx-b\"],\n        )\n        ctx_b = make_context(\n            \"ctx-b\", energy=80.0,\n            agents=[make_agent(\"bob\", \"reviewer\")],\n            vector_store=make_vector_store(\"store-b\", [\"s2\", \"s3\"]),\n            neighbor_ids=[\"ctx-a\"],\n        )\n        sys_config = make_system_config(max_energy=100.0)\n        result = await merge(ctx_a, ctx_b, MergeReason(\"SIGNAL_OVERLAP\"), sys_config)\n        assert result.surviving_context_id == \"ctx-a\", \"Higher energy should survive\"\n        assert result.removed_context_id == \"ctx-b\"\n        assert result.merged_energy <= sys_config.max_energy, (\n            f\"Energy {result.merged_energy} exceeds system max {sys_config.max_energy}\"\n        )\n        assert result.merged_energy >= 0.0\n\n    @pytest.mark.asyncio\n    async def test_hp_merge_energy_capped(self):\n        \"\"\"When max energy exceeds system cap, it is capped.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=150.0,\n                             vector_store=make_vector_store(\"store-a\"),\n                             neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=80.0,\n                             vector_store=make_vector_store(\"store-b\"),\n                             neighbor_ids=[\"ctx-a\"])\n        sys_config = make_system_config(max_energy=100.0)\n        result = await merge(ctx_a, ctx_b, MergeReason(\"SIGNAL_OVERLAP\"), sys_config)\n        assert result.merged_energy == pytest.approx(100.0), (\n            f\"Expected capped energy 100.0, got {result.merged_energy}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_err_merge_same_context(self):\n        \"\"\"Merging a context with itself → MergeError.\"\"\"\n        ctx = make_context(\"ctx-a\", energy=50.0)\n        sys_config = make_system_config()\n        with pytest.raises((MergeError, ValueError, Exception)):\n            await merge(ctx, ctx, MergeReason(\"SIGNAL_OVERLAP\"), sys_config)\n\n    @pytest.mark.asyncio\n    async def test_err_merge_not_neighbors(self):\n        \"\"\"Non-neighbor contexts → MergeError.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=50.0, neighbor_ids=[])\n        ctx_b = make_context(\"ctx-b\", energy=50.0, neighbor_ids=[])\n        sys_config = make_system_config()\n        with pytest.raises((MergeError, ValueError, Exception)):\n            await merge(ctx_a, ctx_b, MergeReason(\"SIGNAL_OVERLAP\"), sys_config)\n\n    @pytest.mark.asyncio\n    async def test_err_merge_negative_energy(self):\n        \"\"\"Negative energy → MergeError.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=-1.0, neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=50.0, neighbor_ids=[\"ctx-a\"])\n        sys_config = make_system_config()\n        with pytest.raises((MergeError, ValueError, Exception)):\n            await merge(ctx_a, ctx_b, MergeReason(\"SIGNAL_OVERLAP\"), sys_config)\n\n    @pytest.mark.asyncio\n    async def test_inv_energy_range(self):\n        \"\"\"Merged energy is always in [0.0, system_config.max_energy].\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=60.0,\n                             vector_store=make_vector_store(\"store-a\"),\n                             neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=40.0,\n                             vector_store=make_vector_store(\"store-b\"),\n                             neighbor_ids=[\"ctx-a\"])\n        sys_config = make_system_config(max_energy=100.0)\n        result = await merge(ctx_a, ctx_b, MergeReason(\"SIGNAL_OVERLAP\"), sys_config)\n        assert 0.0 <= result.merged_energy <= sys_config.max_energy, (\n            f\"Energy {result.merged_energy} outside [0.0, {sys_config.max_energy}]\"\n        )\n\n\n# ===========================================================================\n# PHASE 4: APPLICATION & REDIRECT TESTS\n# ===========================================================================\n\nclass TestResolveSignalRedirect:\n    \"\"\"Tests for resolve_signal_redirect (Layer 3, pure).\"\"\"\n\n    def test_hp_no_entry(self):\n        \"\"\"No redirect → returns original ID.\"\"\"\n        result = resolve_signal_redirect(\"ctx-alive\", {}, max_depth=10)\n        assert result == \"ctx-alive\", f\"Expected ctx-alive, got {result}\"\n\n    def test_hp_single_hop(self):\n        \"\"\"Single redirect hop.\"\"\"\n        redirect_map = {\n            \"ctx-removed\": make_merge_redirect(\"ctx-removed\", \"ctx-alive\"),\n        }\n        result = resolve_signal_redirect(\"ctx-removed\", redirect_map, max_depth=10)\n        assert result == \"ctx-alive\", f\"Expected ctx-alive, got {result}\"\n\n    def test_edge_chain(self):\n        \"\"\"Multi-hop redirect chain.\"\"\"\n        redirect_map = {\n            \"ctx-1\": make_merge_redirect(\"ctx-1\", \"ctx-2\"),\n            \"ctx-2\": make_merge_redirect(\"ctx-2\", \"ctx-3\"),\n        }\n        result = resolve_signal_redirect(\"ctx-1\", redirect_map, max_depth=10)\n        assert result == \"ctx-3\", f\"Expected ctx-3, got {result}\"\n\n    def test_err_too_deep(self):\n        \"\"\"Chain exceeding max_depth → RuntimeError.\"\"\"\n        redirect_map = {\n            \"ctx-1\": make_merge_redirect(\"ctx-1\", \"ctx-2\"),\n            \"ctx-2\": make_merge_redirect(\"ctx-2\", \"ctx-3\"),\n            \"ctx-3\": make_merge_redirect(\"ctx-3\", \"ctx-4\"),\n        }\n        with pytest.raises(RuntimeError, match=\"[Cc]hain|depth|cycle\"):\n            resolve_signal_redirect(\"ctx-1\", redirect_map, max_depth=2)\n\n\nclass TestCleanupExpiredRedirects:\n    \"\"\"Tests for cleanup_expired_redirects (Layer 3, side-effectful).\"\"\"\n\n    def test_hp_expired(self):\n        \"\"\"Expired entries are removed and count returned.\"\"\"\n        redirect_map = {\n            \"ctx-old\": make_merge_redirect(\"ctx-old\", \"ctx-alive\",\n                                           created_at=\"1000.0\", ttl_seconds=100.0),\n        }\n        lifecycle_states = {\"ctx-old\": \"MERGED\", \"ctx-alive\": \"STABLE\"}\n        # current_time is well past expiry (1000 + 100 = 1100, current = 2000)\n        removed = cleanup_expired_redirects(redirect_map, lifecycle_states, \"2000.0\")\n        assert removed == 1, f\"Expected 1 removed, got {removed}\"\n        assert \"ctx-old\" not in redirect_map, \"Expired entry should be removed\"\n        assert \"ctx-old\" not in lifecycle_states, \"MERGED state should be removed\"\n\n    def test_edge_none_expired(self):\n        \"\"\"No expired entries → 0 removed, map unchanged.\"\"\"\n        redirect_map = {\n            \"ctx-recent\": make_merge_redirect(\"ctx-recent\", \"ctx-alive\",\n                                              created_at=\"1000.0\", ttl_seconds=5000.0),\n        }\n        lifecycle_states = {\"ctx-recent\": \"MERGED\"}\n        original_keys = set(redirect_map.keys())\n        removed = cleanup_expired_redirects(redirect_map, lifecycle_states, \"1500.0\")\n        assert removed == 0, f\"Expected 0 removed, got {removed}\"\n        assert set(redirect_map.keys()) == original_keys, \"Map should be unchanged\"\n\n    def test_edge_empty_map(self):\n        \"\"\"Empty redirect map → 0 removed.\"\"\"\n        removed = cleanup_expired_redirects({}, {}, \"2000.0\")\n        assert removed == 0\n\n\nclass TestApplyMergeResult:\n    \"\"\"Tests for apply_merge_result (Layer 3, async, side-effectful).\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_hp_apply(self):\n        \"\"\"Successful apply transitions states and adds redirect.\"\"\"\n        merge_result = make_merge_result(\n            surviving_context_id=\"ctx-a\",\n            removed_context_id=\"ctx-b\",\n        )\n        lifecycle_states = {\"ctx-a\": \"MERGING\", \"ctx-b\": \"MERGING\"}\n        redirect_map = {}\n        await apply_merge_result(merge_result, lifecycle_states, redirect_map)\n        assert lifecycle_states[\"ctx-a\"] == \"STABLE\", (\n            f\"Surviving context should be STABLE, got {lifecycle_states['ctx-a']}\"\n        )\n        assert lifecycle_states[\"ctx-b\"] == \"MERGED\", (\n            f\"Removed context should be MERGED, got {lifecycle_states['ctx-b']}\"\n        )\n        assert \"ctx-b\" in redirect_map, \"Redirect entry should be added\"\n\n    @pytest.mark.asyncio\n    async def test_err_not_merging(self):\n        \"\"\"Context not in MERGING state → RuntimeError.\"\"\"\n        merge_result = make_merge_result()\n        lifecycle_states = {\"ctx-a\": \"STABLE\", \"ctx-b\": \"STABLE\"}\n        redirect_map = {}\n        with pytest.raises(RuntimeError):\n            await apply_merge_result(merge_result, lifecycle_states, redirect_map)\n\n\n# ===========================================================================\n# PHASE 5: LIFECYCLE GUARD & TRANSITION TESTS\n# ===========================================================================\n\nclass TestCheckLifecycleGuard:\n    \"\"\"Tests for check_lifecycle_guard (Layer 3, pure).\"\"\"\n\n    def test_hp_stable_allows_transition(self):\n        \"\"\"STABLE context can transition to MERGING.\"\"\"\n        result = check_lifecycle_guard(\"ctx-1\", LifecycleState(\"MERGING\"), {\"ctx-1\": \"STABLE\"})\n        assert result is True, \"STABLE context should be allowed to transition\"\n\n    def test_hp_missing_allows_transition(self):\n        \"\"\"Context not in state map can transition.\"\"\"\n        result = check_lifecycle_guard(\"ctx-new\", LifecycleState(\"MERGING\"), {})\n        assert result is True, \"Missing context should be allowed to transition\"\n\n    def test_edge_already_merging(self):\n        \"\"\"Already MERGING → False.\"\"\"\n        result = check_lifecycle_guard(\"ctx-1\", LifecycleState(\"MERGING\"), {\"ctx-1\": \"MERGING\"})\n        assert result is False, \"MERGING context should not transition again\"\n\n    def test_edge_forking(self):\n        \"\"\"FORKING → False.\"\"\"\n        result = check_lifecycle_guard(\"ctx-1\", LifecycleState(\"MERGING\"), {\"ctx-1\": \"FORKING\"})\n        assert result is False, \"FORKING context should not transition to MERGING\"\n\n    def test_edge_decaying(self):\n        \"\"\"DECAYING → False.\"\"\"\n        result = check_lifecycle_guard(\"ctx-1\", LifecycleState(\"MERGING\"), {\"ctx-1\": \"DECAYING\"})\n        assert result is False, \"DECAYING context should not transition to MERGING\"\n\n    def test_edge_merged(self):\n        \"\"\"MERGED → False.\"\"\"\n        result = check_lifecycle_guard(\"ctx-1\", LifecycleState(\"MERGING\"), {\"ctx-1\": \"MERGED\"})\n        assert result is False, \"MERGED context should not transition\"\n\n    @pytest.mark.parametrize(\"desired_state\", [\"STABLE\", \"MERGED\"])\n    def test_err_invalid_desired_state(self, desired_state):\n        \"\"\"STABLE and MERGED are invalid desired states → ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            check_lifecycle_guard(\"ctx-1\", LifecycleState(desired_state), {\"ctx-1\": \"STABLE\"})\n\n\nclass TestTransitionLifecycleState:\n    \"\"\"Tests for transition_lifecycle_state (Layer 3, side-effectful).\"\"\"\n\n    def test_hp_transition(self):\n        \"\"\"Transition sets the new state in the map.\"\"\"\n        lifecycle_states = {\"ctx-1\": \"STABLE\"}\n        transition_lifecycle_state(\"ctx-1\", LifecycleState(\"MERGING\"), lifecycle_states)\n        assert lifecycle_states[\"ctx-1\"] == \"MERGING\", (\n            f\"Expected MERGING, got {lifecycle_states['ctx-1']}\"\n        )\n\n    def test_transition_to_stable(self):\n        \"\"\"Reverting to STABLE works.\"\"\"\n        lifecycle_states = {\"ctx-1\": \"MERGING\"}\n        transition_lifecycle_state(\"ctx-1\", LifecycleState(\"STABLE\"), lifecycle_states)\n        assert lifecycle_states[\"ctx-1\"] == \"STABLE\"\n\n    def test_transition_to_merged(self):\n        \"\"\"Transitioning to MERGED works (post-merge).\"\"\"\n        lifecycle_states = {\"ctx-1\": \"MERGING\"}\n        transition_lifecycle_state(\"ctx-1\", LifecycleState(\"MERGED\"), lifecycle_states)\n        assert lifecycle_states[\"ctx-1\"] == \"MERGED\"\n\n    def test_transition_new_context(self):\n        \"\"\"Transitioning a context not yet in the map adds it.\"\"\"\n        lifecycle_states = {}\n        transition_lifecycle_state(\"ctx-new\", LifecycleState(\"MERGING\"), lifecycle_states)\n        assert \"ctx-new\" in lifecycle_states\n        assert lifecycle_states[\"ctx-new\"] == \"MERGING\"\n\n\n# ===========================================================================\n# PHASE 6: INTEGRATION TESTS (run_lifecycle_cycle)\n# ===========================================================================\n\nclass TestRunLifecycleCycle:\n    \"\"\"Tests for run_lifecycle_cycle (Layer 3, async orchestrator).\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_hp_no_merges(self):\n        \"\"\"When no merge candidates found, report has empty merge_results.\"\"\"\n        ctx = make_context_snapshot(\"ctx-a\", energy=50.0, lifecycle_state=\"STABLE\")\n        config = make_merge_config()\n        lifecycle_states = {\"ctx-a\": \"STABLE\"}\n        redirect_map = {}\n        report = await run_lifecycle_cycle(\n            context_snapshots=[ctx],\n            config=config,\n            lifecycle_states=lifecycle_states,\n            redirect_map=redirect_map,\n            current_time=\"2024-01-01T00:00:00Z\",\n        )\n        assert len(report.merge_results) == 0, (\n            f\"Expected 0 merge results, got {len(report.merge_results)}\"\n        )\n        assert report.redirects_cleaned >= 0\n\n    @pytest.mark.asyncio\n    async def test_hp_with_merge(self):\n        \"\"\"When merge candidates exist, they are executed and reported.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"]\n        assessments = [make_assessment(s, \"ACCEPT\", 0.9) for s in shared]\n        ctx_a = make_context_snapshot(\n            \"ctx-a\", signal_ids=shared, assessments=assessments,\n            agent_ids=[\"agent-1\"], energy=60.0,\n            neighbors=[make_neighbor_entry(\"ctx-b\")],\n            lifecycle_state=\"STABLE\",\n        )\n        ctx_b = make_context_snapshot(\n            \"ctx-b\", signal_ids=shared, assessments=assessments,\n            agent_ids=[\"agent-2\"], energy=40.0,\n            neighbors=[make_neighbor_entry(\"ctx-a\")],\n            lifecycle_state=\"STABLE\",\n        )\n        config = make_merge_config()\n        lifecycle_states = {\"ctx-a\": \"STABLE\", \"ctx-b\": \"STABLE\"}\n        redirect_map = {}\n        report = await run_lifecycle_cycle(\n            context_snapshots=[ctx_a, ctx_b],\n            config=config,\n            lifecycle_states=lifecycle_states,\n            redirect_map=redirect_map,\n            current_time=\"2024-01-01T00:00:00Z\",\n        )\n        assert len(report.merge_results) >= 1, \"Expected at least 1 merge result\"\n\n    @pytest.mark.asyncio\n    async def test_edge_cleanup(self):\n        \"\"\"Expired redirects are cleaned up during cycle.\"\"\"\n        ctx = make_context_snapshot(\"ctx-a\", energy=50.0, lifecycle_state=\"STABLE\")\n        config = make_merge_config()\n        lifecycle_states = {\"ctx-a\": \"STABLE\", \"ctx-old\": \"MERGED\"}\n        redirect_map = {\n            \"ctx-old\": make_merge_redirect(\"ctx-old\", \"ctx-a\",\n                                           created_at=\"1000.0\", ttl_seconds=100.0),\n        }\n        report = await run_lifecycle_cycle(\n            context_snapshots=[ctx],\n            config=config,\n            lifecycle_states=lifecycle_states,\n            redirect_map=redirect_map,\n            current_time=\"2000.0\",\n        )\n        assert report.redirects_cleaned >= 1, \"Expected expired redirect to be cleaned\"\n\n    @pytest.mark.asyncio\n    async def test_inv_no_merging_after_cycle(self):\n        \"\"\"No context is left in MERGING state after cycle completes.\"\"\"\n        shared = [\"s1\", \"s2\", \"s3\", \"s4\", \"s5\"]\n        assessments = [make_assessment(s, \"ACCEPT\", 0.9) for s in shared]\n        ctx_a = make_context_snapshot(\n            \"ctx-a\", signal_ids=shared, assessments=assessments,\n            agent_ids=[\"agent-1\"], energy=60.0,\n            neighbors=[make_neighbor_entry(\"ctx-b\")],\n            lifecycle_state=\"STABLE\",\n        )\n        ctx_b = make_context_snapshot(\n            \"ctx-b\", signal_ids=shared, assessments=assessments,\n            agent_ids=[\"agent-2\"], energy=40.0,\n            neighbors=[make_neighbor_entry(\"ctx-a\")],\n            lifecycle_state=\"STABLE\",\n        )\n        config = make_merge_config()\n        lifecycle_states = {\"ctx-a\": \"STABLE\", \"ctx-b\": \"STABLE\"}\n        redirect_map = {}\n        await run_lifecycle_cycle(\n            context_snapshots=[ctx_a, ctx_b],\n            config=config,\n            lifecycle_states=lifecycle_states,\n            redirect_map=redirect_map,\n            current_time=\"2024-01-01T00:00:00Z\",\n        )\n        merging_contexts = [\n            cid for cid, state in lifecycle_states.items()\n            if state == \"MERGING\"\n        ]\n        assert len(merging_contexts) == 0, (\n            f\"Contexts left in MERGING state: {merging_contexts}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_hp_existing_proposals_integrated(self):\n        \"\"\"Pre-existing fork/decay proposals are integrated into conflict resolution.\"\"\"\n        ctx = make_context_snapshot(\"ctx-a\", energy=50.0, lifecycle_state=\"STABLE\")\n        config = make_merge_config()\n        lifecycle_states = {\"ctx-a\": \"STABLE\"}\n        redirect_map = {}\n        existing_proposals = [\n            make_lifecycle_proposal(\"FORK\", [\"ctx-a\"], priority=30),\n        ]\n        report = await run_lifecycle_cycle(\n            context_snapshots=[ctx],\n            config=config,\n            lifecycle_states=lifecycle_states,\n            redirect_map=redirect_map,\n            current_time=\"2024-01-01T00:00:00Z\",\n            existing_proposals=existing_proposals,\n        )\n        # The fork proposal should appear in the plan\n        all_in_plan = report.plan.accepted_proposals + report.plan.rejected_proposals\n        assert len(all_in_plan) >= 1, \"Existing proposals should be in the plan\"\n\n\n# ===========================================================================\n# PHASE 7: INVARIANT / PROPERTY-BASED TESTS\n# ===========================================================================\n\nclass TestInvariants:\n    \"\"\"Cross-cutting invariant tests.\"\"\"\n\n    def test_inv_merge_reason_preserved(self):\n        \"\"\"MergeReason is preserved from proposal to result.\"\"\"\n        ctx_a, ctx_b = (\n            make_context_snapshot(\"ctx-a\", signal_ids=[\"s1\", \"s2\", \"s3\"],\n                                  assessments=[make_assessment(s, \"ACCEPT\", 0.9) for s in [\"s1\", \"s2\", \"s3\"]],\n                                  agent_ids=[\"a1\"], energy=60.0,\n                                  neighbors=[make_neighbor_entry(\"ctx-b\")]),\n            make_context_snapshot(\"ctx-b\", signal_ids=[\"s1\", \"s2\", \"s3\"],\n                                  assessments=[make_assessment(s, \"ACCEPT\", 0.9) for s in [\"s1\", \"s2\", \"s3\"]],\n                                  agent_ids=[\"a2\"], energy=40.0,\n                                  neighbors=[make_neighbor_entry(\"ctx-a\")]),\n        )\n        proposal = make_merge_proposal(\n            source_context_id=\"ctx-b\",\n            target_context_id=\"ctx-a\",\n            is_decay_fold=True,\n        )\n        config = make_merge_config()\n        result = execute_merge(ctx_a, ctx_b, proposal, config)\n        assert result.proposal.is_decay_fold is True, \"Decay fold flag should be preserved\"\n\n    def test_inv_surviving_identity_deterministic(self):\n        \"\"\"Same inputs always produce the same survivor.\"\"\"\n        ctx_a = make_context(\"ctx-a\", energy=50.0, neighbor_ids=[\"ctx-b\"])\n        ctx_b = make_context(\"ctx-b\", energy=50.0, neighbor_ids=[\"ctx-a\"])\n        results = [resolve_surviving_identity(ctx_a, ctx_b) for _ in range(10)]\n        ids = [r.id for r in results]\n        assert len(set(ids)) == 1, f\"Non-deterministic: got different results {set(ids)}\"\n\n    def test_inv_agent_dedup_deterministic(self):\n        \"\"\"Same inputs always produce the same deduplicated list.\"\"\"\n        agents_a = [make_agent(\"alice\", \"analyst\", {\"v\": 1}), make_agent(\"bob\", \"reviewer\")]\n        agents_b = [make_agent(\"alice\", \"analyst\", {\"v\": 2}), make_agent(\"carol\", \"engineer\")]\n        results = [\n            deduplicate_agents(agents_a, agents_b, \"ctx-a\", \"ctx-a\", \"ctx-b\")\n            for _ in range(10)\n        ]\n        first = [(a.identity, a.role) for a in results[0]]\n        for r in results[1:]:\n            current = [(a.identity, a.role) for a in r]\n            assert current == first, \"Agent dedup should be deterministic\"\n\n    def test_inv_overlap_result_always_in_range(self):\n        \"\"\"Overlap result is always in [0.0, 1.0] for various inputs.\"\"\"\n        test_cases = [\n            ([], []),\n            ([\"s1\"], []),\n            ([\"s1\"], [\"s1\"]),\n            ([\"s1\", \"s2\"], [\"s2\", \"s3\"]),\n            ([f\"s{i}\" for i in range(100)], [f\"s{i}\" for i in range(50, 150)]),\n        ]\n        for a, b in test_cases:\n            result = compute_signal_overlap(a, b)\n            assert 0.0 <= result <= 1.0, (\n                f\"Overlap {result} out of range for inputs ({len(a)}, {len(b)})\"\n            )\n\n    def test_inv_agreement_result_always_in_range(self):\n        \"\"\"Agreement result is always in [0.0, 1.0] for various inputs.\"\"\"\n        test_cases = [\n            ([], [], 0.1),\n            ([make_assessment(\"s1\", \"ACCEPT\", 0.5)], [], 0.1),\n            (\n                [make_assessment(\"s1\", \"ACCEPT\", 0.5)],\n                [make_assessment(\"s1\", \"REJECT\", 0.5)],\n                0.1,\n            ),\n            (\n                [make_assessment(\"s1\", \"ACCEPT\", 0.5)],\n                [make_assessment(\"s1\", \"ACCEPT\", 0.5)],\n                0.0,\n            ),\n        ]\n        for a, b, eps in test_cases:\n            result = compute_assessment_agreement(a, b, epsilon=eps)\n            assert 0.0 <= result <= 1.0, (\n                f\"Agreement {result} out of range\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_inv_vector_store_union_commutative(self):\n        \"\"\"Vector store union is commutative.\"\"\"\n        store_a = make_vector_store(\"store-a\", [\"s1\", \"s2\", \"s3\"])\n        store_b = make_vector_store(\"store-b\", [\"s2\", \"s3\", \"s4\"])\n        result_ab = await merge_vector_stores(store_a, store_b, \"merged\")\n        result_ba = await merge_vector_stores(store_b, store_a, \"merged\")\n        assert set(result_ab.signal_ids) == set(result_ba.signal_ids), (\n            \"Vector store union should be commutative\"\n        )\n\n    def test_inv_lifecycle_single_state(self):\n        \"\"\"A context can only be in one lifecycle state at a time (state map enforces).\"\"\"\n        lifecycle_states = {\"ctx-1\": \"STABLE\"}\n        transition_lifecycle_state(\"ctx-1\", LifecycleState(\"MERGING\"), lifecycle_states)\n        assert lifecycle_states[\"ctx-1\"] == \"MERGING\"\n        # Only one entry per context\n        ctx1_entries = [v for k, v in lifecycle_states.items() if k == \"ctx-1\"]\n        assert len(ctx1_entries) == 1, \"Context should have exactly one state entry\"\n"
+}

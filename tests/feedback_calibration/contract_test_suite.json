@@ -1,0 +1,902 @@
+{
+  "component_id": "feedback_calibration",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "map_helpful_actions",
+      "description": "map_rating_to_actions with 'helpful' returns exactly 1 action: agent_confidence with positive delta equal to helpful_confidence_delta",
+      "function": "map_rating_to_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "rating=FeedbackRating.helpful, default config",
+      "expected_output_description": "List of 1 CalibrationAction with dimension=agent_confidence, delta=+0.05, non-empty description",
+      "expected_error": "",
+      "assertions": [
+        "len(actions) == 1",
+        "actions[0].dimension == CalibrationDimension.agent_confidence",
+        "actions[0].delta == pytest.approx(0.05)",
+        "actions[0].delta > 0",
+        "len(actions[0].description) > 0"
+      ]
+    },
+    {
+      "id": "map_wrong_actions",
+      "description": "map_rating_to_actions with 'wrong' returns exactly 1 action: agent_confidence with negative delta equal to -wrong_confidence_delta",
+      "function": "map_rating_to_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "rating=FeedbackRating.wrong, default config",
+      "expected_output_description": "List of 1 CalibrationAction with dimension=agent_confidence, delta=-0.08",
+      "expected_error": "",
+      "assertions": [
+        "len(actions) == 1",
+        "actions[0].dimension == CalibrationDimension.agent_confidence",
+        "actions[0].delta == pytest.approx(-0.08)",
+        "actions[0].delta < 0"
+      ]
+    },
+    {
+      "id": "map_irrelevant_actions",
+      "description": "map_rating_to_actions with 'irrelevant' returns exactly 1 action: agent_confidence with negative delta smaller than wrong",
+      "function": "map_rating_to_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "rating=FeedbackRating.irrelevant, default config",
+      "expected_output_description": "List of 1 CalibrationAction with dimension=agent_confidence, delta=-0.03",
+      "expected_error": "",
+      "assertions": [
+        "len(actions) == 1",
+        "actions[0].dimension == CalibrationDimension.agent_confidence",
+        "actions[0].delta == pytest.approx(-0.03)",
+        "actions[0].delta < 0",
+        "abs(actions[0].delta) < 0.08"
+      ]
+    },
+    {
+      "id": "map_already_knew_actions",
+      "description": "map_rating_to_actions with 'already_knew' returns exactly 2 actions: agent_confidence positive and surfacing_priority negative",
+      "function": "map_rating_to_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "rating=FeedbackRating.already_knew, default config",
+      "expected_output_description": "List of 2 CalibrationActions across two dimensions",
+      "expected_error": "",
+      "assertions": [
+        "len(actions) == 2",
+        "any(a.dimension == CalibrationDimension.agent_confidence and a.delta > 0 for a in actions)",
+        "any(a.dimension == CalibrationDimension.surfacing_priority and a.delta < 0 for a in actions)"
+      ]
+    },
+    {
+      "id": "map_already_knew_deltas_correct",
+      "description": "map_rating_to_actions with 'already_knew' uses correct config delta magnitudes",
+      "function": "map_rating_to_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "rating=FeedbackRating.already_knew, default config",
+      "expected_output_description": "agent_confidence delta=+0.02, surfacing_priority delta=-0.04",
+      "expected_error": "",
+      "assertions": [
+        "conf_action.delta == pytest.approx(0.02)",
+        "surf_action.delta == pytest.approx(-0.04)"
+      ]
+    },
+    {
+      "id": "map_custom_config_deltas",
+      "description": "map_rating_to_actions respects custom config delta values",
+      "function": "map_rating_to_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "rating=FeedbackRating.helpful, config with helpful_confidence_delta=0.15",
+      "expected_output_description": "Action delta matches custom config value 0.15",
+      "expected_error": "",
+      "assertions": [
+        "actions[0].delta == pytest.approx(0.15)"
+      ]
+    },
+    {
+      "id": "map_wrong_greater_than_irrelevant",
+      "description": "Invariant: wrong_confidence_delta > irrelevant_confidence_delta so wrong is penalized more heavily",
+      "function": "map_rating_to_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Default config, compare wrong and irrelevant deltas",
+      "expected_output_description": "abs(wrong_delta) > abs(irrelevant_delta)",
+      "expected_error": "",
+      "assertions": [
+        "abs(wrong_actions[0].delta) > abs(irrelevant_actions[0].delta)"
+      ]
+    },
+    {
+      "id": "map_all_actions_have_description",
+      "description": "Every CalibrationAction returned has a non-empty description string",
+      "function": "map_rating_to_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "All four ratings",
+      "expected_output_description": "Every action across all ratings has len(description) > 0",
+      "expected_error": "",
+      "assertions": [
+        "all(len(a.description) > 0 for a in actions)"
+      ]
+    },
+    {
+      "id": "map_all_deltas_in_range",
+      "description": "Every CalibrationAction delta is within [-1.0, 1.0]",
+      "function": "map_rating_to_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "All four ratings, default config",
+      "expected_output_description": "All deltas satisfy -1.0 <= delta <= 1.0",
+      "expected_error": "",
+      "assertions": [
+        "all(-1.0 <= a.delta <= 1.0 for a in actions)"
+      ]
+    },
+    {
+      "id": "map_every_rating_non_empty",
+      "description": "Every FeedbackRating variant produces at least one action",
+      "function": "map_rating_to_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "All four FeedbackRating variants",
+      "expected_output_description": "Non-empty list for each",
+      "expected_error": "",
+      "assertions": [
+        "all(len(map_rating_to_actions(r)) > 0 for r in FeedbackRating)"
+      ]
+    },
+    {
+      "id": "filter_all_enabled",
+      "description": "filter_enabled_actions with all dimensions enabled puts all actions in enabled list",
+      "function": "filter_enabled_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Actions across multiple dimensions, config with all dimensions enabled",
+      "expected_output_description": "All actions in enabled, none in skipped",
+      "expected_error": "",
+      "assertions": [
+        "len(result.enabled) == len(actions)",
+        "len(result.skipped) == 0"
+      ]
+    },
+    {
+      "id": "filter_default_config",
+      "description": "filter_enabled_actions with default config enables agent_confidence only, skips surfacing_priority",
+      "function": "filter_enabled_actions",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "already_knew actions (2 actions), default config",
+      "expected_output_description": "1 enabled (agent_confidence), 1 skipped (surfacing_priority)",
+      "expected_error": "",
+      "assertions": [
+        "len(result.enabled) == 1",
+        "len(result.skipped) == 1",
+        "result.enabled[0].dimension == CalibrationDimension.agent_confidence",
+        "result.skipped[0].dimension == CalibrationDimension.surfacing_priority"
+      ]
+    },
+    {
+      "id": "filter_all_skipped",
+      "description": "filter_enabled_actions with empty enabled_dimensions skips all actions",
+      "function": "filter_enabled_actions",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Actions list, config with enabled_dimensions=[]",
+      "expected_output_description": "All in skipped, none in enabled",
+      "expected_error": "",
+      "assertions": [
+        "len(result.enabled) == 0",
+        "len(result.skipped) == len(actions)"
+      ]
+    },
+    {
+      "id": "filter_empty_actions",
+      "description": "filter_enabled_actions with empty actions list returns empty enabled and skipped",
+      "function": "filter_enabled_actions",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Empty actions list",
+      "expected_output_description": "Both enabled and skipped are empty",
+      "expected_error": "",
+      "assertions": [
+        "len(result.enabled) == 0",
+        "len(result.skipped) == 0"
+      ]
+    },
+    {
+      "id": "filter_partition_count_preserved",
+      "description": "Invariant: len(enabled) + len(skipped) == len(input actions)",
+      "function": "filter_enabled_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various action lists and configs",
+      "expected_output_description": "Partition count equals input count",
+      "expected_error": "",
+      "assertions": [
+        "len(result.enabled) + len(result.skipped) == len(actions)"
+      ]
+    },
+    {
+      "id": "filter_preserves_order",
+      "description": "filter_enabled_actions preserves order within each partition",
+      "function": "filter_enabled_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Ordered list of actions with mixed dimensions",
+      "expected_output_description": "Order within enabled and skipped matches input order",
+      "expected_error": "",
+      "assertions": [
+        "enabled_descs_match_input_order",
+        "skipped_descs_match_input_order"
+      ]
+    },
+    {
+      "id": "filter_enabled_dimensions_correct",
+      "description": "Every action in enabled has dimension in config.enabled_dimensions, every skipped does not",
+      "function": "filter_enabled_actions",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Mixed dimension actions, default config",
+      "expected_output_description": "Correct dimension membership",
+      "expected_error": "",
+      "assertions": [
+        "all(a.dimension.value in config.enabled_dimensions for a in result.enabled)",
+        "all(a.dimension.value not in config.enabled_dimensions for a in result.skipped)"
+      ]
+    },
+    {
+      "id": "apply_helpful_applied",
+      "description": "apply_feedback with 'helpful' rating calls calibration_lr_up and returns status='applied'",
+      "function": "apply_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=helpful, mock calibrator",
+      "expected_output_description": "FeedbackResult with status=applied, 1 applied action, 0 skipped",
+      "expected_error": "",
+      "assertions": [
+        "result.status == FeedbackStatus.applied",
+        "len(result.applied_actions) == 1",
+        "len(result.skipped_actions) == 0",
+        "result.feedback_id == entry.feedback_id",
+        "mock_calibrator.calibration_lr_up.called"
+      ]
+    },
+    {
+      "id": "apply_wrong_calls_lr_down",
+      "description": "apply_feedback with 'wrong' rating calls calibration_lr_down with abs(delta)",
+      "function": "apply_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=wrong, mock calibrator",
+      "expected_output_description": "calibration_lr_down called with agent_id and abs(delta)",
+      "expected_error": "",
+      "assertions": [
+        "mock_calibrator.calibration_lr_down.called",
+        "result.status == FeedbackStatus.applied",
+        "result.applied_actions[0].delta < 0"
+      ]
+    },
+    {
+      "id": "apply_already_knew_partial",
+      "description": "apply_feedback with 'already_knew' returns status='partial' because surfacing_priority is deferred",
+      "function": "apply_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=already_knew, default config (only agent_confidence enabled)",
+      "expected_output_description": "FeedbackResult with status=partial, 1 applied, 1 skipped",
+      "expected_error": "",
+      "assertions": [
+        "result.status == FeedbackStatus.partial",
+        "len(result.applied_actions) == 1",
+        "len(result.skipped_actions) == 1"
+      ]
+    },
+    {
+      "id": "apply_all_skipped_status",
+      "description": "apply_feedback with no enabled dimensions returns status='skipped'",
+      "function": "apply_feedback",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=helpful, config with enabled_dimensions=[]",
+      "expected_output_description": "FeedbackResult with status=skipped",
+      "expected_error": "",
+      "assertions": [
+        "result.status == FeedbackStatus.skipped",
+        "len(result.applied_actions) == 0",
+        "len(result.skipped_actions) > 0"
+      ]
+    },
+    {
+      "id": "apply_calibrator_error",
+      "description": "apply_feedback raises CalibrationApplicationError when calibrator raises an exception",
+      "function": "apply_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=helpful, calibrator that raises RuntimeError",
+      "expected_output_description": "",
+      "expected_error": "CalibrationApplicationError",
+      "assertions": [
+        "error contains entry.feedback_id",
+        "error contains entry.agent_id"
+      ]
+    },
+    {
+      "id": "apply_feedback_id_matches",
+      "description": "apply_feedback result always has same feedback_id as input entry",
+      "function": "apply_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various entries",
+      "expected_output_description": "result.feedback_id == entry.feedback_id",
+      "expected_error": "",
+      "assertions": [
+        "result.feedback_id == entry.feedback_id"
+      ]
+    },
+    {
+      "id": "apply_action_count_invariant",
+      "description": "len(applied) + len(skipped) == total actions from map_rating_to_actions",
+      "function": "apply_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Various entries and configs",
+      "expected_output_description": "Total actions accounted for",
+      "expected_error": "",
+      "assertions": [
+        "len(result.applied_actions) + len(result.skipped_actions) == expected_total"
+      ]
+    },
+    {
+      "id": "apply_lr_up_called_for_positive",
+      "description": "calibration_lr_up is called for each applied action with positive delta",
+      "function": "apply_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=helpful",
+      "expected_output_description": "calibration_lr_up called with correct agent_id and delta",
+      "expected_error": "",
+      "assertions": [
+        "mock_calibrator.calibration_lr_up.await_args[0] == (entry.agent_id, 0.05)"
+      ]
+    },
+    {
+      "id": "apply_lr_down_called_for_negative",
+      "description": "calibration_lr_down is called with abs(delta) for each applied action with negative delta",
+      "function": "apply_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "FeedbackEntry with rating=wrong",
+      "expected_output_description": "calibration_lr_down called with agent_id and abs(delta)",
+      "expected_error": "",
+      "assertions": [
+        "mock_calibrator.calibration_lr_down.await_args[0] == (entry.agent_id, 0.08)"
+      ]
+    },
+    {
+      "id": "batch_empty",
+      "description": "process_feedback_batch with empty list returns empty results",
+      "function": "process_feedback_batch",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Empty list of entries",
+      "expected_output_description": "Empty list of results",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 0"
+      ]
+    },
+    {
+      "id": "batch_single_entry",
+      "description": "process_feedback_batch with one entry returns one result",
+      "function": "process_feedback_batch",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "List with one FeedbackEntry (helpful)",
+      "expected_output_description": "List with one FeedbackResult, status=applied",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 1",
+        "results[0].status == FeedbackStatus.applied"
+      ]
+    },
+    {
+      "id": "batch_multiple_entries",
+      "description": "process_feedback_batch with multiple entries returns matching count of results",
+      "function": "process_feedback_batch",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 entries with different ratings",
+      "expected_output_description": "3 results, each with correct feedback_id",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 3",
+        "all(r.feedback_id == e.feedback_id for r, e in zip(results, entries))"
+      ]
+    },
+    {
+      "id": "batch_partial_failure",
+      "description": "process_feedback_batch continues after one entry fails, capturing error in result",
+      "function": "process_feedback_batch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "3 entries, calibrator fails on 2nd entry only",
+      "expected_output_description": "3 results: 1st applied, 2nd skipped with reason, 3rd applied",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 3",
+        "results[0].status == FeedbackStatus.applied",
+        "results[1].status == FeedbackStatus.skipped",
+        "len(results[1].reason) > 0",
+        "results[2].status == FeedbackStatus.applied"
+      ]
+    },
+    {
+      "id": "batch_all_fail",
+      "description": "process_feedback_batch with calibrator always failing returns all skipped results",
+      "function": "process_feedback_batch",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "2 entries, calibrator always raises",
+      "expected_output_description": "2 results both with status=skipped",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 2",
+        "all(r.status == FeedbackStatus.skipped for r in results)"
+      ]
+    },
+    {
+      "id": "batch_preserves_order",
+      "description": "process_feedback_batch results are in same order as input entries",
+      "function": "process_feedback_batch",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "5 entries with distinct feedback_ids",
+      "expected_output_description": "results[i].feedback_id == entries[i].feedback_id for all i",
+      "expected_error": "",
+      "assertions": [
+        "[r.feedback_id for r in results] == [e.feedback_id for e in entries]"
+      ]
+    },
+    {
+      "id": "batch_large",
+      "description": "process_feedback_batch handles 100+ entries without error",
+      "function": "process_feedback_batch",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "100 entries with helpful rating",
+      "expected_output_description": "100 results all applied",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 100",
+        "all(r.status == FeedbackStatus.applied for r in results)"
+      ]
+    },
+    {
+      "id": "load_valid_file",
+      "description": "load_feedback reads valid JSONL file and returns FeedbackEntry list in order",
+      "function": "load_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "JSONL file with 3 valid entries",
+      "expected_output_description": "List of 3 FeedbackEntry instances in file order",
+      "expected_error": "",
+      "assertions": [
+        "len(entries) == 3",
+        "entries[0].feedback_id == first_id",
+        "entries[2].feedback_id == third_id"
+      ]
+    },
+    {
+      "id": "load_empty_file",
+      "description": "load_feedback returns empty list for empty file",
+      "function": "load_feedback",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Empty file at path",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "len(entries) == 0"
+      ]
+    },
+    {
+      "id": "load_file_not_found",
+      "description": "load_feedback returns empty list when file does not exist",
+      "function": "load_feedback",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Non-existent file path",
+      "expected_output_description": "Empty list (not an error)",
+      "expected_error": "",
+      "assertions": [
+        "len(entries) == 0"
+      ]
+    },
+    {
+      "id": "load_skips_blank_and_comment_lines",
+      "description": "load_feedback skips blank lines and lines starting with '#'",
+      "function": "load_feedback",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "JSONL with blank lines and comment lines interspersed",
+      "expected_output_description": "Only valid JSON entries returned",
+      "expected_error": "",
+      "assertions": [
+        "len(entries) == 2"
+      ]
+    },
+    {
+      "id": "load_corrupt_line_error",
+      "description": "load_feedback raises FeedbackParseError on corrupt JSON line",
+      "function": "load_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "JSONL with one invalid JSON line",
+      "expected_output_description": "",
+      "expected_error": "FeedbackParseError",
+      "assertions": [
+        "error has line_number",
+        "error has raw_line"
+      ]
+    },
+    {
+      "id": "load_permission_error",
+      "description": "load_feedback raises FeedbackIOError on permission denied",
+      "function": "load_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "File with no read permissions",
+      "expected_output_description": "",
+      "expected_error": "FeedbackIOError",
+      "assertions": [
+        "error contains path"
+      ]
+    },
+    {
+      "id": "append_new_file",
+      "description": "append_feedback creates file and parent dirs if they do not exist",
+      "function": "append_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid entry, path in non-existent directory",
+      "expected_output_description": "File created with single JSON line",
+      "expected_error": "",
+      "assertions": [
+        "path.exists()",
+        "len(path.read_text().strip().splitlines()) == 1"
+      ]
+    },
+    {
+      "id": "append_existing_file",
+      "description": "append_feedback appends to existing file without modifying prior content",
+      "function": "append_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid entry, file already has 2 lines",
+      "expected_output_description": "File now has 3 lines, first 2 unchanged",
+      "expected_error": "",
+      "assertions": [
+        "len(lines) == 3",
+        "lines[0] == original_first_line",
+        "lines[1] == original_second_line"
+      ]
+    },
+    {
+      "id": "append_roundtrip",
+      "description": "append_feedback then load_feedback returns the same entry",
+      "function": "append_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid entry appended then loaded",
+      "expected_output_description": "Loaded entry matches original",
+      "expected_error": "",
+      "assertions": [
+        "loaded[0].feedback_id == entry.feedback_id",
+        "loaded[0].rating == entry.rating",
+        "loaded[0].agent_id == entry.agent_id"
+      ]
+    },
+    {
+      "id": "append_newline_terminated",
+      "description": "append_feedback writes JSON terminated by newline",
+      "function": "append_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid entry",
+      "expected_output_description": "File content ends with newline",
+      "expected_error": "",
+      "assertions": [
+        "content.endswith('\\n')"
+      ]
+    },
+    {
+      "id": "append_preserves_existing",
+      "description": "append_feedback does not modify existing file content",
+      "function": "append_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Existing file with known content, append new entry",
+      "expected_output_description": "Original content preserved as prefix",
+      "expected_error": "",
+      "assertions": [
+        "new_content.startswith(original_content)"
+      ]
+    },
+    {
+      "id": "model_feedback_entry_frozen",
+      "description": "FeedbackEntry instances are immutable after construction",
+      "function": "FeedbackEntry",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Attempt to mutate a FeedbackEntry field",
+      "expected_output_description": "",
+      "expected_error": "ValidationError or TypeError or AttributeError",
+      "assertions": [
+        "Mutation raises an error"
+      ]
+    },
+    {
+      "id": "model_calibration_action_frozen",
+      "description": "CalibrationAction instances are immutable after construction",
+      "function": "CalibrationAction",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Attempt to mutate a CalibrationAction field",
+      "expected_output_description": "",
+      "expected_error": "ValidationError or TypeError or AttributeError",
+      "assertions": [
+        "Mutation raises an error"
+      ]
+    },
+    {
+      "id": "model_feedback_result_frozen",
+      "description": "FeedbackResult instances are immutable after construction",
+      "function": "FeedbackResult",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Attempt to mutate a FeedbackResult field",
+      "expected_output_description": "",
+      "expected_error": "ValidationError or TypeError or AttributeError",
+      "assertions": [
+        "Mutation raises an error"
+      ]
+    },
+    {
+      "id": "model_feedback_entry_validates_uuid",
+      "description": "FeedbackEntry rejects invalid UUID4 format for feedback_id",
+      "function": "FeedbackEntry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "feedback_id='not-a-uuid'",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error mentions feedback_id"
+      ]
+    },
+    {
+      "id": "model_feedback_entry_rejects_empty_finding_id",
+      "description": "FeedbackEntry rejects empty finding_id",
+      "function": "FeedbackEntry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "finding_id=''",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error mentions finding_id"
+      ]
+    },
+    {
+      "id": "model_feedback_entry_rejects_empty_agent_id",
+      "description": "FeedbackEntry rejects empty agent_id",
+      "function": "FeedbackEntry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "agent_id=''",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error mentions agent_id"
+      ]
+    },
+    {
+      "id": "model_calibration_action_delta_range",
+      "description": "CalibrationAction rejects delta outside [-1.0, 1.0]",
+      "function": "CalibrationAction",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "delta=1.5",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error mentions delta"
+      ]
+    },
+    {
+      "id": "model_timestamp_validation",
+      "description": "FeedbackEntry rejects non-UTC timestamp formats",
+      "function": "FeedbackEntry",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "timestamp='2024-01-01T00:00:00-05:00' (not UTC)",
+      "expected_output_description": "",
+      "expected_error": "ValidationError",
+      "assertions": [
+        "error mentions timestamp"
+      ]
+    },
+    {
+      "id": "config_default_enabled_dimensions",
+      "description": "Default FeedbackCalibrationConfig has only agent_confidence enabled",
+      "function": "FeedbackCalibrationConfig",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Default config",
+      "expected_output_description": "enabled_dimensions contains only 'agent_confidence'",
+      "expected_error": "",
+      "assertions": [
+        "'agent_confidence' in config.enabled_dimensions",
+        "len(config.enabled_dimensions) == 1"
+      ]
+    },
+    {
+      "id": "config_wrong_gt_irrelevant",
+      "description": "Default config has wrong_confidence_delta > irrelevant_confidence_delta",
+      "function": "FeedbackCalibrationConfig",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Default config",
+      "expected_output_description": "wrong > irrelevant",
+      "expected_error": "",
+      "assertions": [
+        "config.wrong_confidence_delta > config.irrelevant_confidence_delta"
+      ]
+    },
+    {
+      "id": "integration_end_to_end",
+      "description": "End-to-end: create entries, process batch, verify all results and calibrator calls",
+      "function": "process_feedback_batch",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "4 entries (one per rating), mock calibrator, default config",
+      "expected_output_description": "4 results with correct statuses, calibrator called appropriately",
+      "expected_error": "",
+      "assertions": [
+        "len(results) == 4",
+        "results[0].status == FeedbackStatus.applied",
+        "results[3].status == FeedbackStatus.partial"
+      ]
+    },
+    {
+      "id": "integration_all_dimensions_enabled",
+      "description": "With all dimensions enabled, already_knew produces status=applied (not partial)",
+      "function": "apply_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "already_knew entry, config with all dimensions enabled",
+      "expected_output_description": "status=applied, 2 applied actions, 0 skipped",
+      "expected_error": "",
+      "assertions": [
+        "result.status == FeedbackStatus.applied",
+        "len(result.applied_actions) == 2",
+        "len(result.skipped_actions) == 0"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract test suite for feedback_calibration component.\nTests verify behavior at boundaries (inputs/outputs) against the contract.\nAll dependencies are mocked. Async tests use pytest-asyncio.\n\nRun with: pytest contract_test.py -v\n\"\"\"\nfrom __future__ import annotations\n\nimport asyncio\nimport json\nimport os\nimport uuid\nfrom datetime import datetime, timezone\nfrom typing import Any, List\nfrom unittest.mock import AsyncMock, MagicMock, patch\n\nimport pytest\nimport pytest_asyncio\n\n# Import the component under test\nfrom attention.feedback_calibration import (\n    CalibrationAction,\n    CalibrationDimension,\n    FeedbackCalibrationConfig,\n    FeedbackEntry,\n    FeedbackRating,\n    FeedbackResult,\n    FeedbackStatus,\n    append_feedback,\n    apply_feedback,\n    filter_enabled_actions,\n    load_feedback,\n    map_rating_to_actions,\n    process_feedback_batch,\n)\n\n# Attempt to import custom errors; they may live in the same module\ntry:\n    from attention.feedback_calibration import (\n        CalibrationApplicationError,\n        FeedbackIOError,\n        FeedbackParseError,\n        FeedbackSerializationError,\n    )\nexcept ImportError:\n    # Fallback: tests that reference these will still work via string matching\n    CalibrationApplicationError = Exception\n    FeedbackIOError = Exception\n    FeedbackParseError = Exception\n    FeedbackSerializationError = Exception\n\n\n# ---------------------------------------------------------------------------\n# Fixtures\n# ---------------------------------------------------------------------------\n\ndef _make_uuid() -> str:\n    return str(uuid.uuid4())\n\n\ndef _make_timestamp() -> str:\n    return datetime.now(timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%S.%fZ\")\n\n\n@pytest.fixture\ndef default_config() -> FeedbackCalibrationConfig:\n    return FeedbackCalibrationConfig()\n\n\n@pytest.fixture\ndef all_enabled_config() -> FeedbackCalibrationConfig:\n    return FeedbackCalibrationConfig(\n        enabled_dimensions=[\n            \"agent_confidence\",\n            \"surfacing_priority\",\n            \"business_weight\",\n            \"familiarity_weight\",\n        ]\n    )\n\n\n@pytest.fixture\ndef no_enabled_config() -> FeedbackCalibrationConfig:\n    return FeedbackCalibrationConfig(enabled_dimensions=[])\n\n\n@pytest.fixture\ndef mock_calibrator() -> AsyncMock:\n    calibrator = AsyncMock()\n    calibrator.calibration_lr_up = AsyncMock(return_value=None)\n    calibrator.calibration_lr_down = AsyncMock(return_value=None)\n    return calibrator\n\n\n@pytest.fixture\ndef failing_calibrator() -> AsyncMock:\n    calibrator = AsyncMock()\n    calibrator.calibration_lr_up = AsyncMock(side_effect=RuntimeError(\"Calibrator boom\"))\n    calibrator.calibration_lr_down = AsyncMock(side_effect=RuntimeError(\"Calibrator boom\"))\n    return calibrator\n\n\ndef make_entry(\n    rating: FeedbackRating = FeedbackRating.helpful,\n    feedback_id: str | None = None,\n    finding_id: str = \"finding-001\",\n    agent_id: str = \"agent-001\",\n    timestamp: str | None = None,\n    metadata: dict | None = None,\n) -> FeedbackEntry:\n    return FeedbackEntry(\n        feedback_id=feedback_id or _make_uuid(),\n        finding_id=finding_id,\n        agent_id=agent_id,\n        rating=rating,\n        timestamp=timestamp or _make_timestamp(),\n        metadata=metadata or {},\n    )\n\n\n@pytest.fixture\ndef sample_entry() -> FeedbackEntry:\n    return make_entry(rating=FeedbackRating.helpful)\n\n\n@pytest.fixture\ndef sample_entries() -> list[FeedbackEntry]:\n    return [\n        make_entry(rating=FeedbackRating.helpful),\n        make_entry(rating=FeedbackRating.wrong),\n        make_entry(rating=FeedbackRating.irrelevant),\n        make_entry(rating=FeedbackRating.already_knew),\n    ]\n\n\ndef entry_to_jsonl_line(entry: FeedbackEntry) -> str:\n    \"\"\"Serialize a FeedbackEntry to a single JSON line.\"\"\"\n    return entry.model_dump_json()\n\n\n# ---------------------------------------------------------------------------\n# 1. test_map_rating_to_actions\n# ---------------------------------------------------------------------------\n\nclass TestMapRatingToActions:\n    \"\"\"Tests for map_rating_to_actions pure function.\"\"\"\n\n    def test_helpful_returns_single_positive_agent_confidence(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.helpful, config=default_config)\n        assert len(actions) == 1, f\"Expected 1 action for helpful, got {len(actions)}\"\n        assert actions[0].dimension == CalibrationDimension.agent_confidence\n        assert actions[0].delta == pytest.approx(0.05), f\"Expected +0.05, got {actions[0].delta}\"\n        assert actions[0].delta > 0, \"helpful delta must be positive\"\n        assert len(actions[0].description) > 0, \"Action description must be non-empty\"\n\n    def test_wrong_returns_single_negative_agent_confidence(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.wrong, config=default_config)\n        assert len(actions) == 1, f\"Expected 1 action for wrong, got {len(actions)}\"\n        assert actions[0].dimension == CalibrationDimension.agent_confidence\n        assert actions[0].delta == pytest.approx(-0.08), f\"Expected -0.08, got {actions[0].delta}\"\n        assert actions[0].delta < 0, \"wrong delta must be negative\"\n\n    def test_irrelevant_returns_single_negative_smaller_than_wrong(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.irrelevant, config=default_config)\n        assert len(actions) == 1, f\"Expected 1 action for irrelevant, got {len(actions)}\"\n        assert actions[0].dimension == CalibrationDimension.agent_confidence\n        assert actions[0].delta == pytest.approx(-0.03), f\"Expected -0.03, got {actions[0].delta}\"\n        assert actions[0].delta < 0, \"irrelevant delta must be negative\"\n        assert abs(actions[0].delta) < 0.08, \"irrelevant magnitude must be smaller than wrong\"\n\n    def test_already_knew_returns_two_actions(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.already_knew, config=default_config)\n        assert len(actions) == 2, f\"Expected 2 actions for already_knew, got {len(actions)}\"\n        dims = {a.dimension for a in actions}\n        assert CalibrationDimension.agent_confidence in dims\n        assert CalibrationDimension.surfacing_priority in dims\n        conf = next(a for a in actions if a.dimension == CalibrationDimension.agent_confidence)\n        surf = next(a for a in actions if a.dimension == CalibrationDimension.surfacing_priority)\n        assert conf.delta > 0, \"already_knew agent_confidence delta must be positive\"\n        assert surf.delta < 0, \"already_knew surfacing_priority delta must be negative\"\n\n    def test_already_knew_correct_magnitudes(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.already_knew, config=default_config)\n        conf = next(a for a in actions if a.dimension == CalibrationDimension.agent_confidence)\n        surf = next(a for a in actions if a.dimension == CalibrationDimension.surfacing_priority)\n        assert conf.delta == pytest.approx(0.02), f\"Expected +0.02, got {conf.delta}\"\n        assert surf.delta == pytest.approx(-0.04), f\"Expected -0.04, got {surf.delta}\"\n\n    def test_custom_config_deltas_respected(self):\n        custom = FeedbackCalibrationConfig(helpful_confidence_delta=0.15)\n        actions = map_rating_to_actions(FeedbackRating.helpful, config=custom)\n        assert actions[0].delta == pytest.approx(0.15), f\"Expected custom delta 0.15, got {actions[0].delta}\"\n\n    def test_wrong_penalized_more_than_irrelevant(self, default_config):\n        wrong_actions = map_rating_to_actions(FeedbackRating.wrong, config=default_config)\n        irrel_actions = map_rating_to_actions(FeedbackRating.irrelevant, config=default_config)\n        assert abs(wrong_actions[0].delta) > abs(irrel_actions[0].delta), (\n            f\"wrong magnitude {abs(wrong_actions[0].delta)} should exceed \"\n            f\"irrelevant magnitude {abs(irrel_actions[0].delta)}\"\n        )\n\n    def test_all_actions_have_descriptions(self, default_config):\n        all_actions = []\n        for rating in FeedbackRating:\n            all_actions.extend(map_rating_to_actions(rating, config=default_config))\n        assert all(len(a.description) > 0 for a in all_actions), (\n            \"Every CalibrationAction must have a non-empty description\"\n        )\n\n    def test_all_deltas_in_range(self, default_config):\n        all_actions = []\n        for rating in FeedbackRating:\n            all_actions.extend(map_rating_to_actions(rating, config=default_config))\n        for a in all_actions:\n            assert -1.0 <= a.delta <= 1.0, f\"Delta {a.delta} out of range [-1.0, 1.0]\"\n\n    def test_every_rating_produces_nonempty(self, default_config):\n        for rating in FeedbackRating:\n            actions = map_rating_to_actions(rating, config=default_config)\n            assert len(actions) > 0, f\"Rating {rating} produced no actions\"\n\n\n# ---------------------------------------------------------------------------\n# 2. test_filter_enabled_actions\n# ---------------------------------------------------------------------------\n\nclass TestFilterEnabledActions:\n    \"\"\"Tests for filter_enabled_actions pure function.\"\"\"\n\n    def test_all_enabled(self, all_enabled_config):\n        actions = map_rating_to_actions(FeedbackRating.already_knew)\n        result = filter_enabled_actions(actions, config=all_enabled_config)\n        assert len(result.enabled) == len(actions), \"All actions should be enabled\"\n        assert len(result.skipped) == 0, \"No actions should be skipped\"\n\n    def test_default_config_partitions_already_knew(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.already_knew, config=default_config)\n        result = filter_enabled_actions(actions, config=default_config)\n        assert len(result.enabled) == 1, \"Only agent_confidence should be enabled\"\n        assert len(result.skipped) == 1, \"surfacing_priority should be skipped\"\n        assert result.enabled[0].dimension == CalibrationDimension.agent_confidence\n        assert result.skipped[0].dimension == CalibrationDimension.surfacing_priority\n\n    def test_all_skipped_when_no_dimensions_enabled(self, no_enabled_config):\n        actions = map_rating_to_actions(FeedbackRating.helpful)\n        result = filter_enabled_actions(actions, config=no_enabled_config)\n        assert len(result.enabled) == 0, \"No actions should be enabled with empty dimensions\"\n        assert len(result.skipped) == len(actions), \"All actions should be skipped\"\n\n    def test_empty_actions_list(self, default_config):\n        result = filter_enabled_actions([], config=default_config)\n        assert len(result.enabled) == 0\n        assert len(result.skipped) == 0\n\n    def test_partition_count_preserved(self, default_config):\n        for rating in FeedbackRating:\n            actions = map_rating_to_actions(rating, config=default_config)\n            result = filter_enabled_actions(actions, config=default_config)\n            total = len(result.enabled) + len(result.skipped)\n            assert total == len(actions), (\n                f\"Partition count {total} != input count {len(actions)} for {rating}\"\n            )\n\n    def test_preserves_order(self):\n        # Build a multi-action list with known order\n        actions = map_rating_to_actions(FeedbackRating.already_knew)\n        config = FeedbackCalibrationConfig(enabled_dimensions=[\"agent_confidence\"])\n        result = filter_enabled_actions(actions, config=config)\n\n        # Verify enabled actions appear in original order\n        enabled_indices = [actions.index(a) for a in result.enabled]\n        assert enabled_indices == sorted(enabled_indices), \"Enabled actions must preserve order\"\n\n        skipped_indices = [actions.index(a) for a in result.skipped]\n        assert skipped_indices == sorted(skipped_indices), \"Skipped actions must preserve order\"\n\n    def test_enabled_membership_correct(self, default_config):\n        actions = map_rating_to_actions(FeedbackRating.already_knew, config=default_config)\n        result = filter_enabled_actions(actions, config=default_config)\n        enabled_dims = set(default_config.enabled_dimensions) if isinstance(default_config.enabled_dimensions, list) else default_config.enabled_dimensions\n        for a in result.enabled:\n            assert a.dimension.value in enabled_dims or a.dimension in enabled_dims, (\n                f\"Enabled action dimension {a.dimension} not in enabled_dimensions\"\n            )\n        for a in result.skipped:\n            assert a.dimension.value not in enabled_dims and a.dimension not in enabled_dims, (\n                f\"Skipped action dimension {a.dimension} found in enabled_dimensions\"\n            )\n\n    def test_helpful_all_enabled_with_default(self, default_config):\n        \"\"\"helpful only targets agent_confidence, so all should be enabled with default config.\"\"\"\n        actions = map_rating_to_actions(FeedbackRating.helpful, config=default_config)\n        result = filter_enabled_actions(actions, config=default_config)\n        assert len(result.enabled) == 1\n        assert len(result.skipped) == 0\n\n\n# ---------------------------------------------------------------------------\n# 3. test_apply_feedback\n# ---------------------------------------------------------------------------\n\nclass TestApplyFeedback:\n    \"\"\"Tests for apply_feedback async function.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_helpful_applied(self, mock_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.helpful)\n        result = await apply_feedback(entry, mock_calibrator, config=default_config)\n        assert result.status == FeedbackStatus.applied, f\"Expected applied, got {result.status}\"\n        assert len(result.applied_actions) == 1\n        assert len(result.skipped_actions) == 0\n        assert result.feedback_id == entry.feedback_id\n        mock_calibrator.calibration_lr_up.assert_called_once()\n\n    @pytest.mark.asyncio\n    async def test_wrong_calls_lr_down(self, mock_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.wrong)\n        result = await apply_feedback(entry, mock_calibrator, config=default_config)\n        mock_calibrator.calibration_lr_down.assert_called_once()\n        assert result.status == FeedbackStatus.applied\n        assert result.applied_actions[0].delta < 0\n\n    @pytest.mark.asyncio\n    async def test_already_knew_partial_status(self, mock_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.already_knew)\n        result = await apply_feedback(entry, mock_calibrator, config=default_config)\n        assert result.status == FeedbackStatus.partial, (\n            f\"Expected partial for already_knew with default config, got {result.status}\"\n        )\n        assert len(result.applied_actions) == 1\n        assert len(result.skipped_actions) == 1\n\n    @pytest.mark.asyncio\n    async def test_all_skipped_status(self, mock_calibrator, no_enabled_config):\n        entry = make_entry(rating=FeedbackRating.helpful)\n        result = await apply_feedback(entry, mock_calibrator, config=no_enabled_config)\n        assert result.status == FeedbackStatus.skipped\n        assert len(result.applied_actions) == 0\n        assert len(result.skipped_actions) > 0\n\n    @pytest.mark.asyncio\n    async def test_calibrator_error_raises(self, failing_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.helpful)\n        with pytest.raises(Exception) as exc_info:\n            await apply_feedback(entry, failing_calibrator, config=default_config)\n        error_str = str(exc_info.value)\n        # The error should reference the feedback_id and agent_id\n        assert entry.feedback_id in error_str or \"CalibrationApplicationError\" in str(type(exc_info.value).__name__), (\n            f\"Error should reference feedback_id or be CalibrationApplicationError: {error_str}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_feedback_id_matches_result(self, mock_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.helpful)\n        result = await apply_feedback(entry, mock_calibrator, config=default_config)\n        assert result.feedback_id == entry.feedback_id, (\n            f\"Result feedback_id {result.feedback_id} != entry feedback_id {entry.feedback_id}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_action_count_invariant(self, mock_calibrator, default_config):\n        for rating in FeedbackRating:\n            entry = make_entry(rating=rating)\n            result = await apply_feedback(entry, mock_calibrator, config=default_config)\n            expected_total = len(map_rating_to_actions(rating, config=default_config))\n            actual_total = len(result.applied_actions) + len(result.skipped_actions)\n            assert actual_total == expected_total, (\n                f\"Action count mismatch for {rating}: {actual_total} != {expected_total}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_lr_up_called_for_positive_delta(self, mock_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.helpful)\n        await apply_feedback(entry, mock_calibrator, config=default_config)\n        mock_calibrator.calibration_lr_up.assert_awaited_once()\n        call_args = mock_calibrator.calibration_lr_up.call_args\n        assert call_args[0][0] == entry.agent_id or call_args[1].get(\"agent_id\") == entry.agent_id, (\n            \"calibration_lr_up should be called with the correct agent_id\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_lr_down_called_for_negative_delta(self, mock_calibrator, default_config):\n        entry = make_entry(rating=FeedbackRating.wrong)\n        await apply_feedback(entry, mock_calibrator, config=default_config)\n        mock_calibrator.calibration_lr_down.assert_awaited_once()\n        call_args = mock_calibrator.calibration_lr_down.call_args\n        # Delta passed should be positive (abs of negative delta)\n        if call_args[0]:\n            delta_arg = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get(\"delta\")\n        else:\n            delta_arg = call_args[1].get(\"delta\")\n        assert delta_arg > 0, f\"calibration_lr_down should receive abs(delta), got {delta_arg}\"\n\n    @pytest.mark.asyncio\n    async def test_already_knew_all_dimensions_enabled(self, mock_calibrator, all_enabled_config):\n        entry = make_entry(rating=FeedbackRating.already_knew)\n        result = await apply_feedback(entry, mock_calibrator, config=all_enabled_config)\n        assert result.status == FeedbackStatus.applied, (\n            f\"With all dimensions enabled, already_knew should be 'applied', got {result.status}\"\n        )\n        assert len(result.applied_actions) == 2\n        assert len(result.skipped_actions) == 0\n\n\n# ---------------------------------------------------------------------------\n# 4. test_process_feedback_batch\n# ---------------------------------------------------------------------------\n\nclass TestProcessFeedbackBatch:\n    \"\"\"Tests for process_feedback_batch async function.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_empty_batch(self, mock_calibrator, default_config):\n        results = await process_feedback_batch([], mock_calibrator, config=default_config)\n        assert len(results) == 0, \"Empty batch should return empty results\"\n\n    @pytest.mark.asyncio\n    async def test_single_entry(self, mock_calibrator, default_config):\n        entries = [make_entry(rating=FeedbackRating.helpful)]\n        results = await process_feedback_batch(entries, mock_calibrator, config=default_config)\n        assert len(results) == 1\n        assert results[0].status == FeedbackStatus.applied\n\n    @pytest.mark.asyncio\n    async def test_multiple_entries(self, mock_calibrator, default_config, sample_entries):\n        results = await process_feedback_batch(\n            sample_entries, mock_calibrator, config=default_config\n        )\n        assert len(results) == len(sample_entries), (\n            f\"Expected {len(sample_entries)} results, got {len(results)}\"\n        )\n        for r, e in zip(results, sample_entries):\n            assert r.feedback_id == e.feedback_id, (\n                f\"Result feedback_id {r.feedback_id} != entry feedback_id {e.feedback_id}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_partial_failure_continues(self, default_config):\n        \"\"\"If calibrator fails on 2nd entry, 1st and 3rd should still succeed.\"\"\"\n        entries = [\n            make_entry(rating=FeedbackRating.helpful),\n            make_entry(rating=FeedbackRating.wrong),\n            make_entry(rating=FeedbackRating.helpful),\n        ]\n\n        call_count = 0\n\n        async def conditional_lr_up(agent_id, delta):\n            pass  # Always succeeds\n\n        async def conditional_lr_down(agent_id, delta):\n            raise RuntimeError(\"Calibrator error on lr_down\")\n\n        calibrator = AsyncMock()\n        calibrator.calibration_lr_up = AsyncMock(side_effect=conditional_lr_up)\n        calibrator.calibration_lr_down = AsyncMock(side_effect=conditional_lr_down)\n\n        results = await process_feedback_batch(entries, calibrator, config=default_config)\n        assert len(results) == 3, f\"Expected 3 results, got {len(results)}\"\n        assert results[0].status == FeedbackStatus.applied, \"1st entry should succeed\"\n        assert results[1].status == FeedbackStatus.skipped, \"2nd entry should be skipped (error)\"\n        assert len(results[1].reason) > 0, \"Failed entry should have a reason\"\n        assert results[2].status == FeedbackStatus.applied, \"3rd entry should succeed\"\n\n    @pytest.mark.asyncio\n    async def test_all_fail(self, failing_calibrator, default_config):\n        entries = [\n            make_entry(rating=FeedbackRating.helpful),\n            make_entry(rating=FeedbackRating.wrong),\n        ]\n        results = await process_feedback_batch(\n            entries, failing_calibrator, config=default_config\n        )\n        assert len(results) == 2\n        assert all(r.status == FeedbackStatus.skipped for r in results), (\n            \"All entries should be skipped when calibrator always fails\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_order_preserved(self, mock_calibrator, default_config):\n        entries = [make_entry(rating=FeedbackRating.helpful) for _ in range(5)]\n        results = await process_feedback_batch(entries, mock_calibrator, config=default_config)\n        result_ids = [r.feedback_id for r in results]\n        entry_ids = [e.feedback_id for e in entries]\n        assert result_ids == entry_ids, \"Results must be in same order as input entries\"\n\n    @pytest.mark.asyncio\n    async def test_large_batch(self, mock_calibrator, default_config):\n        entries = [make_entry(rating=FeedbackRating.helpful) for _ in range(100)]\n        results = await process_feedback_batch(entries, mock_calibrator, config=default_config)\n        assert len(results) == 100, f\"Expected 100 results, got {len(results)}\"\n        assert all(r.status == FeedbackStatus.applied for r in results), (\n            \"All entries in large batch should be applied\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_end_to_end_all_ratings(self, mock_calibrator, default_config, sample_entries):\n        \"\"\"Integration: process one of each rating and verify statuses.\"\"\"\n        results = await process_feedback_batch(\n            sample_entries, mock_calibrator, config=default_config\n        )\n        assert len(results) == 4\n\n        # helpful -> applied, wrong -> applied, irrelevant -> applied, already_knew -> partial\n        assert results[0].status == FeedbackStatus.applied, \"helpful should be applied\"\n        assert results[1].status == FeedbackStatus.applied, \"wrong should be applied\"\n        assert results[2].status == FeedbackStatus.applied, \"irrelevant should be applied\"\n        assert results[3].status == FeedbackStatus.partial, \"already_knew should be partial\"\n\n\n# ---------------------------------------------------------------------------\n# 5. test_load_feedback\n# ---------------------------------------------------------------------------\n\nclass TestLoadFeedback:\n    \"\"\"Tests for load_feedback async I/O function.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_load_valid_file(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        entries = [make_entry(rating=r) for r in [FeedbackRating.helpful, FeedbackRating.wrong, FeedbackRating.irrelevant]]\n        lines = [entry_to_jsonl_line(e) for e in entries]\n        fpath.write_text(\"\\n\".join(lines) + \"\\n\")\n\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 3, f\"Expected 3 entries, got {len(loaded)}\"\n        assert loaded[0].feedback_id == entries[0].feedback_id\n        assert loaded[2].feedback_id == entries[2].feedback_id\n\n    @pytest.mark.asyncio\n    async def test_load_empty_file(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        fpath.write_text(\"\")\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 0, \"Empty file should return empty list\"\n\n    @pytest.mark.asyncio\n    async def test_load_file_not_found(self, tmp_path):\n        fpath = tmp_path / \"nonexistent\" / \"feedback.jsonl\"\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 0, \"Non-existent file should return empty list\"\n\n    @pytest.mark.asyncio\n    async def test_load_skips_blank_and_comment_lines(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        e1 = make_entry(rating=FeedbackRating.helpful)\n        e2 = make_entry(rating=FeedbackRating.wrong)\n        content = (\n            entry_to_jsonl_line(e1) + \"\\n\"\n            + \"\\n\"\n            + \"# This is a comment\\n\"\n            + \"\\n\"\n            + entry_to_jsonl_line(e2) + \"\\n\"\n        )\n        fpath.write_text(content)\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 2, f\"Expected 2 entries (skipping blanks/comments), got {len(loaded)}\"\n\n    @pytest.mark.asyncio\n    async def test_load_corrupt_line_raises_parse_error(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        e1 = make_entry(rating=FeedbackRating.helpful)\n        content = entry_to_jsonl_line(e1) + \"\\n\" + \"{invalid json\\n\"\n        fpath.write_text(content)\n        with pytest.raises(Exception) as exc_info:\n            await load_feedback(str(fpath))\n        # Should be FeedbackParseError or similar\n        assert \"parse\" in str(type(exc_info.value).__name__).lower() or \"Parse\" in str(exc_info.value) or \"json\" in str(exc_info.value).lower(), (\n            f\"Expected parse-related error, got {type(exc_info.value).__name__}: {exc_info.value}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_load_permission_error(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        fpath.write_text(\"some content\\n\")\n        fpath.chmod(0o000)\n        try:\n            with pytest.raises(Exception) as exc_info:\n                await load_feedback(str(fpath))\n            # Should be FeedbackIOError or PermissionError\n            error_type = type(exc_info.value).__name__\n            assert \"IO\" in error_type or \"Permission\" in error_type or \"permission\" in str(exc_info.value).lower(), (\n                f\"Expected IO/Permission error, got {error_type}: {exc_info.value}\"\n            )\n        finally:\n            fpath.chmod(0o644)  # Restore for cleanup\n\n\n# ---------------------------------------------------------------------------\n# 6. test_append_feedback\n# ---------------------------------------------------------------------------\n\nclass TestAppendFeedback:\n    \"\"\"Tests for append_feedback async I/O function.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_append_creates_new_file_and_dirs(self, tmp_path):\n        fpath = tmp_path / \"subdir\" / \"deep\" / \"feedback.jsonl\"\n        entry = make_entry(rating=FeedbackRating.helpful)\n        await append_feedback(entry, str(fpath))\n        assert fpath.exists(), \"File should be created\"\n        lines = fpath.read_text().strip().splitlines()\n        assert len(lines) == 1, f\"Expected 1 line, got {len(lines)}\"\n\n    @pytest.mark.asyncio\n    async def test_append_to_existing_preserves_content(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        e1 = make_entry(rating=FeedbackRating.helpful)\n        e2 = make_entry(rating=FeedbackRating.wrong)\n        # Write initial content\n        fpath.write_text(entry_to_jsonl_line(e1) + \"\\n\" + entry_to_jsonl_line(e2) + \"\\n\")\n        original_lines = fpath.read_text().strip().splitlines()\n\n        # Append new entry\n        e3 = make_entry(rating=FeedbackRating.irrelevant)\n        await append_feedback(e3, str(fpath))\n\n        new_lines = fpath.read_text().strip().splitlines()\n        assert len(new_lines) == 3, f\"Expected 3 lines, got {len(new_lines)}\"\n        assert new_lines[0] == original_lines[0], \"First line should be unchanged\"\n        assert new_lines[1] == original_lines[1], \"Second line should be unchanged\"\n\n    @pytest.mark.asyncio\n    async def test_append_roundtrip(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        entry = make_entry(\n            rating=FeedbackRating.wrong,\n            finding_id=\"finding-rt-001\",\n            agent_id=\"agent-rt-001\",\n        )\n        await append_feedback(entry, str(fpath))\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 1\n        assert loaded[0].feedback_id == entry.feedback_id\n        assert loaded[0].rating == entry.rating\n        assert loaded[0].agent_id == entry.agent_id\n        assert loaded[0].finding_id == entry.finding_id\n\n    @pytest.mark.asyncio\n    async def test_append_newline_terminated(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        entry = make_entry(rating=FeedbackRating.helpful)\n        await append_feedback(entry, str(fpath))\n        content = fpath.read_text()\n        assert content.endswith(\"\\n\"), \"Appended content must end with newline\"\n\n    @pytest.mark.asyncio\n    async def test_append_preserves_existing_as_prefix(self, tmp_path):\n        fpath = tmp_path / \"feedback.jsonl\"\n        e1 = make_entry(rating=FeedbackRating.helpful)\n        await append_feedback(e1, str(fpath))\n        original_content = fpath.read_text()\n\n        e2 = make_entry(rating=FeedbackRating.wrong)\n        await append_feedback(e2, str(fpath))\n        new_content = fpath.read_text()\n        assert new_content.startswith(original_content), (\n            \"New content must start with original content (append-only)\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_append_multiple_roundtrip(self, tmp_path):\n        \"\"\"Append 5 entries, then load and verify all are present in order.\"\"\"\n        fpath = tmp_path / \"feedback.jsonl\"\n        entries = [make_entry(rating=r) for r in [\n            FeedbackRating.helpful,\n            FeedbackRating.wrong,\n            FeedbackRating.irrelevant,\n            FeedbackRating.already_knew,\n            FeedbackRating.helpful,\n        ]]\n        for e in entries:\n            await append_feedback(e, str(fpath))\n\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 5\n        for i in range(5):\n            assert loaded[i].feedback_id == entries[i].feedback_id, (\n                f\"Entry {i} feedback_id mismatch\"\n            )\n\n\n# ---------------------------------------------------------------------------\n# 7. Model validation and immutability tests\n# ---------------------------------------------------------------------------\n\nclass TestModelValidation:\n    \"\"\"Tests for Pydantic model validation and immutability invariants.\"\"\"\n\n    def test_feedback_entry_frozen(self):\n        entry = make_entry(rating=FeedbackRating.helpful)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            entry.rating = FeedbackRating.wrong  # type: ignore[misc]\n\n    def test_calibration_action_frozen(self):\n        action = CalibrationAction(\n            dimension=CalibrationDimension.agent_confidence,\n            delta=0.05,\n            description=\"test\",\n        )\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            action.delta = 0.99  # type: ignore[misc]\n\n    def test_feedback_result_frozen(self):\n        result = FeedbackResult(\n            feedback_id=_make_uuid(),\n            applied_actions=[],\n            skipped_actions=[],\n            status=FeedbackStatus.applied,\n        )\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.status = FeedbackStatus.skipped  # type: ignore[misc]\n\n    def test_feedback_entry_rejects_invalid_uuid(self):\n        with pytest.raises(Exception) as exc_info:\n            FeedbackEntry(\n                feedback_id=\"not-a-uuid\",\n                finding_id=\"finding-001\",\n                agent_id=\"agent-001\",\n                rating=FeedbackRating.helpful,\n                timestamp=_make_timestamp(),\n            )\n        assert \"feedback_id\" in str(exc_info.value).lower() or \"uuid\" in str(exc_info.value).lower(), (\n            f\"Error should mention feedback_id: {exc_info.value}\"\n        )\n\n    def test_feedback_entry_rejects_empty_finding_id(self):\n        with pytest.raises(Exception) as exc_info:\n            FeedbackEntry(\n                feedback_id=_make_uuid(),\n                finding_id=\"\",\n                agent_id=\"agent-001\",\n                rating=FeedbackRating.helpful,\n                timestamp=_make_timestamp(),\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"finding_id\" in error_str or \"empty\" in error_str or \"length\" in error_str, (\n            f\"Error should mention finding_id: {exc_info.value}\"\n        )\n\n    def test_feedback_entry_rejects_empty_agent_id(self):\n        with pytest.raises(Exception) as exc_info:\n            FeedbackEntry(\n                feedback_id=_make_uuid(),\n                finding_id=\"finding-001\",\n                agent_id=\"\",\n                rating=FeedbackRating.helpful,\n                timestamp=_make_timestamp(),\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"agent_id\" in error_str or \"empty\" in error_str or \"length\" in error_str, (\n            f\"Error should mention agent_id: {exc_info.value}\"\n        )\n\n    def test_calibration_action_rejects_delta_out_of_range(self):\n        with pytest.raises(Exception) as exc_info:\n            CalibrationAction(\n                dimension=CalibrationDimension.agent_confidence,\n                delta=1.5,\n                description=\"test\",\n            )\n        assert \"delta\" in str(exc_info.value).lower() or \"range\" in str(exc_info.value).lower(), (\n            f\"Error should mention delta: {exc_info.value}\"\n        )\n\n    def test_calibration_action_rejects_delta_below_minus_one(self):\n        with pytest.raises(Exception):\n            CalibrationAction(\n                dimension=CalibrationDimension.agent_confidence,\n                delta=-1.5,\n                description=\"test\",\n            )\n\n    def test_feedback_entry_rejects_non_utc_timestamp(self):\n        with pytest.raises(Exception) as exc_info:\n            FeedbackEntry(\n                feedback_id=_make_uuid(),\n                finding_id=\"finding-001\",\n                agent_id=\"agent-001\",\n                rating=FeedbackRating.helpful,\n                timestamp=\"2024-01-01T00:00:00-05:00\",\n            )\n        error_str = str(exc_info.value).lower()\n        assert \"timestamp\" in error_str or \"utc\" in error_str or \"iso\" in error_str, (\n            f\"Error should mention timestamp: {exc_info.value}\"\n        )\n\n    def test_feedback_entry_accepts_z_timestamp(self):\n        entry = FeedbackEntry(\n            feedback_id=_make_uuid(),\n            finding_id=\"finding-001\",\n            agent_id=\"agent-001\",\n            rating=FeedbackRating.helpful,\n            timestamp=\"2024-06-15T12:30:45.123456Z\",\n        )\n        assert entry.timestamp == \"2024-06-15T12:30:45.123456Z\"\n\n    def test_feedback_entry_accepts_plus_zero_offset(self):\n        entry = FeedbackEntry(\n            feedback_id=_make_uuid(),\n            finding_id=\"finding-001\",\n            agent_id=\"agent-001\",\n            rating=FeedbackRating.helpful,\n            timestamp=\"2024-06-15T12:30:45+00:00\",\n        )\n        assert \"+00:00\" in entry.timestamp\n\n    def test_calibration_action_rejects_empty_description(self):\n        with pytest.raises(Exception):\n            CalibrationAction(\n                dimension=CalibrationDimension.agent_confidence,\n                delta=0.05,\n                description=\"\",\n            )\n\n\n# ---------------------------------------------------------------------------\n# 8. Config invariants\n# ---------------------------------------------------------------------------\n\nclass TestFeedbackCalibrationConfig:\n    \"\"\"Tests for FeedbackCalibrationConfig defaults and invariants.\"\"\"\n\n    def test_default_enabled_dimensions(self):\n        config = FeedbackCalibrationConfig()\n        dims = config.enabled_dimensions\n        assert \"agent_confidence\" in dims, \"agent_confidence should be in default enabled_dimensions\"\n        assert len(dims) == 1, f\"Default should have 1 enabled dimension, got {len(dims)}\"\n\n    def test_default_wrong_gt_irrelevant(self):\n        config = FeedbackCalibrationConfig()\n        assert config.wrong_confidence_delta > config.irrelevant_confidence_delta, (\n            f\"wrong_confidence_delta ({config.wrong_confidence_delta}) should be > \"\n            f\"irrelevant_confidence_delta ({config.irrelevant_confidence_delta})\"\n        )\n\n    def test_default_delta_values(self):\n        config = FeedbackCalibrationConfig()\n        assert config.helpful_confidence_delta == pytest.approx(0.05)\n        assert config.wrong_confidence_delta == pytest.approx(0.08)\n        assert config.irrelevant_confidence_delta == pytest.approx(0.03)\n        assert config.already_knew_confidence_delta == pytest.approx(0.02)\n        assert config.already_knew_surfacing_priority_delta == pytest.approx(0.04)\n\n    def test_all_deltas_positive(self):\n        \"\"\"All config delta magnitudes are positive (sign determined by mapping logic).\"\"\"\n        config = FeedbackCalibrationConfig()\n        assert config.helpful_confidence_delta > 0\n        assert config.wrong_confidence_delta > 0\n        assert config.irrelevant_confidence_delta > 0\n        assert config.already_knew_confidence_delta > 0\n        assert config.already_knew_surfacing_priority_delta > 0\n\n    def test_custom_enabled_dimensions(self):\n        config = FeedbackCalibrationConfig(\n            enabled_dimensions=[\"agent_confidence\", \"surfacing_priority\"]\n        )\n        assert \"agent_confidence\" in config.enabled_dimensions\n        assert \"surfacing_priority\" in config.enabled_dimensions\n        assert len(config.enabled_dimensions) == 2\n\n\n# ---------------------------------------------------------------------------\n# 9. Enum completeness tests\n# ---------------------------------------------------------------------------\n\nclass TestEnums:\n    \"\"\"Tests verifying enum variants match contract specification.\"\"\"\n\n    def test_feedback_rating_variants(self):\n        variants = {r.value for r in FeedbackRating}\n        expected = {\"helpful\", \"wrong\", \"irrelevant\", \"already_knew\"}\n        assert variants == expected, f\"FeedbackRating variants {variants} != expected {expected}\"\n\n    def test_calibration_dimension_variants(self):\n        variants = {d.value for d in CalibrationDimension}\n        expected = {\"agent_confidence\", \"surfacing_priority\", \"business_weight\", \"familiarity_weight\"}\n        assert variants == expected, f\"CalibrationDimension variants {variants} != expected {expected}\"\n\n    def test_feedback_status_variants(self):\n        variants = {s.value for s in FeedbackStatus}\n        expected = {\"applied\", \"partial\", \"skipped\"}\n        assert variants == expected, f\"FeedbackStatus variants {variants} != expected {expected}\"\n\n\n# ---------------------------------------------------------------------------\n# 10. Integration tests\n# ---------------------------------------------------------------------------\n\nclass TestIntegration:\n    \"\"\"End-to-end integration tests combining multiple functions.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_full_pipeline_all_ratings(self, mock_calibrator, default_config):\n        \"\"\"Process one entry per rating type, verify combined results.\"\"\"\n        entries = [\n            make_entry(rating=FeedbackRating.helpful),\n            make_entry(rating=FeedbackRating.wrong),\n            make_entry(rating=FeedbackRating.irrelevant),\n            make_entry(rating=FeedbackRating.already_knew),\n        ]\n        results = await process_feedback_batch(entries, mock_calibrator, config=default_config)\n        assert len(results) == 4\n\n        # helpful, wrong, irrelevant -> applied; already_knew -> partial\n        assert results[0].status == FeedbackStatus.applied\n        assert results[1].status == FeedbackStatus.applied\n        assert results[2].status == FeedbackStatus.applied\n        assert results[3].status == FeedbackStatus.partial\n\n    @pytest.mark.asyncio\n    async def test_all_dimensions_enabled_no_partial(self, mock_calibrator, all_enabled_config):\n        \"\"\"With all dimensions enabled, already_knew should be fully applied.\"\"\"\n        entry = make_entry(rating=FeedbackRating.already_knew)\n        result = await apply_feedback(entry, mock_calibrator, config=all_enabled_config)\n        assert result.status == FeedbackStatus.applied\n        assert len(result.applied_actions) == 2\n        assert len(result.skipped_actions) == 0\n\n    @pytest.mark.asyncio\n    async def test_append_load_roundtrip_batch(self, tmp_path, mock_calibrator, default_config):\n        \"\"\"Append entries, load them, process batch, verify results.\"\"\"\n        fpath = tmp_path / \".stigmergy\" / \"feedback.jsonl\"\n        entries = [\n            make_entry(rating=FeedbackRating.helpful),\n            make_entry(rating=FeedbackRating.wrong),\n        ]\n        for e in entries:\n            await append_feedback(e, str(fpath))\n\n        loaded = await load_feedback(str(fpath))\n        assert len(loaded) == 2\n\n        results = await process_feedback_batch(loaded, mock_calibrator, config=default_config)\n        assert len(results) == 2\n        assert results[0].feedback_id == entries[0].feedback_id\n        assert results[1].feedback_id == entries[1].feedback_id\n\n    @pytest.mark.asyncio\n    async def test_map_filter_apply_pipeline(self, mock_calibrator, default_config):\n        \"\"\"Manually exercise map -> filter -> apply to verify pipeline coherence.\"\"\"\n        entry = make_entry(rating=FeedbackRating.already_knew)\n\n        # Step 1: map\n        actions = map_rating_to_actions(entry.rating, config=default_config)\n        assert len(actions) == 2\n\n        # Step 2: filter\n        partition = filter_enabled_actions(actions, config=default_config)\n        assert len(partition.enabled) == 1\n        assert len(partition.skipped) == 1\n\n        # Step 3: apply\n        result = await apply_feedback(entry, mock_calibrator, config=default_config)\n        assert result.status == FeedbackStatus.partial\n        assert len(result.applied_actions) == len(partition.enabled)\n        assert len(result.skipped_actions) == len(partition.skipped)\n"
+}

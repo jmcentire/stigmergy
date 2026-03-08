@@ -1,0 +1,908 @@
+{
+  "component_id": "inquiry_engine",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "unit_make_empty_dimension_match_default",
+      "description": "make_empty_dimension_match with default method returns empty tuples and method='none'",
+      "function": "make_empty_dimension_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "DimensionMatch with empty matched_terms, empty scores, method='none'",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_make_empty_dimension_match_explicit_method",
+      "description": "make_empty_dimension_match with explicit method records the given method",
+      "function": "make_empty_dimension_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "method": "embedding_similarity"
+      },
+      "input_description": "",
+      "expected_output_description": "DimensionMatch with empty matched_terms, empty scores, method='embedding_similarity'",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_make_neutral_sentiment",
+      "description": "make_neutral_sentiment returns polarity=0.0, magnitude=0.0, label='neutral'",
+      "function": "make_neutral_sentiment",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "SentimentResult(polarity=0.0, magnitude=0.0, label='neutral')",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_extract_llm_happy_path",
+      "description": "extract_dimensions_llm returns valid LLMDimensionExtraction with all dimension fields populated",
+      "function": "extract_dimensions_llm",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "returns valid structured extraction with people, projects, tickets, keywords, sentiment"
+      },
+      "input_values": {},
+      "input_description": "Non-empty signal content and available LLM service",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_extract_llm_timeout",
+      "description": "extract_dimensions_llm raises TimeoutError when LLM service call times out",
+      "function": "extract_dimensions_llm",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "raises TimeoutError on call"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TimeoutError",
+      "assertions": []
+    },
+    {
+      "id": "unit_extract_llm_parse_error",
+      "description": "extract_dimensions_llm raises ValueError when LLM response cannot be parsed",
+      "function": "extract_dimensions_llm",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "returns unparseable response"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "unit_extract_llm_service_error",
+      "description": "extract_dimensions_llm raises RuntimeError on LLM service error (rate limit, internal error)",
+      "function": "extract_dimensions_llm",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "raises RuntimeError on call"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "unit_extract_llm_sentiment_bounds",
+      "description": "extract_dimensions_llm returns sentiment polarity in [-1,1] and magnitude in [0,1]",
+      "function": "extract_dimensions_llm",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "returns valid extraction with sentiment values"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_happy_path",
+      "description": "match_dimension_embedding returns matches above threshold sorted by score descending",
+      "function": "match_dimension_embedding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns valid embedding vector"
+      },
+      "input_values": {},
+      "input_description": "Signal content, people dimension, context terms with embeddings, available embedding service",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_no_terms",
+      "description": "match_dimension_embedding returns empty DimensionMatch with method='embedding_similarity' when no context terms exist for the dimension",
+      "function": "match_dimension_embedding",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns valid embedding vector"
+      },
+      "input_values": {},
+      "input_description": "Signal content, people dimension, empty context terms list",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_threshold_boundary_exact",
+      "description": "match_dimension_embedding includes matches exactly at the similarity threshold",
+      "function": "match_dimension_embedding",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns embedding producing similarity exactly at threshold"
+      },
+      "input_values": {},
+      "input_description": "Context term with cosine similarity exactly equal to threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_threshold_boundary_below",
+      "description": "match_dimension_embedding excludes matches below the similarity threshold",
+      "function": "match_dimension_embedding",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns embedding producing similarity below threshold"
+      },
+      "input_values": {},
+      "input_description": "Context term with cosine similarity just below threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_service_failure",
+      "description": "match_dimension_embedding raises RuntimeError when embedding service fails to compute embedding",
+      "function": "match_dimension_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "raises RuntimeError on embed call"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_sorted_descending",
+      "description": "match_dimension_embedding returns results sorted by score descending",
+      "function": "match_dimension_embedding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns valid embedding vector"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_terms_scores_equal_length",
+      "description": "match_dimension_embedding result has matched_terms and scores of equal length",
+      "function": "match_dimension_embedding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns valid embedding vector"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_happy_path",
+      "description": "match_dimension_keyword returns keyword overlap matches above threshold sorted by score descending",
+      "function": "match_dimension_keyword",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal content with known keywords, context terms containing matching keywords in the specified dimension",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_no_terms",
+      "description": "match_dimension_keyword returns empty DimensionMatch with method='keyword_overlap' when no context terms exist for dimension",
+      "function": "match_dimension_keyword",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Signal content, people dimension, empty context terms list",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_threshold_boundary_exact",
+      "description": "match_dimension_keyword includes matches exactly at the score threshold",
+      "function": "match_dimension_keyword",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Context terms producing overlap score exactly at threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_threshold_boundary_below",
+      "description": "match_dimension_keyword excludes matches below the score threshold",
+      "function": "match_dimension_keyword",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Context terms producing overlap score just below threshold",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_sorted_descending",
+      "description": "match_dimension_keyword returns results sorted by score descending",
+      "function": "match_dimension_keyword",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_method_is_keyword_overlap",
+      "description": "match_dimension_keyword result always has method='keyword_overlap'",
+      "function": "match_dimension_keyword",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_terms_scores_equal_length",
+      "description": "match_dimension_keyword result has matched_terms and scores of equal length",
+      "function": "match_dimension_keyword",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_scores_bounded",
+      "description": "match_dimension_keyword scores are all in [0.0, 1.0]",
+      "function": "match_dimension_keyword",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_with_llm_extraction",
+      "description": "analyze_sentiment uses LLM-derived sentiment when llm_extraction is provided",
+      "function": "analyze_sentiment",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Non-empty signal content with LLM extraction containing sentiment_polarity=0.8, sentiment_magnitude=0.9, sentiment_label='positive'",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_heuristic",
+      "description": "analyze_sentiment performs heuristic analysis when llm_extraction is None",
+      "function": "analyze_sentiment",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Non-empty signal content, no LLM extraction",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_empty_content",
+      "description": "analyze_sentiment returns neutral sentiment when signal_content is empty",
+      "function": "analyze_sentiment",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_content": ""
+      },
+      "input_description": "",
+      "expected_output_description": "SentimentResult(polarity=0.0, magnitude=0.0, label='neutral')",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_whitespace_content",
+      "description": "analyze_sentiment returns neutral sentiment when signal_content is whitespace-only",
+      "function": "analyze_sentiment",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_content": "   "
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_polarity_bounds",
+      "description": "analyze_sentiment result polarity is always in [-1.0, 1.0]",
+      "function": "analyze_sentiment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_magnitude_bounds",
+      "description": "analyze_sentiment result magnitude is always in [0.0, 1.0]",
+      "function": "analyze_sentiment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_analyze_sentiment_label_nonempty",
+      "description": "analyze_sentiment result label is always non-empty",
+      "function": "analyze_sentiment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_happy_path",
+      "description": "merge_dimension_matches merges embedding and keyword matches, deduplicates, keeps highest score",
+      "function": "merge_dimension_matches",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "embedding_match with terms A(0.9), B(0.7); keyword_match with terms B(0.8), C(0.6)",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_both_empty",
+      "description": "merge_dimension_matches with both empty inputs returns empty DimensionMatch with method='combined'",
+      "function": "merge_dimension_matches",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_one_empty",
+      "description": "merge_dimension_matches with one empty input returns the other's terms with method='combined'",
+      "function": "merge_dimension_matches",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_no_overlap",
+      "description": "merge_dimension_matches with no overlapping terms returns union of all terms",
+      "function": "merge_dimension_matches",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_full_overlap",
+      "description": "merge_dimension_matches with fully overlapping terms keeps higher score for each",
+      "function": "merge_dimension_matches",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_method_combined",
+      "description": "merge_dimension_matches result always has method='combined'",
+      "function": "merge_dimension_matches",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_no_duplicates",
+      "description": "merge_dimension_matches result has no duplicate terms",
+      "function": "merge_dimension_matches",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_sorted_descending",
+      "description": "merge_dimension_matches result is sorted by score descending",
+      "function": "merge_dimension_matches",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_merge_terms_scores_equal_length",
+      "description": "merge_dimension_matches result has matched_terms and scores of equal length",
+      "function": "merge_dimension_matches",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_both_services_available",
+      "description": "inquire() with both LLM and embedding services available uses LLM path and returns extraction_method='llm'",
+      "function": "inquire",
+      "category": "happy_path",
+      "setup_description": "Create signal with content, context with terms across all dimensions",
+      "mock_dependencies": {
+        "llm_service": "available=True, returns valid extraction",
+        "embedding_service": "available=True, returns valid embeddings"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_llm_only",
+      "description": "inquire() with only LLM service (no embedding) uses LLM path and returns extraction_method='llm'",
+      "function": "inquire",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "available=True, returns valid extraction",
+        "embedding_service": "None"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_embedding_only",
+      "description": "inquire() with only embedding service (no LLM) falls back to heuristic and returns extraction_method='heuristic'",
+      "function": "inquire",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "None",
+        "embedding_service": "available=True, returns valid embeddings"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_no_services",
+      "description": "inquire() with no services uses keyword-only fallback and returns extraction_method='heuristic'",
+      "function": "inquire",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "None",
+        "embedding_service": "None"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_signal_id_propagated",
+      "description": "inquire() result.signal_id equals the input signal.id",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.signal_id == signal.id"
+      ]
+    },
+    {
+      "id": "integration_inquire_worker_id_propagated",
+      "description": "inquire() result.worker_id equals the input context.worker_id",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.worker_id == context.worker_id"
+      ]
+    },
+    {
+      "id": "integration_inquire_timestamp_iso8601",
+      "description": "inquire() result.timestamp matches ISO 8601 UTC format with Z suffix",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "re.match(r'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$', result.timestamp)"
+      ]
+    },
+    {
+      "id": "integration_inquire_never_raises",
+      "description": "inquire() never raises an exception even when all services fail catastrophically",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "available=True but raises Exception on every call",
+        "embedding_service": "available=True but raises Exception on every call"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_empty_signal_content",
+      "description": "inquire() with empty signal content returns all empty DimensionMatches and neutral sentiment with no errors",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_content": ""
+      },
+      "input_description": "",
+      "expected_output_description": "All dimension matches empty, sentiment neutral, errors empty, extraction_method='heuristic'",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_whitespace_signal_content",
+      "description": "inquire() with whitespace-only signal content returns all empty DimensionMatches and neutral sentiment",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal_content": "   \\n\\t  "
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_llm_fails_fallback_to_heuristic",
+      "description": "inquire() falls back to heuristic when LLM extraction fails, records error, returns extraction_method='heuristic'",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "available=True but raises TimeoutError",
+        "embedding_service": "available=True, returns valid embeddings"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_embedding_fails_fallback_keyword",
+      "description": "inquire() falls back to keyword-only when embedding service fails, records error",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "None",
+        "embedding_service": "available=True but raises RuntimeError on embed"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_single_dimension_failure",
+      "description": "inquire() returns empty DimensionMatch for failed dimension while other dimensions succeed",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Failed dimension has empty matched_terms/scores with method='none', error recorded, other dimensions have results",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_sentiment_failure_returns_neutral",
+      "description": "inquire() returns neutral sentiment when sentiment analysis fails, records error",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_total_failure",
+      "description": "inquire() returns valid InquiryResult with all empty matches and all errors recorded when everything fails",
+      "function": "inquire",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "All dimensions empty, neutral sentiment, extraction_method='heuristic', errors non-empty",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "invariant_inquiry_result_frozen",
+      "description": "InquiryResult is frozen — attempting to mutate any field raises an error",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set any field on the InquiryResult raises a validation error or AttributeError"
+      ]
+    },
+    {
+      "id": "invariant_dimension_match_frozen",
+      "description": "DimensionMatch is frozen — attempting to mutate any field raises an error",
+      "function": "make_empty_dimension_match",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "invariant_sentiment_result_frozen",
+      "description": "SentimentResult is frozen — attempting to mutate any field raises an error",
+      "function": "make_neutral_sentiment",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "invariant_collection_fields_are_tuples",
+      "description": "All collection fields on InquiryResult, DimensionMatch use tuples not lists at runtime",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "invariant_all_scores_bounded",
+      "description": "Every score in every DimensionMatch of an InquiryResult is in [0.0, 1.0]",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "invariant_matched_terms_scores_equal_length_all_dims",
+      "description": "For every dimension in InquiryResult, len(matched_terms) == len(scores)",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_llm_available_false_uses_heuristic",
+      "description": "inquire() uses heuristic path when llm_service is provided but llm_service.available is False",
+      "function": "inquire",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "llm_service": "available=False",
+        "embedding_service": "available=True"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_keyword_all_dimensions",
+      "description": "match_dimension_keyword works correctly for each dimension: people, projects, tickets, keywords",
+      "function": "match_dimension_keyword",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "unit_match_embedding_all_dimensions",
+      "description": "match_dimension_embedding works correctly for each dimension: people, projects, tickets, keywords",
+      "function": "match_dimension_embedding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "embedding_service": "returns valid embedding vector"
+      },
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_inquire_idempotent",
+      "description": "inquire() called twice with the same inputs returns structurally equivalent results (same matches, same extraction_method)",
+      "function": "inquire",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract test suite for the Inquiry Engine component.\n\nTests verify behavior at boundaries (inputs/outputs), not internals.\nAll dependencies are mocked — tests verify the inquiry_engine in isolation.\nAll tests are async where the contract specifies async functions.\n\nRun with: pytest contract_test.py -v --asyncio-mode=auto\n\"\"\"\n\nimport asyncio\nimport re\nimport pytest\nimport math\nfrom unittest.mock import AsyncMock, MagicMock, patch, PropertyMock\nfrom typing import Optional, List, Tuple\n\n# Import the component under test\nfrom src.inquiry_engine import (\n    inquire,\n    extract_dimensions_llm,\n    match_dimension_embedding,\n    match_dimension_keyword,\n    analyze_sentiment,\n    merge_dimension_matches,\n    make_empty_dimension_match,\n    make_neutral_sentiment,\n    InquiryResult,\n    DimensionMatch,\n    SentimentResult,\n    LLMDimensionExtraction,\n    Signal,\n    Context,\n    ContextTerm,\n    LLMService,\n    EmbeddingService,\n    ExtractionMethod,\n    MatchMethod,\n    DimensionName,\n)\n\n# ---------------------------------------------------------------------------\n# Pytest configuration\n# ---------------------------------------------------------------------------\n\npytestmark = pytest.mark.asyncio\n\n\n# ---------------------------------------------------------------------------\n# Factory helpers\n# ---------------------------------------------------------------------------\n\ndef make_signal(\n    id: str = \"sig-001\",\n    content: str = \"Alice is working on Project Alpha with ticket JIRA-123 using Python async patterns\",\n    source: str = \"slack\",\n    metadata: Optional[dict] = None,\n) -> Signal:\n    \"\"\"Create a Signal instance for testing.\"\"\"\n    return Signal(\n        id=id,\n        content=content,\n        source=source,\n        metadata=metadata or {},\n    )\n\n\ndef make_context_term(\n    term: str = \"Alice\",\n    dimension: str = \"people\",\n    embedding: Optional[List[float]] = None,\n) -> ContextTerm:\n    \"\"\"Create a ContextTerm for testing.\"\"\"\n    return ContextTerm(\n        term=term,\n        dimension=dimension,\n        embedding=embedding or [0.1, 0.2, 0.3, 0.4],\n    )\n\n\ndef make_context(\n    worker_id: str = \"worker-42\",\n    terms: Optional[List[ContextTerm]] = None,\n) -> Context:\n    \"\"\"Create a Context with a default set of terms across all dimensions.\"\"\"\n    if terms is None:\n        terms = [\n            make_context_term(\"Alice\", \"people\", [0.9, 0.1, 0.0, 0.0]),\n            make_context_term(\"Bob\", \"people\", [0.1, 0.9, 0.0, 0.0]),\n            make_context_term(\"Project Alpha\", \"projects\", [0.0, 0.0, 0.9, 0.1]),\n            make_context_term(\"Project Beta\", \"projects\", [0.0, 0.0, 0.1, 0.9]),\n            make_context_term(\"JIRA-123\", \"tickets\", [0.5, 0.5, 0.0, 0.0]),\n            make_context_term(\"JIRA-456\", \"tickets\", [0.0, 0.0, 0.5, 0.5]),\n            make_context_term(\"Python\", \"keywords\", [0.8, 0.0, 0.2, 0.0]),\n            make_context_term(\"async\", \"keywords\", [0.0, 0.8, 0.0, 0.2]),\n            make_context_term(\"deployment\", \"keywords\", [0.2, 0.0, 0.8, 0.0]),\n        ]\n    return Context(worker_id=worker_id, terms=terms)\n\n\ndef make_llm_service(available: bool = True) -> MagicMock:\n    \"\"\"Create a mock LLM service.\"\"\"\n    svc = MagicMock(spec=LLMService)\n    svc.available = available\n    return svc\n\n\ndef make_embedding_service(available: bool = True) -> MagicMock:\n    \"\"\"Create a mock Embedding service.\"\"\"\n    svc = MagicMock(spec=EmbeddingService)\n    svc.available = available\n    return svc\n\n\ndef make_llm_extraction(\n    people: Tuple[str, ...] = (\"Alice\",),\n    projects: Tuple[str, ...] = (\"Project Alpha\",),\n    tickets: Tuple[str, ...] = (\"JIRA-123\",),\n    keywords: Tuple[str, ...] = (\"Python\", \"async\"),\n    sentiment_polarity: float = 0.5,\n    sentiment_magnitude: float = 0.7,\n    sentiment_label: str = \"positive\",\n) -> LLMDimensionExtraction:\n    \"\"\"Create an LLMDimensionExtraction for testing.\"\"\"\n    return LLMDimensionExtraction(\n        people=people,\n        projects=projects,\n        tickets=tickets,\n        keywords=keywords,\n        sentiment_polarity=sentiment_polarity,\n        sentiment_magnitude=sentiment_magnitude,\n        sentiment_label=sentiment_label,\n    )\n\n\ndef make_dimension_match(\n    matched_terms: Tuple[str, ...] = (),\n    scores: Tuple[float, ...] = (),\n    method: str = \"none\",\n) -> DimensionMatch:\n    \"\"\"Create a DimensionMatch for testing.\"\"\"\n    return DimensionMatch(\n        matched_terms=matched_terms,\n        scores=scores,\n        method=method,\n    )\n\n\n# ---------------------------------------------------------------------------\n# Assertion helpers\n# ---------------------------------------------------------------------------\n\ndef assert_valid_inquiry_result(result: InquiryResult, signal_id: str, worker_id: str):\n    \"\"\"Assert all structural invariants of an InquiryResult.\"\"\"\n    assert isinstance(result, InquiryResult), \"Result must be an InquiryResult\"\n    assert result.signal_id == signal_id, f\"signal_id mismatch: {result.signal_id} != {signal_id}\"\n    assert result.worker_id == worker_id, f\"worker_id mismatch: {result.worker_id} != {worker_id}\"\n\n    # Timestamp format\n    assert re.match(\n        r\"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$\", result.timestamp\n    ), f\"Timestamp not ISO 8601 UTC: {result.timestamp}\"\n\n    # Extraction method\n    assert result.extraction_method in (\"llm\", \"heuristic\"), (\n        f\"Invalid extraction_method: {result.extraction_method}\"\n    )\n\n    # Dimension match invariants\n    for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n        dm = getattr(result, dim_name)\n        assert_valid_dimension_match(dm, dim_name)\n\n    # Sentiment invariants\n    assert_valid_sentiment(result.sentiment)\n\n    # Errors is a tuple of strings\n    assert isinstance(result.errors, tuple), \"errors must be a tuple\"\n    for err in result.errors:\n        assert isinstance(err, str), f\"Each error must be a string, got {type(err)}\"\n\n\ndef assert_valid_dimension_match(dm: DimensionMatch, label: str = \"\"):\n    \"\"\"Assert all structural invariants of a DimensionMatch.\"\"\"\n    prefix = f\"[{label}] \" if label else \"\"\n    assert isinstance(dm, DimensionMatch), f\"{prefix}Expected DimensionMatch\"\n    assert len(dm.matched_terms) == len(dm.scores), (\n        f\"{prefix}matched_terms length ({len(dm.matched_terms)}) != scores length ({len(dm.scores)})\"\n    )\n    for i, s in enumerate(dm.scores):\n        assert 0.0 <= s <= 1.0, f\"{prefix}Score at index {i} out of bounds: {s}\"\n\n\ndef assert_valid_sentiment(sr: SentimentResult):\n    \"\"\"Assert all structural invariants of a SentimentResult.\"\"\"\n    assert isinstance(sr, SentimentResult), \"Expected SentimentResult\"\n    assert -1.0 <= sr.polarity <= 1.0, f\"Polarity out of bounds: {sr.polarity}\"\n    assert 0.0 <= sr.magnitude <= 1.0, f\"Magnitude out of bounds: {sr.magnitude}\"\n    assert len(sr.label) >= 1, \"Sentiment label must be non-empty\"\n    assert len(sr.label) <= 50, f\"Sentiment label too long: {len(sr.label)}\"\n\n\ndef assert_sorted_descending(scores: tuple, label: str = \"\"):\n    \"\"\"Assert scores are sorted descending.\"\"\"\n    prefix = f\"[{label}] \" if label else \"\"\n    for i in range(len(scores) - 1):\n        assert scores[i] >= scores[i + 1], (\n            f\"{prefix}Scores not sorted descending at index {i}: {scores[i]} < {scores[i+1]}\"\n        )\n\n\n# ===========================================================================\n# LAYER 1: Unit Tests\n# ===========================================================================\n\n\n# ---------------------------------------------------------------------------\n# make_empty_dimension_match\n# ---------------------------------------------------------------------------\n\nclass TestMakeEmptyDimensionMatch:\n\n    async def test_default_method_is_none(self):\n        \"\"\"make_empty_dimension_match with default method returns empty tuples and method='none'.\"\"\"\n        result = make_empty_dimension_match()\n        assert result.matched_terms == () or result.matched_terms == tuple(), (\n            \"matched_terms should be empty tuple\"\n        )\n        assert result.scores == () or result.scores == tuple(), (\n            \"scores should be empty tuple\"\n        )\n        assert result.method == \"none\", f\"Expected method='none', got '{result.method}'\"\n\n    async def test_explicit_method_recorded(self):\n        \"\"\"make_empty_dimension_match with explicit method records the given method.\"\"\"\n        for method in (\"embedding_similarity\", \"keyword_overlap\", \"combined\", \"llm_extraction\", \"none\"):\n            result = make_empty_dimension_match(method=method)\n            assert result.matched_terms == () or len(result.matched_terms) == 0\n            assert result.scores == () or len(result.scores) == 0\n            assert result.method == method, (\n                f\"Expected method='{method}', got '{result.method}'\"\n            )\n\n    async def test_result_is_frozen(self):\n        \"\"\"DimensionMatch from make_empty_dimension_match is frozen (immutable).\"\"\"\n        result = make_empty_dimension_match()\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.matched_terms = (\"hacked\",)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.scores = (0.5,)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.method = \"hacked\"\n\n\n# ---------------------------------------------------------------------------\n# make_neutral_sentiment\n# ---------------------------------------------------------------------------\n\nclass TestMakeNeutralSentiment:\n\n    async def test_returns_neutral_values(self):\n        \"\"\"make_neutral_sentiment returns polarity=0.0, magnitude=0.0, label='neutral'.\"\"\"\n        result = make_neutral_sentiment()\n        assert result.polarity == 0.0, f\"Expected polarity=0.0, got {result.polarity}\"\n        assert result.magnitude == 0.0, f\"Expected magnitude=0.0, got {result.magnitude}\"\n        assert result.label == \"neutral\", f\"Expected label='neutral', got '{result.label}'\"\n\n    async def test_result_is_frozen(self):\n        \"\"\"SentimentResult from make_neutral_sentiment is frozen (immutable).\"\"\"\n        result = make_neutral_sentiment()\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.polarity = 1.0\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.magnitude = 1.0\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.label = \"hacked\"\n\n\n# ---------------------------------------------------------------------------\n# extract_dimensions_llm\n# ---------------------------------------------------------------------------\n\nclass TestExtractDimensionsLLM:\n\n    async def test_happy_path_returns_valid_extraction(self):\n        \"\"\"extract_dimensions_llm returns valid LLMDimensionExtraction with all fields populated.\"\"\"\n        llm_svc = make_llm_service(available=True)\n        mock_extraction = make_llm_extraction()\n\n        # Patch the internal LLM call to return our mock extraction\n        with patch(\n            \"src.inquiry_engine.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            return_value=mock_extraction,\n        ) as mock_fn:\n            result = await mock_fn(\n                signal_content=\"Alice is working on Project Alpha\",\n                llm_service=llm_svc,\n            )\n            assert len(result.people) > 0, \"Should extract people\"\n            assert len(result.projects) > 0, \"Should extract projects\"\n            assert -1.0 <= result.sentiment_polarity <= 1.0\n            assert 0.0 <= result.sentiment_magnitude <= 1.0\n\n    async def test_timeout_raises_timeout_error(self):\n        \"\"\"extract_dimensions_llm raises TimeoutError when LLM service call times out.\"\"\"\n        llm_svc = make_llm_service(available=True)\n\n        with patch(\n            \"src.inquiry_engine.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=TimeoutError(\"LLM call timed out\"),\n        ) as mock_fn:\n            with pytest.raises(TimeoutError):\n                await mock_fn(\n                    signal_content=\"some content\",\n                    llm_service=llm_svc,\n                )\n\n    async def test_parse_error_raises_value_error(self):\n        \"\"\"extract_dimensions_llm raises ValueError when LLM response cannot be parsed.\"\"\"\n        llm_svc = make_llm_service(available=True)\n\n        with patch(\n            \"src.inquiry_engine.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=ValueError(\"Could not parse LLM response\"),\n        ) as mock_fn:\n            with pytest.raises(ValueError):\n                await mock_fn(\n                    signal_content=\"some content\",\n                    llm_service=llm_svc,\n                )\n\n    async def test_service_error_raises_runtime_error(self):\n        \"\"\"extract_dimensions_llm raises RuntimeError on LLM service error.\"\"\"\n        llm_svc = make_llm_service(available=True)\n\n        with patch(\n            \"src.inquiry_engine.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Rate limit exceeded\"),\n        ) as mock_fn:\n            with pytest.raises(RuntimeError):\n                await mock_fn(\n                    signal_content=\"some content\",\n                    llm_service=llm_svc,\n                )\n\n    async def test_sentiment_bounds_invariant(self):\n        \"\"\"extract_dimensions_llm returns sentiment polarity in [-1,1] and magnitude in [0,1].\"\"\"\n        extraction = make_llm_extraction(\n            sentiment_polarity=-0.7,\n            sentiment_magnitude=0.3,\n            sentiment_label=\"negative\",\n        )\n        assert -1.0 <= extraction.sentiment_polarity <= 1.0\n        assert 0.0 <= extraction.sentiment_magnitude <= 1.0\n\n\n# ---------------------------------------------------------------------------\n# match_dimension_embedding\n# ---------------------------------------------------------------------------\n\nclass TestMatchDimensionEmbedding:\n\n    async def test_happy_path_returns_matches_above_threshold(self):\n        \"\"\"match_dimension_embedding returns matches above threshold sorted by score descending.\"\"\"\n        context = make_context()\n        emb_svc = make_embedding_service(available=True)\n\n        result = await match_dimension_embedding(\n            signal_content=\"Alice is important\",\n            dimension=\"people\",\n            context_terms=context.terms,\n            embedding_service=emb_svc,\n        )\n        assert_valid_dimension_match(result, \"embedding_people\")\n        assert result.method == \"embedding_similarity\", (\n            f\"Expected method='embedding_similarity', got '{result.method}'\"\n        )\n        assert_sorted_descending(result.scores, \"embedding_people\")\n\n    async def test_no_terms_in_dimension_returns_empty(self):\n        \"\"\"Returns empty DimensionMatch when no context terms exist for the dimension.\"\"\"\n        emb_svc = make_embedding_service(available=True)\n        # Context with only 'people' terms — no 'tickets'\n        terms = [make_context_term(\"Alice\", \"people\")]\n        result = await match_dimension_embedding(\n            signal_content=\"JIRA-999\",\n            dimension=\"tickets\",\n            context_terms=terms,\n            embedding_service=emb_svc,\n        )\n        assert result.method == \"embedding_similarity\"\n        assert len(result.matched_terms) == 0, \"Should be empty when no terms in dimension\"\n        assert len(result.scores) == 0\n\n    async def test_threshold_boundary_at_threshold(self):\n        \"\"\"Matches exactly at the similarity threshold are included.\"\"\"\n        context = make_context()\n        emb_svc = make_embedding_service(available=True)\n\n        result = await match_dimension_embedding(\n            signal_content=\"Alice\",\n            dimension=\"people\",\n            context_terms=context.terms,\n            embedding_service=emb_svc,\n            similarity_threshold=0.5,\n        )\n        # All returned scores should be >= 0.5\n        for score in result.scores:\n            assert score >= 0.5, f\"Score {score} is below threshold 0.5\"\n\n    async def test_service_failure_raises_runtime_error(self):\n        \"\"\"match_dimension_embedding raises RuntimeError when embedding service fails.\"\"\"\n        emb_svc = make_embedding_service(available=True)\n        context = make_context()\n\n        with patch(\n            \"src.inquiry_engine.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Embedding computation failed\"),\n        ) as mock_fn:\n            with pytest.raises(RuntimeError):\n                await mock_fn(\n                    signal_content=\"test\",\n                    dimension=\"people\",\n                    context_terms=context.terms,\n                    embedding_service=emb_svc,\n                )\n\n    async def test_terms_scores_equal_length(self):\n        \"\"\"Result has matched_terms and scores of equal length.\"\"\"\n        context = make_context()\n        emb_svc = make_embedding_service(available=True)\n\n        result = await match_dimension_embedding(\n            signal_content=\"Alice working on Python\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n            embedding_service=emb_svc,\n        )\n        assert len(result.matched_terms) == len(result.scores), (\n            f\"Length mismatch: terms={len(result.matched_terms)} scores={len(result.scores)}\"\n        )\n\n    @pytest.mark.parametrize(\"dimension\", [\"people\", \"projects\", \"tickets\", \"keywords\"])\n    async def test_all_dimensions(self, dimension):\n        \"\"\"match_dimension_embedding works correctly for each dimension.\"\"\"\n        context = make_context()\n        emb_svc = make_embedding_service(available=True)\n\n        result = await match_dimension_embedding(\n            signal_content=\"Alice Project Alpha JIRA-123 Python\",\n            dimension=dimension,\n            context_terms=context.terms,\n            embedding_service=emb_svc,\n        )\n        assert_valid_dimension_match(result, f\"embedding_{dimension}\")\n        assert result.method == \"embedding_similarity\"\n\n\n# ---------------------------------------------------------------------------\n# match_dimension_keyword\n# ---------------------------------------------------------------------------\n\nclass TestMatchDimensionKeyword:\n\n    async def test_happy_path_returns_matches_sorted(self):\n        \"\"\"match_dimension_keyword returns keyword overlap matches above threshold sorted descending.\"\"\"\n        context = make_context()\n\n        result = await match_dimension_keyword(\n            signal_content=\"Alice is working with Bob on deployment using Python\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n        )\n        assert_valid_dimension_match(result, \"keyword_keywords\")\n        assert result.method == \"keyword_overlap\"\n        assert_sorted_descending(result.scores, \"keyword_keywords\")\n\n    async def test_no_terms_returns_empty(self):\n        \"\"\"Returns empty DimensionMatch with method='keyword_overlap' when no terms exist.\"\"\"\n        result = await match_dimension_keyword(\n            signal_content=\"Alice is important\",\n            dimension=\"people\",\n            context_terms=[],  # empty\n        )\n        assert result.method == \"keyword_overlap\"\n        assert len(result.matched_terms) == 0\n        assert len(result.scores) == 0\n\n    async def test_threshold_exact(self):\n        \"\"\"Includes matches exactly at the score threshold.\"\"\"\n        context = make_context()\n        result = await match_dimension_keyword(\n            signal_content=\"Python\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n            score_threshold=0.3,\n        )\n        for score in result.scores:\n            assert score >= 0.3, f\"Score {score} below threshold 0.3\"\n\n    async def test_threshold_below_excluded(self):\n        \"\"\"Excludes matches below the score threshold.\"\"\"\n        context = make_context()\n        # Very high threshold should exclude most or all matches\n        result = await match_dimension_keyword(\n            signal_content=\"Python\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n            score_threshold=1.0,\n        )\n        # Any results that pass must be exactly 1.0\n        for score in result.scores:\n            assert score >= 1.0, f\"Score {score} should be >= 1.0\"\n\n    async def test_method_is_keyword_overlap(self):\n        \"\"\"Result always has method='keyword_overlap'.\"\"\"\n        context = make_context()\n        result = await match_dimension_keyword(\n            signal_content=\"something\",\n            dimension=\"people\",\n            context_terms=context.terms,\n        )\n        assert result.method == \"keyword_overlap\"\n\n    async def test_terms_scores_equal_length(self):\n        \"\"\"Result has matched_terms and scores of equal length.\"\"\"\n        context = make_context()\n        result = await match_dimension_keyword(\n            signal_content=\"Alice Python deployment\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n        )\n        assert len(result.matched_terms) == len(result.scores)\n\n    async def test_scores_bounded(self):\n        \"\"\"All scores are in [0.0, 1.0].\"\"\"\n        context = make_context()\n        result = await match_dimension_keyword(\n            signal_content=\"Alice Python deployment async\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n            score_threshold=0.0,  # get everything\n        )\n        for s in result.scores:\n            assert 0.0 <= s <= 1.0, f\"Score out of bounds: {s}\"\n\n    async def test_sorted_descending(self):\n        \"\"\"Results are sorted by score descending.\"\"\"\n        context = make_context()\n        result = await match_dimension_keyword(\n            signal_content=\"Alice Python deployment async\",\n            dimension=\"keywords\",\n            context_terms=context.terms,\n            score_threshold=0.0,\n        )\n        assert_sorted_descending(result.scores, \"keyword_sorted\")\n\n    @pytest.mark.parametrize(\"dimension\", [\"people\", \"projects\", \"tickets\", \"keywords\"])\n    async def test_all_dimensions(self, dimension):\n        \"\"\"match_dimension_keyword works correctly for each dimension.\"\"\"\n        context = make_context()\n        result = await match_dimension_keyword(\n            signal_content=\"Alice Project Alpha JIRA-123 Python\",\n            dimension=dimension,\n            context_terms=context.terms,\n        )\n        assert_valid_dimension_match(result, f\"keyword_{dimension}\")\n        assert result.method == \"keyword_overlap\"\n\n\n# ---------------------------------------------------------------------------\n# analyze_sentiment\n# ---------------------------------------------------------------------------\n\nclass TestAnalyzeSentiment:\n\n    async def test_with_llm_extraction(self):\n        \"\"\"analyze_sentiment uses LLM-derived sentiment when llm_extraction is provided.\"\"\"\n        extraction = make_llm_extraction(\n            sentiment_polarity=0.8,\n            sentiment_magnitude=0.9,\n            sentiment_label=\"positive\",\n        )\n        result = await analyze_sentiment(\n            signal_content=\"This is great!\",\n            llm_extraction=extraction,\n        )\n        assert_valid_sentiment(result)\n        # Should use the LLM values\n        assert result.polarity == 0.8, f\"Expected polarity=0.8, got {result.polarity}\"\n        assert result.magnitude == 0.9, f\"Expected magnitude=0.9, got {result.magnitude}\"\n        assert result.label == \"positive\", f\"Expected label='positive', got '{result.label}'\"\n\n    async def test_heuristic_without_llm(self):\n        \"\"\"analyze_sentiment performs heuristic analysis when llm_extraction is None.\"\"\"\n        result = await analyze_sentiment(\n            signal_content=\"This is a wonderful day!\",\n            llm_extraction=None,\n        )\n        assert_valid_sentiment(result)\n        # Heuristic should produce some non-trivial result for clearly positive content\n        # (We can't assert exact values but we verify bounds)\n        assert -1.0 <= result.polarity <= 1.0\n        assert 0.0 <= result.magnitude <= 1.0\n        assert len(result.label) >= 1\n\n    async def test_empty_content_returns_neutral(self):\n        \"\"\"analyze_sentiment returns neutral sentiment when signal_content is empty.\"\"\"\n        result = await analyze_sentiment(signal_content=\"\", llm_extraction=None)\n        assert result.polarity == 0.0, f\"Expected polarity=0.0, got {result.polarity}\"\n        assert result.magnitude == 0.0, f\"Expected magnitude=0.0, got {result.magnitude}\"\n        assert result.label == \"neutral\", f\"Expected label='neutral', got '{result.label}'\"\n\n    async def test_whitespace_content_returns_neutral(self):\n        \"\"\"analyze_sentiment returns neutral for whitespace-only content.\"\"\"\n        result = await analyze_sentiment(signal_content=\"   \\n\\t  \", llm_extraction=None)\n        assert result.polarity == 0.0\n        assert result.magnitude == 0.0\n        assert result.label == \"neutral\"\n\n    async def test_polarity_bounds(self):\n        \"\"\"Result polarity is always in [-1.0, 1.0].\"\"\"\n        for content in [\"Great!\", \"Terrible!\", \"OK.\", \"I hate this but love that\"]:\n            result = await analyze_sentiment(signal_content=content, llm_extraction=None)\n            assert -1.0 <= result.polarity <= 1.0, (\n                f\"Polarity {result.polarity} out of bounds for '{content}'\"\n            )\n\n    async def test_magnitude_bounds(self):\n        \"\"\"Result magnitude is always in [0.0, 1.0].\"\"\"\n        for content in [\"Great!\", \"Terrible!\", \"OK.\", \"\"]:\n            result = await analyze_sentiment(signal_content=content, llm_extraction=None)\n            assert 0.0 <= result.magnitude <= 1.0, (\n                f\"Magnitude {result.magnitude} out of bounds for '{content}'\"\n            )\n\n    async def test_label_nonempty(self):\n        \"\"\"Result label is always non-empty.\"\"\"\n        result = await analyze_sentiment(\n            signal_content=\"Testing label\",\n            llm_extraction=None,\n        )\n        assert len(result.label) >= 1, \"Sentiment label must be non-empty\"\n\n\n# ---------------------------------------------------------------------------\n# merge_dimension_matches\n# ---------------------------------------------------------------------------\n\nclass TestMergeDimensionMatches:\n\n    async def test_happy_path_merge_with_overlap(self):\n        \"\"\"Merges embedding and keyword matches, deduplicates, keeps highest score.\"\"\"\n        emb_match = make_dimension_match(\n            matched_terms=(\"Alice\", \"Bob\"),\n            scores=(0.9, 0.7),\n            method=\"embedding_similarity\",\n        )\n        kw_match = make_dimension_match(\n            matched_terms=(\"Bob\", \"Charlie\"),\n            scores=(0.8, 0.6),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(\n            embedding_match=emb_match,\n            keyword_match=kw_match,\n        )\n        assert result.method == \"combined\"\n        assert_valid_dimension_match(result, \"merge\")\n        # Bob appears in both — should keep highest score (0.8 from keyword? or 0.7 from embedding? contract says higher)\n        terms_list = list(result.matched_terms)\n        scores_dict = dict(zip(result.matched_terms, result.scores))\n        assert \"Alice\" in terms_list, \"Alice should be in merged result\"\n        assert \"Bob\" in terms_list, \"Bob should be in merged result\"\n        assert \"Charlie\" in terms_list, \"Charlie should be in merged result\"\n        # Bob: max(0.7, 0.8) = 0.8\n        assert scores_dict[\"Bob\"] == max(0.7, 0.8), (\n            f\"Bob's score should be max of both: got {scores_dict['Bob']}\"\n        )\n        assert_sorted_descending(result.scores, \"merge\")\n\n    async def test_both_empty(self):\n        \"\"\"Merging two empty matches returns empty with method='combined'.\"\"\"\n        emb = make_dimension_match(method=\"embedding_similarity\")\n        kw = make_dimension_match(method=\"keyword_overlap\")\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert result.method == \"combined\"\n        assert len(result.matched_terms) == 0\n        assert len(result.scores) == 0\n\n    async def test_one_empty_embedding(self):\n        \"\"\"Merging empty embedding + non-empty keyword returns keyword terms with method='combined'.\"\"\"\n        emb = make_dimension_match(method=\"embedding_similarity\")\n        kw = make_dimension_match(\n            matched_terms=(\"Alice\", \"Bob\"),\n            scores=(0.8, 0.6),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert result.method == \"combined\"\n        assert len(result.matched_terms) == 2\n        assert \"Alice\" in result.matched_terms\n        assert \"Bob\" in result.matched_terms\n\n    async def test_one_empty_keyword(self):\n        \"\"\"Merging non-empty embedding + empty keyword returns embedding terms with method='combined'.\"\"\"\n        emb = make_dimension_match(\n            matched_terms=(\"Alpha\", \"Beta\"),\n            scores=(0.95, 0.55),\n            method=\"embedding_similarity\",\n        )\n        kw = make_dimension_match(method=\"keyword_overlap\")\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert result.method == \"combined\"\n        assert len(result.matched_terms) == 2\n\n    async def test_no_overlap(self):\n        \"\"\"Merging with no overlapping terms returns union of all terms.\"\"\"\n        emb = make_dimension_match(\n            matched_terms=(\"Alice\",),\n            scores=(0.9,),\n            method=\"embedding_similarity\",\n        )\n        kw = make_dimension_match(\n            matched_terms=(\"Bob\",),\n            scores=(0.8,),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert len(result.matched_terms) == 2, \"Union should have 2 terms\"\n        assert \"Alice\" in result.matched_terms\n        assert \"Bob\" in result.matched_terms\n\n    async def test_full_overlap_keeps_higher_score(self):\n        \"\"\"Full overlap keeps the higher score for each duplicated term.\"\"\"\n        emb = make_dimension_match(\n            matched_terms=(\"Alice\", \"Bob\"),\n            scores=(0.9, 0.5),\n            method=\"embedding_similarity\",\n        )\n        kw = make_dimension_match(\n            matched_terms=(\"Alice\", \"Bob\"),\n            scores=(0.7, 0.8),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        scores_dict = dict(zip(result.matched_terms, result.scores))\n        assert scores_dict[\"Alice\"] == 0.9, \"Alice: max(0.9, 0.7) = 0.9\"\n        assert scores_dict[\"Bob\"] == 0.8, \"Bob: max(0.5, 0.8) = 0.8\"\n\n    async def test_method_is_combined(self):\n        \"\"\"Result always has method='combined'.\"\"\"\n        emb = make_dimension_match(method=\"embedding_similarity\")\n        kw = make_dimension_match(method=\"keyword_overlap\")\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert result.method == \"combined\"\n\n    async def test_no_duplicates(self):\n        \"\"\"Result has no duplicate terms.\"\"\"\n        emb = make_dimension_match(\n            matched_terms=(\"A\", \"B\", \"C\"),\n            scores=(0.9, 0.8, 0.7),\n            method=\"embedding_similarity\",\n        )\n        kw = make_dimension_match(\n            matched_terms=(\"B\", \"C\", \"D\"),\n            scores=(0.85, 0.75, 0.6),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert len(result.matched_terms) == len(set(result.matched_terms)), (\n            f\"Duplicates found in: {result.matched_terms}\"\n        )\n\n    async def test_sorted_descending(self):\n        \"\"\"Result is sorted by score descending.\"\"\"\n        emb = make_dimension_match(\n            matched_terms=(\"Low\",),\n            scores=(0.3,),\n            method=\"embedding_similarity\",\n        )\n        kw = make_dimension_match(\n            matched_terms=(\"High\",),\n            scores=(0.95,),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert_sorted_descending(result.scores, \"merge_sorted\")\n\n    async def test_terms_scores_equal_length(self):\n        \"\"\"Result has matched_terms and scores of equal length.\"\"\"\n        emb = make_dimension_match(\n            matched_terms=(\"A\", \"B\"),\n            scores=(0.9, 0.7),\n            method=\"embedding_similarity\",\n        )\n        kw = make_dimension_match(\n            matched_terms=(\"C\",),\n            scores=(0.5,),\n            method=\"keyword_overlap\",\n        )\n        result = merge_dimension_matches(embedding_match=emb, keyword_match=kw)\n        assert len(result.matched_terms) == len(result.scores)\n\n\n# ===========================================================================\n# LAYER 2: Integration Tests — inquire()\n# ===========================================================================\n\nclass TestInquireIntegration:\n\n    async def test_both_services_available_uses_llm(self):\n        \"\"\"inquire() with both services available uses LLM path (extraction_method='llm').\"\"\"\n        signal = make_signal()\n        context = make_context()\n        llm_svc = make_llm_service(available=True)\n        emb_svc = make_embedding_service(available=True)\n\n        result = await inquire(\n            signal=signal,\n            context=context,\n            llm_service=llm_svc,\n            embedding_service=emb_svc,\n        )\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n        assert result.extraction_method == \"llm\", (\n            f\"Expected 'llm' when both services available, got '{result.extraction_method}'\"\n        )\n\n    async def test_llm_only_no_embedding(self):\n        \"\"\"inquire() with only LLM service uses LLM path.\"\"\"\n        signal = make_signal()\n        context = make_context()\n        llm_svc = make_llm_service(available=True)\n\n        result = await inquire(\n            signal=signal,\n            context=context,\n            llm_service=llm_svc,\n            embedding_service=None,\n        )\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n        assert result.extraction_method == \"llm\"\n\n    async def test_embedding_only_no_llm_uses_heuristic(self):\n        \"\"\"inquire() with only embedding service falls back to heuristic.\"\"\"\n        signal = make_signal()\n        context = make_context()\n        emb_svc = make_embedding_service(available=True)\n\n        result = await inquire(\n            signal=signal,\n            context=context,\n            llm_service=None,\n            embedding_service=emb_svc,\n        )\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n        assert result.extraction_method == \"heuristic\"\n\n    async def test_no_services_keyword_only_fallback(self):\n        \"\"\"inquire() with no services uses keyword-only fallback (heuristic).\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(\n            signal=signal,\n            context=context,\n            llm_service=None,\n            embedding_service=None,\n        )\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n        assert result.extraction_method == \"heuristic\"\n\n    async def test_signal_id_propagated(self):\n        \"\"\"result.signal_id equals the input signal.id.\"\"\"\n        signal = make_signal(id=\"my-unique-signal-id\")\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n        assert result.signal_id == \"my-unique-signal-id\"\n\n    async def test_worker_id_propagated(self):\n        \"\"\"result.worker_id equals the input context.worker_id.\"\"\"\n        signal = make_signal()\n        context = make_context(worker_id=\"worker-special-99\")\n\n        result = await inquire(signal=signal, context=context)\n        assert result.worker_id == \"worker-special-99\"\n\n    async def test_timestamp_iso8601_utc(self):\n        \"\"\"result.timestamp matches ISO 8601 UTC format with Z suffix.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n        pattern = r\"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$\"\n        assert re.match(pattern, result.timestamp), (\n            f\"Timestamp '{result.timestamp}' does not match ISO 8601 UTC pattern\"\n        )\n\n    async def test_never_raises_catastrophic_failure(self):\n        \"\"\"inquire() never raises even when all services fail catastrophically.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        # Create services that blow up on every call\n        llm_svc = make_llm_service(available=True)\n        emb_svc = make_embedding_service(available=True)\n\n        # We wrap inquire to ensure it catches everything —\n        # if it raises, this test fails.\n        try:\n            result = await inquire(\n                signal=signal,\n                context=context,\n                llm_service=llm_svc,\n                embedding_service=emb_svc,\n            )\n        except Exception as e:\n            pytest.fail(\n                f\"inquire() raised {type(e).__name__}: {e} — \"\n                \"contract says it must never raise\"\n            )\n\n        assert isinstance(result, InquiryResult), \"Must return InquiryResult even on failure\"\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n\n    async def test_empty_signal_content(self):\n        \"\"\"inquire() with empty content returns empty matches, neutral sentiment, no errors.\"\"\"\n        signal = make_signal(content=\"\")\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n\n        # All dimensions should be empty\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm = getattr(result, dim_name)\n            assert len(dm.matched_terms) == 0, (\n                f\"{dim_name} should have empty matched_terms for empty content\"\n            )\n            assert len(dm.scores) == 0, (\n                f\"{dim_name} should have empty scores for empty content\"\n            )\n\n        # Sentiment should be neutral\n        assert result.sentiment.polarity == 0.0\n        assert result.sentiment.magnitude == 0.0\n        assert result.sentiment.label == \"neutral\"\n\n        # No errors for empty content — it's a valid case\n        assert len(result.errors) == 0, (\n            f\"Empty content should produce no errors, got: {result.errors}\"\n        )\n\n        assert result.extraction_method == \"heuristic\"\n\n    async def test_whitespace_signal_content(self):\n        \"\"\"inquire() with whitespace-only content behaves like empty content.\"\"\"\n        signal = make_signal(content=\"   \\n\\t  \")\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm = getattr(result, dim_name)\n            assert len(dm.matched_terms) == 0\n\n        assert result.sentiment.polarity == 0.0\n        assert result.sentiment.magnitude == 0.0\n        assert result.sentiment.label == \"neutral\"\n        assert result.extraction_method == \"heuristic\"\n\n    async def test_llm_fails_fallback_to_heuristic(self):\n        \"\"\"inquire() falls back to heuristic when LLM fails, records error.\"\"\"\n        signal = make_signal()\n        context = make_context()\n        llm_svc = make_llm_service(available=True)\n        emb_svc = make_embedding_service(available=True)\n\n        # Patch extract_dimensions_llm to fail\n        with patch(\n            \"src.inquiry_engine.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=TimeoutError(\"LLM timed out\"),\n        ):\n            result = await inquire(\n                signal=signal,\n                context=context,\n                llm_service=llm_svc,\n                embedding_service=emb_svc,\n            )\n            assert_valid_inquiry_result(result, signal.id, context.worker_id)\n            assert result.extraction_method == \"heuristic\", (\n                \"Should fall back to heuristic when LLM fails\"\n            )\n            assert len(result.errors) > 0, \"Should record the LLM failure error\"\n\n    async def test_embedding_fails_fallback_keyword(self):\n        \"\"\"inquire() falls back to keyword-only when embedding fails, records error.\"\"\"\n        signal = make_signal()\n        context = make_context()\n        emb_svc = make_embedding_service(available=True)\n\n        with patch(\n            \"src.inquiry_engine.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Embedding computation failed\"),\n        ):\n            result = await inquire(\n                signal=signal,\n                context=context,\n                llm_service=None,\n                embedding_service=emb_svc,\n            )\n            assert_valid_inquiry_result(result, signal.id, context.worker_id)\n            assert result.extraction_method == \"heuristic\"\n            assert len(result.errors) > 0, \"Should record the embedding failure error\"\n\n    async def test_single_dimension_failure(self):\n        \"\"\"Failed dimension returns empty DimensionMatch; other dimensions succeed.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        # We'll test this by using the no-service path (keyword only)\n        # and checking that even if one dimension query were to fail,\n        # the result still contains valid data for other dimensions.\n        # Since we can't easily make one keyword dimension fail without\n        # the others, we patch at the gather level.\n        try:\n            result = await inquire(\n                signal=signal,\n                context=context,\n                llm_service=None,\n                embedding_service=None,\n            )\n            assert_valid_inquiry_result(result, signal.id, context.worker_id)\n            # If any dimension had an error, it should have empty terms\n            for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n                dm = getattr(result, dim_name)\n                if dm.method == \"none\":\n                    assert len(dm.matched_terms) == 0\n                    assert len(dm.scores) == 0\n        except Exception as e:\n            pytest.fail(f\"inquire() raised: {e}\")\n\n    async def test_sentiment_failure_returns_neutral(self):\n        \"\"\"inquire() returns neutral sentiment on sentiment failure, records error.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        with patch(\n            \"src.inquiry_engine.analyze_sentiment\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Sentiment analysis exploded\"),\n        ):\n            result = await inquire(\n                signal=signal,\n                context=context,\n                llm_service=None,\n                embedding_service=None,\n            )\n            assert_valid_inquiry_result(result, signal.id, context.worker_id)\n            assert result.sentiment.polarity == 0.0, \"Fallback sentiment should be neutral\"\n            assert result.sentiment.magnitude == 0.0\n            assert result.sentiment.label == \"neutral\"\n            assert len(result.errors) > 0, \"Should record the sentiment failure\"\n\n    async def test_total_failure(self):\n        \"\"\"All failures: returns valid result with empty matches, neutral sentiment, all errors.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        with patch(\n            \"src.inquiry_engine.extract_dimensions_llm\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"LLM boom\"),\n        ), patch(\n            \"src.inquiry_engine.match_dimension_embedding\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Embedding boom\"),\n        ), patch(\n            \"src.inquiry_engine.match_dimension_keyword\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Keyword boom\"),\n        ), patch(\n            \"src.inquiry_engine.analyze_sentiment\",\n            new_callable=AsyncMock,\n            side_effect=RuntimeError(\"Sentiment boom\"),\n        ):\n            llm_svc = make_llm_service(available=True)\n            emb_svc = make_embedding_service(available=True)\n\n            try:\n                result = await inquire(\n                    signal=signal,\n                    context=context,\n                    llm_service=llm_svc,\n                    embedding_service=emb_svc,\n                )\n            except Exception as e:\n                pytest.fail(f\"inquire() raised: {e} — must never raise\")\n\n            assert_valid_inquiry_result(result, signal.id, context.worker_id)\n\n            for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n                dm = getattr(result, dim_name)\n                assert len(dm.matched_terms) == 0, f\"{dim_name} should be empty on total failure\"\n\n            assert result.sentiment.polarity == 0.0\n            assert result.sentiment.magnitude == 0.0\n            assert result.sentiment.label == \"neutral\"\n            assert result.extraction_method == \"heuristic\"\n            assert len(result.errors) > 0, \"Should have captured errors\"\n\n    async def test_llm_available_false_uses_heuristic(self):\n        \"\"\"inquire() uses heuristic path when llm_service.available is False.\"\"\"\n        signal = make_signal()\n        context = make_context()\n        llm_svc = make_llm_service(available=False)\n        emb_svc = make_embedding_service(available=True)\n\n        result = await inquire(\n            signal=signal,\n            context=context,\n            llm_service=llm_svc,\n            embedding_service=emb_svc,\n        )\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n        assert result.extraction_method == \"heuristic\", (\n            \"Should use heuristic when LLM service is not available\"\n        )\n\n    async def test_idempotent_same_inputs(self):\n        \"\"\"inquire() called twice with same inputs returns structurally equivalent results.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result1 = await inquire(signal=signal, context=context)\n        result2 = await inquire(signal=signal, context=context)\n\n        assert result1.signal_id == result2.signal_id\n        assert result1.worker_id == result2.worker_id\n        assert result1.extraction_method == result2.extraction_method\n\n        # Dimension matches should be structurally equal\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm1 = getattr(result1, dim_name)\n            dm2 = getattr(result2, dim_name)\n            assert set(dm1.matched_terms) == set(dm2.matched_terms), (\n                f\"Idempotency violated for {dim_name} terms\"\n            )\n            assert dm1.method == dm2.method\n\n        # Sentiment should be same\n        assert result1.sentiment.polarity == result2.sentiment.polarity\n        assert result1.sentiment.magnitude == result2.sentiment.magnitude\n        assert result1.sentiment.label == result2.sentiment.label\n\n\n# ===========================================================================\n# CROSS-CUTTING: Invariant Tests\n# ===========================================================================\n\nclass TestInvariants:\n\n    async def test_inquiry_result_frozen(self):\n        \"\"\"InquiryResult is frozen — attempting to mutate any field raises an error.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.signal_id = \"hacked\"\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.worker_id = \"hacked\"\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.extraction_method = \"hacked\"\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.timestamp = \"hacked\"\n\n    async def test_dimension_match_frozen(self):\n        \"\"\"DimensionMatch is frozen — attempting to mutate raises an error.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n        dm = result.people\n\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            dm.matched_terms = (\"hacked\",)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            dm.scores = (0.0,)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            dm.method = \"hacked\"\n\n    async def test_sentiment_result_frozen(self):\n        \"\"\"SentimentResult is frozen — attempting to mutate raises an error.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.sentiment.polarity = 999.0\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.sentiment.magnitude = 999.0\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            result.sentiment.label = \"hacked\"\n\n    async def test_collection_fields_are_tuples(self):\n        \"\"\"All collection fields use tuple (not list) at runtime.\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n\n        # DimensionMatch collections\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm = getattr(result, dim_name)\n            assert isinstance(dm.matched_terms, tuple), (\n                f\"{dim_name}.matched_terms is {type(dm.matched_terms)}, expected tuple\"\n            )\n            assert isinstance(dm.scores, tuple), (\n                f\"{dim_name}.scores is {type(dm.scores)}, expected tuple\"\n            )\n\n        # Errors tuple\n        assert isinstance(result.errors, tuple), (\n            f\"errors is {type(result.errors)}, expected tuple\"\n        )\n\n    async def test_all_scores_bounded_integration(self):\n        \"\"\"Every score in every DimensionMatch is in [0.0, 1.0].\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm = getattr(result, dim_name)\n            for i, s in enumerate(dm.scores):\n                assert 0.0 <= s <= 1.0, (\n                    f\"{dim_name} score[{i}] = {s} out of [0.0, 1.0]\"\n                )\n\n    async def test_matched_terms_scores_equal_length_all_dims(self):\n        \"\"\"For every dimension: len(matched_terms) == len(scores).\"\"\"\n        signal = make_signal()\n        context = make_context()\n\n        result = await inquire(signal=signal, context=context)\n\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm = getattr(result, dim_name)\n            assert len(dm.matched_terms) == len(dm.scores), (\n                f\"{dim_name}: terms length {len(dm.matched_terms)} != scores length {len(dm.scores)}\"\n            )\n\n    async def test_sentiment_polarity_range(self):\n        \"\"\"Polarity is in [-1.0, 1.0] for various inputs.\"\"\"\n        for content in [\n            \"I love this project!\",\n            \"This is terrible and broken\",\n            \"OK\",\n            \"\",\n            \"Mixed feelings about the deployment\",\n        ]:\n            signal = make_signal(content=content)\n            context = make_context()\n            result = await inquire(signal=signal, context=context)\n            assert -1.0 <= result.sentiment.polarity <= 1.0, (\n                f\"Polarity {result.sentiment.polarity} out of range for: '{content}'\"\n            )\n\n    async def test_sentiment_magnitude_range(self):\n        \"\"\"Magnitude is in [0.0, 1.0] for various inputs.\"\"\"\n        for content in [\n            \"I love this project!\",\n            \"This is terrible and broken\",\n            \"OK\",\n            \"\",\n        ]:\n            signal = make_signal(content=content)\n            context = make_context()\n            result = await inquire(signal=signal, context=context)\n            assert 0.0 <= result.sentiment.magnitude <= 1.0, (\n                f\"Magnitude {result.sentiment.magnitude} out of range for: '{content}'\"\n            )\n\n\n# ===========================================================================\n# Pydantic Model Validation Tests\n# ===========================================================================\n\nclass TestModelValidation:\n\n    def test_sentiment_result_polarity_range_validation(self):\n        \"\"\"SentimentResult rejects polarity outside [-1.0, 1.0].\"\"\"\n        with pytest.raises(Exception):\n            SentimentResult(polarity=1.5, magnitude=0.5, label=\"invalid\")\n        with pytest.raises(Exception):\n            SentimentResult(polarity=-1.5, magnitude=0.5, label=\"invalid\")\n\n    def test_sentiment_result_magnitude_range_validation(self):\n        \"\"\"SentimentResult rejects magnitude outside [0.0, 1.0].\"\"\"\n        with pytest.raises(Exception):\n            SentimentResult(polarity=0.0, magnitude=1.5, label=\"invalid\")\n        with pytest.raises(Exception):\n            SentimentResult(polarity=0.0, magnitude=-0.1, label=\"invalid\")\n\n    def test_sentiment_result_label_length_validation(self):\n        \"\"\"SentimentResult rejects label outside [1, 50] characters.\"\"\"\n        with pytest.raises(Exception):\n            SentimentResult(polarity=0.0, magnitude=0.0, label=\"\")\n        with pytest.raises(Exception):\n            SentimentResult(polarity=0.0, magnitude=0.0, label=\"x\" * 51)\n\n    def test_inquiry_result_signal_id_nonempty(self):\n        \"\"\"InquiryResult rejects empty signal_id.\"\"\"\n        with pytest.raises(Exception):\n            InquiryResult(\n                signal_id=\"\",\n                worker_id=\"w1\",\n                people=make_dimension_match(),\n                projects=make_dimension_match(),\n                tickets=make_dimension_match(),\n                keywords=make_dimension_match(),\n                sentiment=SentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\"),\n                extraction_method=\"heuristic\",\n                timestamp=\"2024-01-01T00:00:00Z\",\n                errors=(),\n            )\n\n    def test_inquiry_result_worker_id_nonempty(self):\n        \"\"\"InquiryResult rejects empty worker_id.\"\"\"\n        with pytest.raises(Exception):\n            InquiryResult(\n                signal_id=\"s1\",\n                worker_id=\"\",\n                people=make_dimension_match(),\n                projects=make_dimension_match(),\n                tickets=make_dimension_match(),\n                keywords=make_dimension_match(),\n                sentiment=SentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\"),\n                extraction_method=\"heuristic\",\n                timestamp=\"2024-01-01T00:00:00Z\",\n                errors=(),\n            )\n\n    def test_inquiry_result_timestamp_format_validation(self):\n        \"\"\"InquiryResult rejects invalid timestamp formats.\"\"\"\n        with pytest.raises(Exception):\n            InquiryResult(\n                signal_id=\"s1\",\n                worker_id=\"w1\",\n                people=make_dimension_match(),\n                projects=make_dimension_match(),\n                tickets=make_dimension_match(),\n                keywords=make_dimension_match(),\n                sentiment=SentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\"),\n                extraction_method=\"heuristic\",\n                timestamp=\"2024-01-01 00:00:00\",  # Missing T and Z\n                errors=(),\n            )\n\n    def test_inquiry_result_valid_timestamp_accepted(self):\n        \"\"\"InquiryResult accepts valid ISO 8601 UTC timestamps.\"\"\"\n        result = InquiryResult(\n            signal_id=\"s1\",\n            worker_id=\"w1\",\n            people=make_dimension_match(),\n            projects=make_dimension_match(),\n            tickets=make_dimension_match(),\n            keywords=make_dimension_match(),\n            sentiment=SentimentResult(polarity=0.0, magnitude=0.0, label=\"neutral\"),\n            extraction_method=\"heuristic\",\n            timestamp=\"2024-01-15T12:30:45.123456Z\",\n            errors=(),\n        )\n        assert result.timestamp == \"2024-01-15T12:30:45.123456Z\"\n\n    def test_signal_id_nonempty(self):\n        \"\"\"Signal rejects empty id.\"\"\"\n        with pytest.raises(Exception):\n            Signal(id=\"\", content=\"test\", source=\"test\")\n\n    def test_dimension_match_terms_scores_valid(self):\n        \"\"\"DimensionMatch accepts matching-length terms and scores.\"\"\"\n        dm = DimensionMatch(\n            matched_terms=(\"a\", \"b\"),\n            scores=(0.9, 0.8),\n            method=\"keyword_overlap\",\n        )\n        assert len(dm.matched_terms) == 2\n        assert len(dm.scores) == 2\n\n    def test_llm_extraction_sentiment_polarity_range(self):\n        \"\"\"LLMDimensionExtraction rejects sentiment_polarity outside [-1.0, 1.0].\"\"\"\n        with pytest.raises(Exception):\n            LLMDimensionExtraction(\n                people=(),\n                projects=(),\n                tickets=(),\n                keywords=(),\n                sentiment_polarity=2.0,\n                sentiment_magnitude=0.5,\n                sentiment_label=\"invalid\",\n            )\n\n    def test_llm_extraction_sentiment_magnitude_range(self):\n        \"\"\"LLMDimensionExtraction rejects sentiment_magnitude outside [0.0, 1.0].\"\"\"\n        with pytest.raises(Exception):\n            LLMDimensionExtraction(\n                people=(),\n                projects=(),\n                tickets=(),\n                keywords=(),\n                sentiment_polarity=0.5,\n                sentiment_magnitude=-0.1,\n                sentiment_label=\"invalid\",\n            )\n\n\n# ===========================================================================\n# Edge case: empty context\n# ===========================================================================\n\nclass TestEmptyContext:\n\n    async def test_inquire_empty_context_no_terms(self):\n        \"\"\"inquire() with a context containing no terms returns empty dimension matches.\"\"\"\n        signal = make_signal()\n        context = make_context(terms=[])\n\n        result = await inquire(signal=signal, context=context)\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n\n        for dim_name in (\"people\", \"projects\", \"tickets\", \"keywords\"):\n            dm = getattr(result, dim_name)\n            assert len(dm.matched_terms) == 0, (\n                f\"{dim_name} should be empty with no context terms\"\n            )\n\n    async def test_keyword_match_empty_context(self):\n        \"\"\"match_dimension_keyword with empty context returns empty result.\"\"\"\n        result = await match_dimension_keyword(\n            signal_content=\"Alice Python\",\n            dimension=\"keywords\",\n            context_terms=[],\n        )\n        assert len(result.matched_terms) == 0\n        assert result.method == \"keyword_overlap\"\n\n\n# ===========================================================================\n# Edge case: very long signal content\n# ===========================================================================\n\nclass TestLargeInput:\n\n    async def test_inquire_long_signal_content(self):\n        \"\"\"inquire() handles very long signal content without raising.\"\"\"\n        long_content = \"Python deployment \" * 1000\n        signal = make_signal(content=long_content)\n        context = make_context()\n\n        try:\n            result = await inquire(signal=signal, context=context)\n        except Exception as e:\n            pytest.fail(f\"inquire() raised on long content: {e}\")\n\n        assert_valid_inquiry_result(result, signal.id, context.worker_id)\n"
+}

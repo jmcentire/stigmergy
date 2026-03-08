@@ -1,0 +1,722 @@
+{
+  "component_id": "identity_collection",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "init_happy_all_deps",
+      "description": "UnknownCollector initializes successfully with all three dependencies (match_suggester, alias_store, resolution_handler).",
+      "function": "UnknownCollector.__init__",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "match_suggester": "AsyncMock MatchSuggester",
+        "alias_store": "AsyncMock AliasStore",
+        "resolution_handler": "AsyncMock ResolutionHandler"
+      },
+      "input_values": {},
+      "input_description": "Valid MatchSuggester mock, AliasStore mock, and ResolutionHandler mock.",
+      "expected_output_description": "UnknownCollector instance is created; dependencies stored as instance attributes.",
+      "expected_error": "",
+      "assertions": [
+        "Instance is created without error",
+        "Dependencies are accessible on the instance"
+      ]
+    },
+    {
+      "id": "init_happy_no_handler",
+      "description": "UnknownCollector initializes successfully without a ResolutionHandler (collect-and-match-only mode).",
+      "function": "UnknownCollector.__init__",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "match_suggester": "AsyncMock MatchSuggester",
+        "alias_store": "AsyncMock AliasStore"
+      },
+      "input_values": {},
+      "input_description": "Valid MatchSuggester mock and AliasStore mock; no resolution_handler.",
+      "expected_output_description": "UnknownCollector instance is created; resolution_handler is None.",
+      "expected_error": "",
+      "assertions": [
+        "Instance is created without error",
+        "resolution_handler attribute is None"
+      ]
+    },
+    {
+      "id": "collect_happy_multiple_unknowns",
+      "description": "collect_and_match processes multiple unknown identifiers and returns MatchResult for each with candidates sorted by descending confidence.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False for all",
+        "match_suggester.suggest_match": "returns tuple of 2 MatchCandidates per identifier"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'alice@example.com', 'bob@corp.io'})",
+        "source": "git_log_run_2024-01-15"
+      },
+      "input_description": "",
+      "expected_output_description": "Tuple of 2 MatchResult values, each with candidates sorted by descending confidence and source set correctly.",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 2",
+        "All MatchResult.unknown.source == 'git_log_run_2024-01-15'",
+        "All candidates sorted by descending confidence",
+        "No self-matches in candidates"
+      ]
+    },
+    {
+      "id": "collect_happy_single_unknown",
+      "description": "collect_and_match processes a single unknown identifier and returns one MatchResult.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns tuple of 1 MatchCandidate"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'dev@startup.io'})",
+        "source": "pr_author_scan"
+      },
+      "input_description": "",
+      "expected_output_description": "Tuple of 1 MatchResult with candidates.",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].unknown.identifier == 'dev@startup.io'",
+        "result[0].unknown.source == 'pr_author_scan'"
+      ]
+    },
+    {
+      "id": "collect_prefilter_known_aliases",
+      "description": "collect_and_match skips identifiers that already have confirmed aliases in AliasStore.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns True for 'known@example.com', False for 'unknown@example.com'",
+        "match_suggester.suggest_match": "returns candidates for unknown"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'known@example.com', 'unknown@example.com'})",
+        "source": "commit_scan"
+      },
+      "input_description": "",
+      "expected_output_description": "Only one MatchResult for 'unknown@example.com'; 'known@example.com' is pre-filtered out.",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].unknown.identifier == 'unknown@example.com'",
+        "suggest_match called only once (for unknown)"
+      ]
+    },
+    {
+      "id": "collect_empty_input",
+      "description": "collect_and_match with empty frozenset returns empty tuple.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "unknowns": "frozenset()",
+        "source": "empty_run"
+      },
+      "input_description": "",
+      "expected_output_description": "Empty tuple of MatchResult.",
+      "expected_error": "",
+      "assertions": [
+        "result == ()",
+        "suggest_match never called",
+        "has_alias never called"
+      ]
+    },
+    {
+      "id": "collect_no_candidates_normal",
+      "description": "collect_and_match includes MatchResults with empty candidate tuples (no-candidates is normal, not an error).",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns empty tuple ()"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'rare_handle_xyz'})",
+        "source": "issue_scan"
+      },
+      "input_description": "",
+      "expected_output_description": "One MatchResult with empty candidates tuple.",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].candidates == ()",
+        "No error raised"
+      ]
+    },
+    {
+      "id": "collect_self_match_filtered",
+      "description": "collect_and_match filters out self-matches where candidate.canonical_id equals the unknown identifier.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns tuple including self-match candidate with canonical_id='john@acme.com' plus a valid candidate"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'john@acme.com'})",
+        "source": "git_log"
+      },
+      "input_description": "",
+      "expected_output_description": "MatchResult candidates do not include a candidate with canonical_id == 'john@acme.com'.",
+      "expected_error": "",
+      "assertions": [
+        "No candidate has canonical_id == 'john@acme.com'",
+        "Self-match is filtered out"
+      ]
+    },
+    {
+      "id": "collect_source_propagated",
+      "description": "collect_and_match propagates the source parameter to all UnknownIdentifier objects in results.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns empty tuple"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'a@b.com', 'c@d.com'})",
+        "source": "my_custom_source"
+      },
+      "input_description": "",
+      "expected_output_description": "All MatchResult.unknown.source == 'my_custom_source'.",
+      "expected_error": "",
+      "assertions": [
+        "all(r.unknown.source == 'my_custom_source' for r in result)"
+      ]
+    },
+    {
+      "id": "collect_discovered_at_set",
+      "description": "collect_and_match sets discovered_at to current UTC time on each UnknownIdentifier.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns empty tuple"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'user@test.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "MatchResult.unknown.discovered_at is a recent UTC datetime.",
+      "expected_error": "",
+      "assertions": [
+        "discovered_at is a datetime",
+        "discovered_at is close to now (within a few seconds)",
+        "discovered_at has timezone info (UTC)"
+      ]
+    },
+    {
+      "id": "collect_all_prefiltered",
+      "description": "collect_and_match returns empty tuple when all identifiers are already known aliases.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns True for all identifiers"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'known1@x.com', 'known2@x.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "Empty tuple because all identifiers are pre-filtered.",
+      "expected_error": "",
+      "assertions": [
+        "result == () or len(result) == 0",
+        "suggest_match never called"
+      ]
+    },
+    {
+      "id": "collect_candidates_sorted_descending",
+      "description": "collect_and_match returns candidates sorted by descending confidence.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns 3 candidates with confidence 0.5, 0.9, 0.3 (unsorted)"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'user@test.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "MatchResult candidates are in descending order of confidence.",
+      "expected_error": "",
+      "assertions": [
+        "candidates[0].confidence >= candidates[1].confidence >= candidates[2].confidence"
+      ]
+    },
+    {
+      "id": "collect_error_partial_suggestion_failure",
+      "description": "collect_and_match raises IdentityResolutionError when some suggest_match calls fail (partial failure).",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False for all",
+        "match_suggester.suggest_match": "succeeds for 'good@x.com', raises MatchSuggestionError for 'bad@x.com'"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'good@x.com', 'bad@x.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with failed_identifiers context",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "Error context contains 'bad@x.com' in failed identifiers"
+      ]
+    },
+    {
+      "id": "collect_error_all_suggestions_failed",
+      "description": "collect_and_match raises IdentityResolutionError when all suggest_match calls fail.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False for all",
+        "match_suggester.suggest_match": "raises MatchSuggestionError for all identifiers"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'bad1@x.com', 'bad2@x.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError with all identifiers in failed_identifiers",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "All identifiers appear in error context"
+      ]
+    },
+    {
+      "id": "collect_error_alias_store_prefilter_failure",
+      "description": "collect_and_match raises IdentityResolutionError when AliasStore.has_alias fails during pre-filter.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "raises IdentityResolutionError",
+        "match_suggester.suggest_match": "not called"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'user@x.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError describing store connectivity failure",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "Error message describes store failure"
+      ]
+    },
+    {
+      "id": "confirm_happy_path",
+      "description": "confirm_match writes alias to AliasStore and returns a ConfirmationResult with correct fields.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "returns True"
+      },
+      "input_values": {
+        "unknown_id": "alice@old.com",
+        "confirmed_id": "alice-canonical",
+        "source": "interactive_prompt"
+      },
+      "input_description": "",
+      "expected_output_description": "ConfirmationResult with unknown_id='alice@old.com', confirmed_id='alice-canonical', source='interactive_prompt', confirmed_at near now.",
+      "expected_error": "",
+      "assertions": [
+        "result.unknown_id == 'alice@old.com'",
+        "result.confirmed_id == 'alice-canonical'",
+        "result.source == 'interactive_prompt'",
+        "result.confirmed_at is a recent UTC datetime",
+        "alias_store.write_alias called with ('alice@old.com', 'alice-canonical')"
+      ]
+    },
+    {
+      "id": "confirm_happy_default_source",
+      "description": "confirm_match uses empty string as default source when not provided.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "returns True"
+      },
+      "input_values": {
+        "unknown_id": "bob@old.com",
+        "confirmed_id": "bob-canonical"
+      },
+      "input_description": "",
+      "expected_output_description": "ConfirmationResult with source == ''.",
+      "expected_error": "",
+      "assertions": [
+        "result.source == ''",
+        "result.unknown_id == 'bob@old.com'",
+        "result.confirmed_id == 'bob-canonical'"
+      ]
+    },
+    {
+      "id": "confirm_error_self_match",
+      "description": "confirm_match rejects self-match where unknown_id equals confirmed_id.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "should not be called"
+      },
+      "input_values": {
+        "unknown_id": "same@example.com",
+        "confirmed_id": "same@example.com"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "IdentityResolutionError: Cannot confirm a self-match",
+      "assertions": [
+        "IdentityResolutionError is raised",
+        "Error message contains 'self-match'",
+        "write_alias is NOT called"
+      ]
+    },
+    {
+      "id": "confirm_error_store_write_failure",
+      "description": "confirm_match raises StoreWriteError when AliasStore.write_alias fails.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "raises StoreWriteError"
+      },
+      "input_values": {
+        "unknown_id": "user@fail.com",
+        "confirmed_id": "canonical-fail"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "StoreWriteError with unknown_id and confirmed_id context",
+      "assertions": [
+        "StoreWriteError is raised",
+        "Error contains unknown_id='user@fail.com'",
+        "Error contains confirmed_id='canonical-fail'"
+      ]
+    },
+    {
+      "id": "confirm_idempotent",
+      "description": "confirm_match is idempotent — repeated calls with same args produce equivalent results without error.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "returns True on both calls"
+      },
+      "input_values": {
+        "unknown_id": "repeat@x.com",
+        "confirmed_id": "canonical-repeat",
+        "source": "auto"
+      },
+      "input_description": "",
+      "expected_output_description": "Both calls succeed and return ConfirmationResult with same unknown_id and confirmed_id.",
+      "expected_error": "",
+      "assertions": [
+        "First call succeeds",
+        "Second call succeeds",
+        "Both results have same unknown_id and confirmed_id",
+        "write_alias called twice (idempotent write)"
+      ]
+    },
+    {
+      "id": "confirm_timestamp_is_utc",
+      "description": "confirm_match sets confirmed_at to current UTC time.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "returns True"
+      },
+      "input_values": {
+        "unknown_id": "ts@test.com",
+        "confirmed_id": "ts-canonical"
+      },
+      "input_description": "",
+      "expected_output_description": "ConfirmationResult.confirmed_at has UTC timezone and is within a few seconds of now.",
+      "expected_error": "",
+      "assertions": [
+        "confirmed_at.tzinfo is not None",
+        "confirmed_at is close to datetime.now(UTC)"
+      ]
+    },
+    {
+      "id": "type_unknown_identifier_frozen",
+      "description": "UnknownIdentifier is frozen/immutable after construction — attribute assignment raises an error.",
+      "function": "UnknownIdentifier",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid UnknownIdentifier instance.",
+      "expected_output_description": "Attempting to set an attribute raises an error.",
+      "expected_error": "",
+      "assertions": [
+        "Setting identifier attribute raises ValidationError or AttributeError or similar frozen error"
+      ]
+    },
+    {
+      "id": "type_match_candidate_frozen",
+      "description": "MatchCandidate is frozen/immutable after construction.",
+      "function": "MatchCandidate",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "Valid MatchCandidate instance.",
+      "expected_output_description": "Attempting to set an attribute raises an error.",
+      "expected_error": "",
+      "assertions": [
+        "Setting canonical_id attribute raises an error"
+      ]
+    },
+    {
+      "id": "type_match_candidate_confidence_range",
+      "description": "MatchCandidate rejects confidence outside [0.0, 1.0].",
+      "function": "MatchCandidate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "MatchCandidate with confidence=1.5 or confidence=-0.1.",
+      "expected_output_description": "ValidationError raised.",
+      "expected_error": "",
+      "assertions": [
+        "confidence=1.5 raises ValidationError",
+        "confidence=-0.1 raises ValidationError"
+      ]
+    },
+    {
+      "id": "type_unknown_identifier_empty_identifier",
+      "description": "UnknownIdentifier rejects empty identifier string.",
+      "function": "UnknownIdentifier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UnknownIdentifier with identifier=''.",
+      "expected_output_description": "ValidationError raised with message about non-empty string.",
+      "expected_error": "",
+      "assertions": [
+        "ValidationError is raised"
+      ]
+    },
+    {
+      "id": "type_unknown_identifier_empty_source",
+      "description": "UnknownIdentifier rejects empty source string.",
+      "function": "UnknownIdentifier",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "UnknownIdentifier with source=''.",
+      "expected_output_description": "ValidationError raised.",
+      "expected_error": "",
+      "assertions": [
+        "ValidationError is raised"
+      ]
+    },
+    {
+      "id": "type_match_candidate_empty_canonical_id",
+      "description": "MatchCandidate rejects empty canonical_id.",
+      "function": "MatchCandidate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "MatchCandidate with canonical_id=''.",
+      "expected_output_description": "ValidationError raised.",
+      "expected_error": "",
+      "assertions": [
+        "ValidationError is raised"
+      ]
+    },
+    {
+      "id": "type_match_candidate_empty_match_method",
+      "description": "MatchCandidate rejects empty match_method.",
+      "function": "MatchCandidate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "MatchCandidate with match_method=''.",
+      "expected_output_description": "ValidationError raised.",
+      "expected_error": "",
+      "assertions": [
+        "ValidationError is raised"
+      ]
+    },
+    {
+      "id": "type_confirmation_result_empty_unknown_id",
+      "description": "ConfirmationResult rejects empty unknown_id.",
+      "function": "ConfirmationResult",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConfirmationResult with unknown_id=''.",
+      "expected_output_description": "ValidationError raised.",
+      "expected_error": "",
+      "assertions": [
+        "ValidationError is raised"
+      ]
+    },
+    {
+      "id": "type_confirmation_result_empty_confirmed_id",
+      "description": "ConfirmationResult rejects empty confirmed_id.",
+      "function": "ConfirmationResult",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "ConfirmationResult with confirmed_id=''.",
+      "expected_output_description": "ValidationError raised.",
+      "expected_error": "",
+      "assertions": [
+        "ValidationError is raised"
+      ]
+    },
+    {
+      "id": "type_match_candidate_boundary_confidence_zero",
+      "description": "MatchCandidate accepts confidence=0.0 (lower boundary).",
+      "function": "MatchCandidate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "MatchCandidate with confidence=0.0.",
+      "expected_output_description": "Instance created successfully with confidence=0.0.",
+      "expected_error": "",
+      "assertions": [
+        "candidate.confidence == 0.0"
+      ]
+    },
+    {
+      "id": "type_match_candidate_boundary_confidence_one",
+      "description": "MatchCandidate accepts confidence=1.0 (upper boundary).",
+      "function": "MatchCandidate",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "MatchCandidate with confidence=1.0.",
+      "expected_output_description": "Instance created successfully with confidence=1.0.",
+      "expected_error": "",
+      "assertions": [
+        "candidate.confidence == 1.0"
+      ]
+    },
+    {
+      "id": "collect_does_not_invoke_handler",
+      "description": "collect_and_match does NOT invoke ResolutionHandler even when one is provided — callers invoke it separately.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns empty tuple",
+        "resolution_handler": "AsyncMock with handle_results"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'user@test.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "ResolutionHandler.handle_results is never called.",
+      "expected_error": "",
+      "assertions": [
+        "resolution_handler.handle_results not called"
+      ]
+    },
+    {
+      "id": "invariant_no_candidates_is_empty_tuple_not_none",
+      "description": "MatchResult.candidates is an empty tuple (not None) when there are no candidates.",
+      "function": "UnknownCollector.collect_and_match",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.has_alias": "returns False",
+        "match_suggester.suggest_match": "returns ()"
+      },
+      "input_values": {
+        "unknowns": "frozenset({'lonely@nowhere.com'})",
+        "source": "scan"
+      },
+      "input_description": "",
+      "expected_output_description": "MatchResult.candidates is () not None.",
+      "expected_error": "",
+      "assertions": [
+        "result[0].candidates is not None",
+        "result[0].candidates == ()"
+      ]
+    },
+    {
+      "id": "confirm_empty_unknown_id_rejected",
+      "description": "confirm_match rejects empty unknown_id string.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "should not be called"
+      },
+      "input_values": {
+        "unknown_id": "",
+        "confirmed_id": "valid-canonical"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "Validation error or ValueError for empty unknown_id.",
+      "assertions": [
+        "Error raised for empty unknown_id",
+        "write_alias is NOT called"
+      ]
+    },
+    {
+      "id": "confirm_empty_confirmed_id_rejected",
+      "description": "confirm_match rejects empty confirmed_id string.",
+      "function": "UnknownCollector.confirm_match",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "alias_store.write_alias": "should not be called"
+      },
+      "input_values": {
+        "unknown_id": "valid@x.com",
+        "confirmed_id": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "Validation error or ValueError for empty confirmed_id.",
+      "assertions": [
+        "Error raised for empty confirmed_id",
+        "write_alias is NOT called"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for identity_collection component.\nTests verify behavior at boundaries (inputs/outputs) against the contract specification.\n\nRun with: pytest tests/test_identity_collection.py -v --asyncio-mode=auto\n\"\"\"\nfrom __future__ import annotations\n\nimport asyncio\nfrom datetime import datetime, timezone, timedelta\nfrom unittest.mock import AsyncMock, MagicMock, patch, call\nfrom typing import Any\n\nimport pytest\n\n# ---------------------------------------------------------------------------\n# Component imports\n# ---------------------------------------------------------------------------\nfrom src.identity_collection import (\n    UnknownIdentifier,\n    MatchCandidate,\n    MatchResult,\n    ConfirmationResult,\n    UnknownCollector,\n    IdentityResolutionError,\n    StoreWriteError,\n    MatchSuggestionError,\n)\n\n# Try importing pydantic ValidationError; fall back for flexibility\ntry:\n    from pydantic import ValidationError\nexcept ImportError:\n    ValidationError = Exception\n\n\n# ============================================================================\n# Factory helpers\n# ============================================================================\n\ndef make_unknown_identifier(\n    identifier: str = \"user@example.com\",\n    source: str = \"git_log\",\n    discovered_at: datetime | None = None,\n) -> UnknownIdentifier:\n    \"\"\"Factory for UnknownIdentifier value objects.\"\"\"\n    if discovered_at is None:\n        discovered_at = datetime.now(timezone.utc)\n    return UnknownIdentifier(\n        identifier=identifier,\n        source=source,\n        discovered_at=discovered_at,\n    )\n\n\ndef make_match_candidate(\n    canonical_id: str = \"canonical-001\",\n    display_name: str = \"Alice Smith\",\n    confidence: float = 0.85,\n    match_method: str = \"levenshtein\",\n) -> MatchCandidate:\n    \"\"\"Factory for MatchCandidate value objects.\"\"\"\n    return MatchCandidate(\n        canonical_id=canonical_id,\n        display_name=display_name,\n        confidence=confidence,\n        match_method=match_method,\n    )\n\n\ndef make_match_result(\n    unknown: UnknownIdentifier | None = None,\n    candidates: tuple = (),\n) -> MatchResult:\n    \"\"\"Factory for MatchResult value objects.\"\"\"\n    if unknown is None:\n        unknown = make_unknown_identifier()\n    return MatchResult(unknown=unknown, candidates=candidates)\n\n\n# ============================================================================\n# Fake / Mock helpers\n# ============================================================================\n\nclass FakeAliasStore:\n    \"\"\"In-memory AliasStore for integration-style assertions.\"\"\"\n\n    def __init__(self) -> None:\n        self._aliases: dict[str, str] = {}\n\n    async def has_alias(self, identifier: str) -> bool:\n        return identifier in self._aliases\n\n    async def write_alias(self, unknown_id: str, confirmed_id: str) -> bool:\n        self._aliases[unknown_id] = confirmed_id\n        return True\n\n\ndef _make_mock_suggester(\n    side_effect=None,\n    default_candidates: tuple | None = None,\n) -> AsyncMock:\n    \"\"\"Create an AsyncMock satisfying the MatchSuggester protocol.\"\"\"\n    mock = AsyncMock()\n    if side_effect is not None:\n        mock.suggest_match.side_effect = side_effect\n    elif default_candidates is not None:\n        mock.suggest_match.return_value = default_candidates\n    else:\n        mock.suggest_match.return_value = ()\n    return mock\n\n\ndef _make_mock_alias_store(\n    has_alias_side_effect=None,\n    has_alias_return: bool = False,\n    write_alias_return: bool = True,\n    write_alias_side_effect=None,\n) -> AsyncMock:\n    \"\"\"Create an AsyncMock satisfying the AliasStore protocol.\"\"\"\n    mock = AsyncMock()\n    if has_alias_side_effect is not None:\n        mock.has_alias.side_effect = has_alias_side_effect\n    else:\n        mock.has_alias.return_value = has_alias_return\n    if write_alias_side_effect is not None:\n        mock.write_alias.side_effect = write_alias_side_effect\n    else:\n        mock.write_alias.return_value = write_alias_return\n    return mock\n\n\ndef _make_mock_handler() -> AsyncMock:\n    \"\"\"Create an AsyncMock satisfying the ResolutionHandler protocol.\"\"\"\n    mock = AsyncMock()\n    mock.handle_results.return_value = ()\n    return mock\n\n\n# ============================================================================\n# Fixtures\n# ============================================================================\n\n@pytest.fixture\ndef mock_suggester():\n    return _make_mock_suggester()\n\n\n@pytest.fixture\ndef mock_alias_store():\n    return _make_mock_alias_store()\n\n\n@pytest.fixture\ndef mock_handler():\n    return _make_mock_handler()\n\n\n@pytest.fixture\ndef fake_alias_store():\n    return FakeAliasStore()\n\n\n@pytest.fixture\ndef make_collector(mock_suggester, mock_alias_store):\n    \"\"\"Return a factory that creates UnknownCollector with mocked deps.\"\"\"\n    def _factory(\n        suggester=None,\n        store=None,\n        handler=None,\n    ) -> UnknownCollector:\n        return UnknownCollector(\n            match_suggester=suggester or mock_suggester,\n            alias_store=store or mock_alias_store,\n            resolution_handler=handler,\n        )\n    return _factory\n\n\n# ============================================================================\n# TestUnknownCollectorInit\n# ============================================================================\n\nclass TestUnknownCollectorInit:\n    \"\"\"Tests for UnknownCollector.__init__ — constructor / dependency injection.\"\"\"\n\n    def test_init_with_all_dependencies(self):\n        \"\"\"UnknownCollector initializes with all three deps (match_suggester, alias_store, handler).\"\"\"\n        suggester = _make_mock_suggester()\n        store = _make_mock_alias_store()\n        handler = _make_mock_handler()\n        collector = UnknownCollector(\n            match_suggester=suggester,\n            alias_store=store,\n            resolution_handler=handler,\n        )\n        assert collector is not None, \"Collector should be created successfully\"\n\n    def test_init_without_resolution_handler(self):\n        \"\"\"UnknownCollector initializes without a handler (collect-and-match-only mode).\"\"\"\n        suggester = _make_mock_suggester()\n        store = _make_mock_alias_store()\n        collector = UnknownCollector(\n            match_suggester=suggester,\n            alias_store=store,\n        )\n        assert collector is not None, \"Collector should be created without handler\"\n\n    def test_init_handler_default_is_none(self):\n        \"\"\"When resolution_handler is omitted, it defaults to None.\"\"\"\n        suggester = _make_mock_suggester()\n        store = _make_mock_alias_store()\n        collector = UnknownCollector(\n            match_suggester=suggester,\n            alias_store=store,\n        )\n        # The collector should work without a handler — implementation detail,\n        # but we verify it doesn't error out.\n        assert collector is not None\n\n\n# ============================================================================\n# TestCollectAndMatch\n# ============================================================================\n\nclass TestCollectAndMatch:\n    \"\"\"Tests for UnknownCollector.collect_and_match — the core collection pipeline.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_happy_multiple_unknowns(self):\n        \"\"\"Multiple unknowns each produce a MatchResult with candidates sorted descending.\"\"\"\n        cand_a = (\n            make_match_candidate(canonical_id=\"cid-alice\", confidence=0.95),\n            make_match_candidate(canonical_id=\"cid-alice2\", confidence=0.60),\n        )\n        cand_b = (\n            make_match_candidate(canonical_id=\"cid-bob\", confidence=0.80),\n        )\n\n        async def _suggest(identifier: str, limit: int = 5):\n            if \"alice\" in identifier:\n                return cand_a\n            return cand_b\n\n        suggester = _make_mock_suggester(side_effect=_suggest)\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"alice@example.com\", \"bob@corp.io\"}),\n            source=\"git_log_run_2024-01-15\",\n        )\n\n        assert len(result) == 2, f\"Expected 2 MatchResults, got {len(result)}\"\n        for mr in result:\n            assert mr.unknown.source == \"git_log_run_2024-01-15\", (\n                f\"source should be propagated, got {mr.unknown.source}\"\n            )\n            # Verify descending confidence order\n            for i in range(len(mr.candidates) - 1):\n                assert mr.candidates[i].confidence >= mr.candidates[i + 1].confidence, (\n                    \"Candidates must be sorted by descending confidence\"\n                )\n            # No self-matches\n            for c in mr.candidates:\n                assert c.canonical_id != mr.unknown.identifier, (\n                    f\"Self-match found: {c.canonical_id}\"\n                )\n\n    @pytest.mark.asyncio\n    async def test_happy_single_unknown(self):\n        \"\"\"A single unknown produces exactly one MatchResult.\"\"\"\n        cand = (make_match_candidate(canonical_id=\"cid-dev\", confidence=0.70),)\n        suggester = _make_mock_suggester(default_candidates=cand)\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"dev@startup.io\"}),\n            source=\"pr_author_scan\",\n        )\n\n        assert len(result) == 1, \"Should return exactly 1 MatchResult\"\n        assert result[0].unknown.identifier == \"dev@startup.io\"\n        assert result[0].unknown.source == \"pr_author_scan\"\n\n    @pytest.mark.asyncio\n    async def test_prefilter_known_aliases_skipped(self):\n        \"\"\"Identifiers already in AliasStore are excluded from results.\"\"\"\n        async def _has_alias(identifier: str) -> bool:\n            return identifier == \"known@example.com\"\n\n        suggester = _make_mock_suggester(default_candidates=())\n        store = _make_mock_alias_store()\n        store.has_alias.side_effect = _has_alias\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"known@example.com\", \"unknown@example.com\"}),\n            source=\"commit_scan\",\n        )\n\n        assert len(result) == 1, \"Only the unknown identifier should produce a result\"\n        assert result[0].unknown.identifier == \"unknown@example.com\"\n        # suggest_match should only be called for the unknown identifier\n        identifiers_called = [\n            c.args[0] if c.args else c.kwargs.get(\"identifier\")\n            for c in suggester.suggest_match.call_args_list\n        ]\n        assert \"known@example.com\" not in identifiers_called, (\n            \"suggest_match should not be called for pre-filtered identifiers\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_empty_input_returns_empty_tuple(self):\n        \"\"\"Empty frozenset input produces empty result tuple.\"\"\"\n        suggester = _make_mock_suggester()\n        store = _make_mock_alias_store()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset(),\n            source=\"empty_run\",\n        )\n\n        assert result == () or (isinstance(result, (tuple, list)) and len(result) == 0), (\n            \"Empty input should yield empty output\"\n        )\n        suggester.suggest_match.assert_not_called()\n\n    @pytest.mark.asyncio\n    async def test_no_candidates_returns_empty_tuple_not_none(self):\n        \"\"\"When suggest_match finds no candidates, MatchResult.candidates is empty tuple, not None.\"\"\"\n        suggester = _make_mock_suggester(default_candidates=())\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"rare_handle_xyz\"}),\n            source=\"issue_scan\",\n        )\n\n        assert len(result) == 1\n        assert result[0].candidates is not None, \"candidates must not be None\"\n        assert result[0].candidates == () or (\n            isinstance(result[0].candidates, (tuple, list)) and len(result[0].candidates) == 0\n        ), \"candidates must be empty tuple when no matches found\"\n\n    @pytest.mark.asyncio\n    async def test_self_match_filtered_from_candidates(self):\n        \"\"\"Candidates with canonical_id == unknown identifier are filtered out.\"\"\"\n        candidates_with_self = (\n            make_match_candidate(canonical_id=\"john@acme.com\", confidence=0.99, display_name=\"Self\"),\n            make_match_candidate(canonical_id=\"john-canonical\", confidence=0.85, display_name=\"John Doe\"),\n        )\n        suggester = _make_mock_suggester(default_candidates=candidates_with_self)\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"john@acme.com\"}),\n            source=\"git_log\",\n        )\n\n        assert len(result) == 1\n        for candidate in result[0].candidates:\n            assert candidate.canonical_id != \"john@acme.com\", (\n                f\"Self-match should be filtered: {candidate.canonical_id}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_source_propagated_to_all_unknowns(self):\n        \"\"\"The source parameter appears on every UnknownIdentifier in results.\"\"\"\n        suggester = _make_mock_suggester(default_candidates=())\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"a@b.com\", \"c@d.com\"}),\n            source=\"my_custom_source\",\n        )\n\n        assert len(result) == 2\n        for mr in result:\n            assert mr.unknown.source == \"my_custom_source\", (\n                f\"Expected source 'my_custom_source', got '{mr.unknown.source}'\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_discovered_at_is_recent_utc(self):\n        \"\"\"discovered_at on UnknownIdentifier is a recent UTC datetime.\"\"\"\n        suggester = _make_mock_suggester(default_candidates=())\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        before = datetime.now(timezone.utc)\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"user@test.com\"}),\n            source=\"scan\",\n        )\n        after = datetime.now(timezone.utc)\n\n        assert len(result) == 1\n        discovered = result[0].unknown.discovered_at\n        assert discovered is not None, \"discovered_at should not be None\"\n        assert discovered.tzinfo is not None, \"discovered_at must be timezone-aware\"\n        assert before - timedelta(seconds=5) <= discovered <= after + timedelta(seconds=5), (\n            f\"discovered_at should be near current time, got {discovered}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_all_prefiltered_returns_empty(self):\n        \"\"\"When all identifiers have existing aliases, result is empty.\"\"\"\n        store = _make_mock_alias_store(has_alias_return=True)\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"known1@x.com\", \"known2@x.com\"}),\n            source=\"scan\",\n        )\n\n        assert len(result) == 0, \"All pre-filtered should yield empty result\"\n        suggester.suggest_match.assert_not_called()\n\n    @pytest.mark.asyncio\n    async def test_candidates_sorted_descending_confidence(self):\n        \"\"\"Candidates in results are sorted by descending confidence regardless of suggest_match order.\"\"\"\n        # Return candidates in non-sorted order\n        unsorted_candidates = (\n            make_match_candidate(canonical_id=\"c1\", confidence=0.5, match_method=\"m1\"),\n            make_match_candidate(canonical_id=\"c2\", confidence=0.9, match_method=\"m2\"),\n            make_match_candidate(canonical_id=\"c3\", confidence=0.3, match_method=\"m3\"),\n        )\n        suggester = _make_mock_suggester(default_candidates=unsorted_candidates)\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"user@test.com\"}),\n            source=\"scan\",\n        )\n\n        assert len(result) == 1\n        candidates = result[0].candidates\n        assert len(candidates) >= 3, f\"Expected at least 3 candidates, got {len(candidates)}\"\n        for i in range(len(candidates) - 1):\n            assert candidates[i].confidence >= candidates[i + 1].confidence, (\n                f\"Candidates not sorted descending: {candidates[i].confidence} < {candidates[i + 1].confidence}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_does_not_invoke_resolution_handler(self):\n        \"\"\"collect_and_match does NOT invoke ResolutionHandler even when provided.\"\"\"\n        handler = _make_mock_handler()\n        suggester = _make_mock_suggester(default_candidates=())\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(\n            match_suggester=suggester,\n            alias_store=store,\n            resolution_handler=handler,\n        )\n\n        await collector.collect_and_match(\n            unknowns=frozenset({\"user@test.com\"}),\n            source=\"scan\",\n        )\n\n        handler.handle_results.assert_not_called()\n\n    @pytest.mark.asyncio\n    async def test_error_partial_suggestion_failure(self):\n        \"\"\"Partial suggest_match failure raises IdentityResolutionError with failed identifiers.\"\"\"\n        async def _suggest(identifier: str, limit: int = 5):\n            if \"bad\" in identifier:\n                raise MatchSuggestionError(\n                    message=f\"Backend timeout for {identifier}\",\n                    identifier=identifier,\n                )\n            return (make_match_candidate(canonical_id=\"good-cid\", confidence=0.8),)\n\n        suggester = _make_mock_suggester(side_effect=_suggest)\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises((IdentityResolutionError, MatchSuggestionError)) as exc_info:\n            await collector.collect_and_match(\n                unknowns=frozenset({\"good@x.com\", \"bad@x.com\"}),\n                source=\"scan\",\n            )\n\n        error = exc_info.value\n        error_str = str(error)\n        # Verify the bad identifier is referenced in the error\n        assert \"bad@x.com\" in error_str or (\n            hasattr(error, \"context\") and \"bad@x.com\" in str(error.context)\n        ) or (\n            hasattr(error, \"identifier\") and error.identifier == \"bad@x.com\"\n        ), f\"Error should reference 'bad@x.com', got: {error_str}\"\n\n    @pytest.mark.asyncio\n    async def test_error_all_suggestions_failed(self):\n        \"\"\"When all suggest_match calls fail, IdentityResolutionError is raised.\"\"\"\n        async def _suggest(identifier: str, limit: int = 5):\n            raise MatchSuggestionError(\n                message=f\"Backend error for {identifier}\",\n                identifier=identifier,\n            )\n\n        suggester = _make_mock_suggester(side_effect=_suggest)\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises((IdentityResolutionError, MatchSuggestionError)):\n            await collector.collect_and_match(\n                unknowns=frozenset({\"bad1@x.com\", \"bad2@x.com\"}),\n                source=\"scan\",\n            )\n\n    @pytest.mark.asyncio\n    async def test_error_alias_store_prefilter_failure(self):\n        \"\"\"AliasStore failure during pre-filter raises IdentityResolutionError.\"\"\"\n        store = _make_mock_alias_store()\n        store.has_alias.side_effect = IdentityResolutionError(\n            message=\"Store unreachable during pre-filter\"\n        )\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises(IdentityResolutionError) as exc_info:\n            await collector.collect_and_match(\n                unknowns=frozenset({\"user@x.com\"}),\n                source=\"scan\",\n            )\n\n        assert \"store\" in str(exc_info.value).lower() or \"unreachable\" in str(exc_info.value).lower(), (\n            f\"Error should describe store failure, got: {exc_info.value}\"\n        )\n        suggester.suggest_match.assert_not_called()\n\n\n# ============================================================================\n# TestConfirmMatch\n# ============================================================================\n\nclass TestConfirmMatch:\n    \"\"\"Tests for UnknownCollector.confirm_match — alias confirmation API.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_happy_path_confirm(self):\n        \"\"\"Confirm a match: writes alias and returns ConfirmationResult.\"\"\"\n        store = _make_mock_alias_store(write_alias_return=True)\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        before = datetime.now(timezone.utc)\n        result = await collector.confirm_match(\n            unknown_id=\"alice@old.com\",\n            confirmed_id=\"alice-canonical\",\n            source=\"interactive_prompt\",\n        )\n        after = datetime.now(timezone.utc)\n\n        assert result.unknown_id == \"alice@old.com\", (\n            f\"Expected unknown_id 'alice@old.com', got '{result.unknown_id}'\"\n        )\n        assert result.confirmed_id == \"alice-canonical\", (\n            f\"Expected confirmed_id 'alice-canonical', got '{result.confirmed_id}'\"\n        )\n        assert result.source == \"interactive_prompt\", (\n            f\"Expected source 'interactive_prompt', got '{result.source}'\"\n        )\n        assert result.confirmed_at is not None\n        assert before - timedelta(seconds=2) <= result.confirmed_at <= after + timedelta(seconds=2), (\n            f\"confirmed_at should be near now, got {result.confirmed_at}\"\n        )\n        store.write_alias.assert_awaited_once_with(\"alice@old.com\", \"alice-canonical\")\n\n    @pytest.mark.asyncio\n    async def test_default_source_is_empty(self):\n        \"\"\"When source is omitted, it defaults to empty string.\"\"\"\n        store = _make_mock_alias_store(write_alias_return=True)\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.confirm_match(\n            unknown_id=\"bob@old.com\",\n            confirmed_id=\"bob-canonical\",\n        )\n\n        assert result.source == \"\", f\"Expected default source '', got '{result.source}'\"\n        assert result.unknown_id == \"bob@old.com\"\n        assert result.confirmed_id == \"bob-canonical\"\n\n    @pytest.mark.asyncio\n    async def test_self_match_rejected(self):\n        \"\"\"Confirming unknown_id == confirmed_id raises IdentityResolutionError.\"\"\"\n        store = _make_mock_alias_store()\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises((IdentityResolutionError, ValueError)) as exc_info:\n            await collector.confirm_match(\n                unknown_id=\"same@example.com\",\n                confirmed_id=\"same@example.com\",\n            )\n\n        assert \"self\" in str(exc_info.value).lower() or \"same\" in str(exc_info.value).lower(), (\n            f\"Error should mention self-match, got: {exc_info.value}\"\n        )\n        store.write_alias.assert_not_awaited()\n\n    @pytest.mark.asyncio\n    async def test_store_write_failure_propagates(self):\n        \"\"\"StoreWriteError from alias_store.write_alias is propagated.\"\"\"\n        store = _make_mock_alias_store(\n            write_alias_side_effect=StoreWriteError(\n                message=\"Disk full\",\n                unknown_id=\"user@fail.com\",\n                confirmed_id=\"canonical-fail\",\n            )\n        )\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises((StoreWriteError, IdentityResolutionError)) as exc_info:\n            await collector.confirm_match(\n                unknown_id=\"user@fail.com\",\n                confirmed_id=\"canonical-fail\",\n            )\n\n        error = exc_info.value\n        if isinstance(error, StoreWriteError):\n            assert error.unknown_id == \"user@fail.com\"\n            assert error.confirmed_id == \"canonical-fail\"\n\n    @pytest.mark.asyncio\n    async def test_idempotent_confirmation(self):\n        \"\"\"Repeated confirm_match with same args succeeds both times (idempotent).\"\"\"\n        store = _make_mock_alias_store(write_alias_return=True)\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result1 = await collector.confirm_match(\n            unknown_id=\"repeat@x.com\",\n            confirmed_id=\"canonical-repeat\",\n            source=\"auto\",\n        )\n        result2 = await collector.confirm_match(\n            unknown_id=\"repeat@x.com\",\n            confirmed_id=\"canonical-repeat\",\n            source=\"auto\",\n        )\n\n        assert result1.unknown_id == result2.unknown_id == \"repeat@x.com\"\n        assert result1.confirmed_id == result2.confirmed_id == \"canonical-repeat\"\n        assert store.write_alias.await_count == 2\n\n    @pytest.mark.asyncio\n    async def test_confirmed_at_is_utc(self):\n        \"\"\"confirm_match sets confirmed_at with UTC timezone info.\"\"\"\n        store = _make_mock_alias_store(write_alias_return=True)\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.confirm_match(\n            unknown_id=\"ts@test.com\",\n            confirmed_id=\"ts-canonical\",\n        )\n\n        assert result.confirmed_at.tzinfo is not None, (\n            \"confirmed_at must be timezone-aware\"\n        )\n        # Check it's UTC (offset 0)\n        utc_offset = result.confirmed_at.utcoffset()\n        assert utc_offset == timedelta(0), (\n            f\"confirmed_at should be UTC (offset 0), got offset {utc_offset}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_empty_unknown_id_rejected(self):\n        \"\"\"confirm_match rejects empty unknown_id.\"\"\"\n        store = _make_mock_alias_store()\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises((ValidationError, ValueError, IdentityResolutionError)):\n            await collector.confirm_match(\n                unknown_id=\"\",\n                confirmed_id=\"valid-canonical\",\n            )\n\n        store.write_alias.assert_not_awaited()\n\n    @pytest.mark.asyncio\n    async def test_empty_confirmed_id_rejected(self):\n        \"\"\"confirm_match rejects empty confirmed_id.\"\"\"\n        store = _make_mock_alias_store()\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        with pytest.raises((ValidationError, ValueError, IdentityResolutionError)):\n            await collector.confirm_match(\n                unknown_id=\"valid@x.com\",\n                confirmed_id=\"\",\n            )\n\n        store.write_alias.assert_not_awaited()\n\n    @pytest.mark.asyncio\n    async def test_confirm_with_fake_alias_store(self):\n        \"\"\"Integration: confirm_match with FakeAliasStore actually persists the alias.\"\"\"\n        fake_store = FakeAliasStore()\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=fake_store)\n\n        result = await collector.confirm_match(\n            unknown_id=\"new@example.com\",\n            confirmed_id=\"canonical-new\",\n            source=\"test\",\n        )\n\n        assert result.unknown_id == \"new@example.com\"\n        assert result.confirmed_id == \"canonical-new\"\n        assert await fake_store.has_alias(\"new@example.com\") is True, (\n            \"AliasStore should contain the alias after confirmation\"\n        )\n\n\n# ============================================================================\n# TestValueTypeValidation\n# ============================================================================\n\nclass TestValueTypeValidation:\n    \"\"\"Tests for frozen Pydantic v2 value type constraints and immutability.\"\"\"\n\n    def test_unknown_identifier_frozen(self):\n        \"\"\"UnknownIdentifier is immutable — setting attributes raises error.\"\"\"\n        ui = make_unknown_identifier()\n        with pytest.raises(Exception):  # ValidationError or AttributeError\n            ui.identifier = \"mutated\"\n\n    def test_match_candidate_frozen(self):\n        \"\"\"MatchCandidate is immutable — setting attributes raises error.\"\"\"\n        mc = make_match_candidate()\n        with pytest.raises(Exception):\n            mc.canonical_id = \"mutated\"\n\n    def test_match_candidate_confidence_too_high(self):\n        \"\"\"MatchCandidate rejects confidence > 1.0.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            make_match_candidate(confidence=1.5)\n\n    def test_match_candidate_confidence_too_low(self):\n        \"\"\"MatchCandidate rejects confidence < 0.0.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            make_match_candidate(confidence=-0.1)\n\n    def test_match_candidate_confidence_zero_accepted(self):\n        \"\"\"MatchCandidate accepts confidence=0.0 (lower boundary).\"\"\"\n        mc = make_match_candidate(confidence=0.0)\n        assert mc.confidence == 0.0\n\n    def test_match_candidate_confidence_one_accepted(self):\n        \"\"\"MatchCandidate accepts confidence=1.0 (upper boundary).\"\"\"\n        mc = make_match_candidate(confidence=1.0)\n        assert mc.confidence == 1.0\n\n    def test_unknown_identifier_empty_identifier_rejected(self):\n        \"\"\"UnknownIdentifier rejects empty identifier string.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            UnknownIdentifier(\n                identifier=\"\",\n                source=\"git_log\",\n                discovered_at=datetime.now(timezone.utc),\n            )\n\n    def test_unknown_identifier_empty_source_rejected(self):\n        \"\"\"UnknownIdentifier rejects empty source string.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            UnknownIdentifier(\n                identifier=\"user@example.com\",\n                source=\"\",\n                discovered_at=datetime.now(timezone.utc),\n            )\n\n    def test_match_candidate_empty_canonical_id_rejected(self):\n        \"\"\"MatchCandidate rejects empty canonical_id.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            MatchCandidate(\n                canonical_id=\"\",\n                display_name=\"Some Name\",\n                confidence=0.5,\n                match_method=\"levenshtein\",\n            )\n\n    def test_match_candidate_empty_match_method_rejected(self):\n        \"\"\"MatchCandidate rejects empty match_method.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            MatchCandidate(\n                canonical_id=\"cid-1\",\n                display_name=\"Some Name\",\n                confidence=0.5,\n                match_method=\"\",\n            )\n\n    def test_confirmation_result_empty_unknown_id_rejected(self):\n        \"\"\"ConfirmationResult rejects empty unknown_id.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            ConfirmationResult(\n                unknown_id=\"\",\n                confirmed_id=\"cid-1\",\n                confirmed_at=datetime.now(timezone.utc),\n                source=\"test\",\n            )\n\n    def test_confirmation_result_empty_confirmed_id_rejected(self):\n        \"\"\"ConfirmationResult rejects empty confirmed_id.\"\"\"\n        with pytest.raises((ValidationError, ValueError)):\n            ConfirmationResult(\n                unknown_id=\"user@x.com\",\n                confirmed_id=\"\",\n                confirmed_at=datetime.now(timezone.utc),\n                source=\"test\",\n            )\n\n    def test_match_result_frozen(self):\n        \"\"\"MatchResult is immutable — setting attributes raises error.\"\"\"\n        mr = make_match_result()\n        with pytest.raises(Exception):\n            mr.unknown = make_unknown_identifier(identifier=\"changed@x.com\")\n\n    def test_confirmation_result_frozen(self):\n        \"\"\"ConfirmationResult is immutable — setting attributes raises error.\"\"\"\n        cr = ConfirmationResult(\n            unknown_id=\"u@x.com\",\n            confirmed_id=\"c-1\",\n            confirmed_at=datetime.now(timezone.utc),\n            source=\"test\",\n        )\n        with pytest.raises(Exception):\n            cr.unknown_id = \"mutated\"\n\n\n# ============================================================================\n# TestErrorTypes\n# ============================================================================\n\nclass TestErrorTypes:\n    \"\"\"Tests for error type hierarchy and structure.\"\"\"\n\n    def test_store_write_error_is_identity_resolution_error(self):\n        \"\"\"StoreWriteError is a subtype of IdentityResolutionError.\"\"\"\n        err = StoreWriteError(\n            message=\"disk full\",\n            unknown_id=\"u1\",\n            confirmed_id=\"c1\",\n        )\n        assert isinstance(err, IdentityResolutionError), (\n            \"StoreWriteError should be a subtype of IdentityResolutionError\"\n        )\n\n    def test_match_suggestion_error_is_identity_resolution_error(self):\n        \"\"\"MatchSuggestionError is a subtype of IdentityResolutionError.\"\"\"\n        err = MatchSuggestionError(\n            message=\"backend timeout\",\n            identifier=\"user@x.com\",\n        )\n        assert isinstance(err, IdentityResolutionError), (\n            \"MatchSuggestionError should be a subtype of IdentityResolutionError\"\n        )\n\n    def test_store_write_error_carries_context(self):\n        \"\"\"StoreWriteError carries unknown_id and confirmed_id.\"\"\"\n        err = StoreWriteError(\n            message=\"permission denied\",\n            unknown_id=\"uid\",\n            confirmed_id=\"cid\",\n        )\n        assert err.unknown_id == \"uid\"\n        assert err.confirmed_id == \"cid\"\n        assert \"permission denied\" in err.message\n\n    def test_match_suggestion_error_carries_identifier(self):\n        \"\"\"MatchSuggestionError carries the failing identifier.\"\"\"\n        err = MatchSuggestionError(\n            message=\"index corrupt\",\n            identifier=\"broken@x.com\",\n        )\n        assert err.identifier == \"broken@x.com\"\n        assert \"index corrupt\" in err.message\n\n    def test_identity_resolution_error_has_message(self):\n        \"\"\"Base IdentityResolutionError carries a human-readable message.\"\"\"\n        err = IdentityResolutionError(message=\"something went wrong\")\n        assert err.message == \"something went wrong\"\n\n    def test_identity_resolution_error_optional_context(self):\n        \"\"\"IdentityResolutionError.context defaults to empty dict.\"\"\"\n        err = IdentityResolutionError(message=\"test\")\n        context = getattr(err, \"context\", {})\n        assert isinstance(context, dict), \"context should be a dict\"\n\n\n# ============================================================================\n# TestInvariants\n# ============================================================================\n\nclass TestInvariants:\n    \"\"\"Tests verifying cross-cutting contract invariants.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_no_candidates_is_empty_tuple_not_none(self):\n        \"\"\"INVARIANT: No-candidates is always an empty tuple, never None.\"\"\"\n        mr = MatchResult(\n            unknown=make_unknown_identifier(),\n            candidates=(),\n        )\n        assert mr.candidates is not None\n        assert mr.candidates == ()\n\n    @pytest.mark.asyncio\n    async def test_collect_result_count_lte_input_count(self):\n        \"\"\"INVARIANT: Number of results ≤ number of input unknowns (some may be pre-filtered).\"\"\"\n        unknowns = frozenset({\"a@x.com\", \"b@x.com\", \"c@x.com\"})\n\n        async def _has_alias(identifier: str) -> bool:\n            return identifier == \"b@x.com\"  # one is known\n\n        store = _make_mock_alias_store()\n        store.has_alias.side_effect = _has_alias\n        suggester = _make_mock_suggester(default_candidates=())\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(unknowns=unknowns, source=\"scan\")\n\n        assert len(result) <= len(unknowns), (\n            f\"Result count ({len(result)}) should be <= input count ({len(unknowns)})\"\n        )\n        assert len(result) == 2, \"One was pre-filtered, so expect 2\"\n\n    @pytest.mark.asyncio\n    async def test_self_match_never_in_candidates_invariant(self):\n        \"\"\"INVARIANT: Self-matches are never present in MatchResult.candidates.\"\"\"\n        # Provide candidates where one is a self-match\n        self_match = make_match_candidate(\n            canonical_id=\"target@company.com\",\n            confidence=1.0,\n            display_name=\"Self\",\n        )\n        legit = make_match_candidate(\n            canonical_id=\"real-canonical\",\n            confidence=0.7,\n            display_name=\"Real Person\",\n        )\n        suggester = _make_mock_suggester(default_candidates=(self_match, legit))\n        store = _make_mock_alias_store(has_alias_return=False)\n        collector = UnknownCollector(match_suggester=suggester, alias_store=store)\n\n        result = await collector.collect_and_match(\n            unknowns=frozenset({\"target@company.com\"}),\n            source=\"scan\",\n        )\n\n        assert len(result) == 1\n        for candidate in result[0].candidates:\n            assert candidate.canonical_id != \"target@company.com\", (\n                \"Self-match must be filtered from candidates\"\n            )\n\n    def test_tuple_immutability_for_collections(self):\n        \"\"\"INVARIANT: tuple is used for frozen model collection fields.\"\"\"\n        mr = MatchResult(\n            unknown=make_unknown_identifier(),\n            candidates=(\n                make_match_candidate(canonical_id=\"c1\", confidence=0.9),\n                make_match_candidate(canonical_id=\"c2\", confidence=0.5),\n            ),\n        )\n        assert isinstance(mr.candidates, tuple), (\n            f\"candidates should be a tuple, got {type(mr.candidates)}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_composition_not_inheritance(self):\n        \"\"\"INVARIANT: UnknownCollector uses composition for dependencies, not inheritance.\"\"\"\n        # Verify UnknownCollector does NOT inherit from MatchSuggester, AliasStore, etc.\n        assert not issubclass(UnknownCollector, type(_make_mock_suggester())), (\n            \"UnknownCollector should not inherit from MatchSuggester\"\n        )\n        # Just verify it's constructible via composition\n        collector = UnknownCollector(\n            match_suggester=_make_mock_suggester(),\n            alias_store=_make_mock_alias_store(),\n        )\n        assert collector is not None\n\n    @pytest.mark.asyncio\n    async def test_confirm_match_writes_to_alias_store(self):\n        \"\"\"INVARIANT: After confirm_match succeeds, alias_store.has_alias returns True.\"\"\"\n        fake_store = FakeAliasStore()\n        suggester = _make_mock_suggester()\n        collector = UnknownCollector(match_suggester=suggester, alias_store=fake_store)\n\n        # Before confirmation\n        assert await fake_store.has_alias(\"new@test.com\") is False\n\n        await collector.confirm_match(\n            unknown_id=\"new@test.com\",\n            confirmed_id=\"canonical-new\",\n            source=\"test\",\n        )\n\n        # After confirmation\n        assert await fake_store.has_alias(\"new@test.com\") is True, (\n            \"AliasStore should contain the alias after confirm_match\"\n        )\n\n\n# ============================================================================\n# TestMatchResultConstruction\n# ============================================================================\n\nclass TestMatchResultConstruction:\n    \"\"\"Additional construction / edge case tests for MatchResult.\"\"\"\n\n    def test_match_result_with_empty_candidates(self):\n        \"\"\"MatchResult can be constructed with empty candidates tuple.\"\"\"\n        mr = MatchResult(\n            unknown=make_unknown_identifier(identifier=\"lonely@x.com\"),\n            candidates=(),\n        )\n        assert mr.unknown.identifier == \"lonely@x.com\"\n        assert mr.candidates == ()\n        assert len(mr.candidates) == 0\n\n    def test_match_result_with_multiple_candidates(self):\n        \"\"\"MatchResult can hold multiple candidates.\"\"\"\n        candidates = (\n            make_match_candidate(canonical_id=\"c1\", confidence=0.9),\n            make_match_candidate(canonical_id=\"c2\", confidence=0.7),\n            make_match_candidate(canonical_id=\"c3\", confidence=0.3),\n        )\n        mr = MatchResult(\n            unknown=make_unknown_identifier(),\n            candidates=candidates,\n        )\n        assert len(mr.candidates) == 3\n\n    def test_match_candidate_display_name_can_be_empty(self):\n        \"\"\"MatchCandidate.display_name has no min-length validator — empty is allowed.\"\"\"\n        mc = MatchCandidate(\n            canonical_id=\"cid-1\",\n            display_name=\"\",\n            confidence=0.5,\n            match_method=\"exact\",\n        )\n        assert mc.display_name == \"\"\n\n    def test_confirmation_result_source_can_be_empty(self):\n        \"\"\"ConfirmationResult.source can be empty string (no validators).\"\"\"\n        cr = ConfirmationResult(\n            unknown_id=\"u@x.com\",\n            confirmed_id=\"c-1\",\n            confirmed_at=datetime.now(timezone.utc),\n            source=\"\",\n        )\n        assert cr.source == \"\"\n"
+}

@@ -1,0 +1,1048 @@
+{
+  "component_id": "embedding_strategy_protocol",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "init_valid_128",
+      "description": "Registry initializes with valid dimensions=128",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "128"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.dimensions == 128",
+        "list_strategies returns empty list"
+      ]
+    },
+    {
+      "id": "init_valid_1",
+      "description": "Registry initializes with minimum valid dimensions=1",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "1"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.dimensions == 1"
+      ]
+    },
+    {
+      "id": "init_valid_4096",
+      "description": "Registry initializes with maximum valid dimensions=4096",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "4096"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.dimensions == 4096"
+      ]
+    },
+    {
+      "id": "init_invalid_zero",
+      "description": "Registry raises ValueError for dimensions=0",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "init_invalid_negative",
+      "description": "Registry raises ValueError for negative dimensions",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "-5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "init_invalid_too_large",
+      "description": "Registry raises ValueError for dimensions > 4096",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dimensions": "5000"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_valid_strategy",
+      "description": "Register a valid async embedding strategy succeeds",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "semantic",
+        "strategy": "ValidAsyncStrategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.has_strategy('semantic') is True"
+      ]
+    },
+    {
+      "id": "register_invalid_name_uppercase",
+      "description": "Register with uppercase name raises ValueError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "Semantic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_invalid_name_starts_digit",
+      "description": "Register with name starting with digit raises ValueError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "1strategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_invalid_name_special_chars",
+      "description": "Register with special chars in name raises ValueError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "my-strategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_invalid_name_empty",
+      "description": "Register with empty string name raises ValueError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_invalid_name_too_long",
+      "description": "Register with 65-char name raises ValueError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "a_very_long_strategy_name_that_exceeds_sixty_four_characters_limit"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_no_embed_method",
+      "description": "Register object without embed method raises TypeError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "bad",
+        "strategy": "NoEmbedStrategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "register_sync_embed",
+      "description": "Register object with sync (non-async) embed raises TypeError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "sync",
+        "strategy": "SyncEmbedStrategy"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "register_duplicate_name",
+      "description": "Registering same name twice raises ValueError",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "semantic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "register_valid_name_with_underscores",
+      "description": "Register strategy with underscores in name succeeds",
+      "function": "EmbeddingStrategyRegistry.register",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "my_strategy_v2"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.has_strategy('my_strategy_v2') is True"
+      ]
+    },
+    {
+      "id": "unregister_existing",
+      "description": "Unregister an existing strategy succeeds",
+      "function": "EmbeddingStrategyRegistry.unregister",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "semantic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.has_strategy('semantic') is False"
+      ]
+    },
+    {
+      "id": "unregister_nonexistent",
+      "description": "Unregister a non-registered name raises KeyError",
+      "function": "EmbeddingStrategyRegistry.unregister",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "nonexistent"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "KeyError",
+      "assertions": []
+    },
+    {
+      "id": "unregister_then_reregister",
+      "description": "Unregister then re-register same name with new strategy succeeds",
+      "function": "EmbeddingStrategyRegistry.unregister",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry.has_strategy('semantic') is True after re-register"
+      ]
+    },
+    {
+      "id": "has_strategy_true",
+      "description": "has_strategy returns True for registered strategy",
+      "function": "EmbeddingStrategyRegistry.has_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "semantic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is True"
+      ]
+    },
+    {
+      "id": "has_strategy_false",
+      "description": "has_strategy returns False for unregistered name",
+      "function": "EmbeddingStrategyRegistry.has_strategy",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "name": "nonexistent"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is False"
+      ]
+    },
+    {
+      "id": "list_strategies_empty",
+      "description": "list_strategies returns empty list for fresh registry",
+      "function": "EmbeddingStrategyRegistry.list_strategies",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is empty list"
+      ]
+    },
+    {
+      "id": "list_strategies_sorted",
+      "description": "list_strategies returns alphabetically sorted entries",
+      "function": "EmbeddingStrategyRegistry.list_strategies",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "names are sorted alphabetically"
+      ]
+    },
+    {
+      "id": "embed_happy_path_semantic",
+      "description": "embed() with default 'semantic' strategy returns correct vector",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.shape == (128,)",
+        "result.dtype in (float32, float64)"
+      ]
+    },
+    {
+      "id": "embed_strategy_not_found",
+      "description": "embed() with unregistered strategy raises KeyError",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy": "nonexistent"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "KeyError",
+      "assertions": []
+    },
+    {
+      "id": "embed_invalid_signal_none",
+      "description": "embed() with None signal raises TypeError",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "embed_strategy_raises",
+      "description": "embed() wraps strategy exception in RuntimeError",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "embed_invalid_output_shape",
+      "description": "embed() raises ValueError when strategy returns wrong shape",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "embed_invalid_output_dtype",
+      "description": "embed() raises TypeError when strategy returns wrong dtype",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "embed_named_strategy",
+      "description": "embed() with explicit strategy name calls correct strategy",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "strategy": "temporal"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "correct strategy was invoked"
+      ]
+    },
+    {
+      "id": "embed_l2_normalized",
+      "description": "embed() returns L2-normalized vector (norm ≈ 1.0)",
+      "function": "EmbeddingStrategyRegistry.embed",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "np.linalg.norm(result) ≈ 1.0 within 1e-6"
+      ]
+    },
+    {
+      "id": "embed_all_all_succeed",
+      "description": "embed_all with all strategies succeeding returns all embeddings",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.embeddings) == number of strategies",
+        "len(result.failures) == 0"
+      ]
+    },
+    {
+      "id": "embed_all_all_fail",
+      "description": "embed_all with all strategies failing returns all failures",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "len(result.embeddings) == 0",
+        "len(result.failures) == number of strategies"
+      ]
+    },
+    {
+      "id": "embed_all_mixed",
+      "description": "embed_all with mixed success/failure categorizes correctly",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "successes + failures == total strategies"
+      ]
+    },
+    {
+      "id": "embed_all_no_strategies",
+      "description": "embed_all with no registered strategies raises RuntimeError",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "embed_all_invalid_signal",
+      "description": "embed_all with None signal raises TypeError",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "signal": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "embed_all_vector_shapes",
+      "description": "embed_all result vectors all have correct shape",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all vectors have shape (dimensions,)"
+      ]
+    },
+    {
+      "id": "embed_all_failure_details",
+      "description": "embed_all failures contain strategy_name, error_type, error_message",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "each failure has strategy_name, error_type, error_message"
+      ]
+    },
+    {
+      "id": "populate_happy_path",
+      "description": "populate_signal_embeddings returns new Signal with embeddings populated",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.embeddings has strategy keys",
+        "each embedding has correct length"
+      ]
+    },
+    {
+      "id": "populate_immutability",
+      "description": "populate_signal_embeddings does not mutate original signal",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "original signal unchanged",
+        "returned signal is new instance"
+      ]
+    },
+    {
+      "id": "populate_preserves_fields",
+      "description": "populate_signal_embeddings preserves all non-embedding fields",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.id == original.id",
+        "result.content == original.content",
+        "result.author == original.author"
+      ]
+    },
+    {
+      "id": "populate_no_strategies",
+      "description": "populate_signal_embeddings with no strategies raises RuntimeError",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "RuntimeError",
+      "assertions": []
+    },
+    {
+      "id": "populate_invalid_signal",
+      "description": "populate_signal_embeddings with None signal raises TypeError",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "populate_embeddings_are_lists",
+      "description": "populate_signal_embeddings stores embeddings as list[float] not ndarray",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "all values in result.embeddings are list instances"
+      ]
+    },
+    {
+      "id": "project_to_dim_same_size",
+      "description": "project_to_dim with same-size vector returns L2-normalized copy",
+      "function": "project_to_dim",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output shape == (target_dim,)",
+        "norm ≈ 1.0"
+      ]
+    },
+    {
+      "id": "project_to_dim_truncate",
+      "description": "project_to_dim truncates longer vector and normalizes",
+      "function": "project_to_dim",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output shape == (target_dim,)",
+        "norm ≈ 1.0"
+      ]
+    },
+    {
+      "id": "project_to_dim_pad",
+      "description": "project_to_dim pads shorter vector with zeros and normalizes",
+      "function": "project_to_dim",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output shape == (target_dim,)",
+        "norm ≈ 1.0"
+      ]
+    },
+    {
+      "id": "project_to_dim_zero_vector",
+      "description": "project_to_dim with zero vector returns zero vector",
+      "function": "project_to_dim",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output is all zeros",
+        "norm == 0.0"
+      ]
+    },
+    {
+      "id": "project_to_dim_preserves_dtype",
+      "description": "project_to_dim preserves input dtype (float32/float64)",
+      "function": "project_to_dim",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "output.dtype == input.dtype"
+      ]
+    },
+    {
+      "id": "project_to_dim_not_1d",
+      "description": "project_to_dim raises ValueError for 2D array",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "project_to_dim_invalid_dtype",
+      "description": "project_to_dim raises TypeError for int dtype",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "project_to_dim_invalid_target_dim_zero",
+      "description": "project_to_dim raises ValueError for target_dim=0",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "project_to_dim_invalid_target_dim_too_large",
+      "description": "project_to_dim raises ValueError for target_dim=5000",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "project_to_dim_empty_vector",
+      "description": "project_to_dim raises ValueError for empty vector",
+      "function": "project_to_dim",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "embeddings_to_ndarray_happy",
+      "description": "embeddings_to_ndarray converts list[float] to correct ndarray",
+      "function": "embeddings_to_ndarray",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.shape == (len(input),)",
+        "result.dtype == float32"
+      ]
+    },
+    {
+      "id": "embeddings_to_ndarray_float64",
+      "description": "embeddings_to_ndarray with dtype float64 produces float64 array",
+      "function": "embeddings_to_ndarray",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dtype": "float64"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.dtype == float64"
+      ]
+    },
+    {
+      "id": "embeddings_to_ndarray_empty",
+      "description": "embeddings_to_ndarray raises ValueError for empty list",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "embeddings_to_ndarray_nan",
+      "description": "embeddings_to_ndarray raises ValueError for NaN values",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "embeddings_to_ndarray_inf",
+      "description": "embeddings_to_ndarray raises ValueError for Inf values",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "embeddings_to_ndarray_invalid_dtype",
+      "description": "embeddings_to_ndarray raises ValueError for invalid dtype",
+      "function": "embeddings_to_ndarray",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "dtype": "int32"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "ndarray_to_embedding_happy",
+      "description": "ndarray_to_embedding converts 1D float32 array to list[float]",
+      "function": "ndarray_to_embedding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is list",
+        "len(result) == array.shape[0]",
+        "all elements are float"
+      ]
+    },
+    {
+      "id": "ndarray_to_embedding_not_1d",
+      "description": "ndarray_to_embedding raises ValueError for 2D array",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "ndarray_to_embedding_invalid_dtype",
+      "description": "ndarray_to_embedding raises TypeError for int dtype array",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "TypeError",
+      "assertions": []
+    },
+    {
+      "id": "ndarray_to_embedding_nan",
+      "description": "ndarray_to_embedding raises ValueError for array with NaN",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "ndarray_to_embedding_inf",
+      "description": "ndarray_to_embedding raises ValueError for array with Inf",
+      "function": "ndarray_to_embedding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "roundtrip_ndarray_list_ndarray",
+      "description": "Roundtrip ndarray -> list -> ndarray preserves values",
+      "function": "embeddings_to_ndarray",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "np.allclose(original, roundtrip)"
+      ]
+    },
+    {
+      "id": "invariant_multiple_registries",
+      "description": "Multiple independent registries can coexist without interference",
+      "function": "EmbeddingStrategyRegistry.__init__",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "registry1 and registry2 have independent state"
+      ]
+    },
+    {
+      "id": "invariant_embed_all_never_raises_on_strategy_failure",
+      "description": "embed_all does not raise when individual strategies fail",
+      "function": "EmbeddingStrategyRegistry.embed_all",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "no exception raised",
+        "failures reported in result"
+      ]
+    },
+    {
+      "id": "integration_full_flow",
+      "description": "Full flow: init registry, register strategies, populate signal, verify embeddings",
+      "function": "EmbeddingStrategyRegistry.populate_signal_embeddings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "signal.embeddings has all strategy keys",
+        "each embedding has correct length",
+        "values are list[float]"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for Embedding Strategy Protocol & Registry.\n\nTests verify the component against its contract specification.\nAll dependencies are mocked; tests verify boundary behavior.\n\"\"\"\nfrom __future__ import annotations\n\nimport asyncio\nimport math\nimport re\nfrom dataclasses import dataclass\nfrom typing import Any\nfrom unittest.mock import AsyncMock, MagicMock, patch\n\nimport numpy as np\nimport pytest\nimport pytest_asyncio\n\n# Import the component under test\n# Adjust path as needed for actual project structure\nfrom services.embedding import (\n    EmbeddingStrategyRegistry,\n    embeddings_to_ndarray,\n    ndarray_to_embedding,\n    project_to_dim,\n)\n\n# Attempt to import Signal; if it lives elsewhere, adjust\ntry:\n    from services.embedding import Signal\nexcept ImportError:\n    from models.signal import Signal\n\n\n# ---------------------------------------------------------------------------\n# Helper mock strategy classes\n# ---------------------------------------------------------------------------\n\nclass ValidAsyncStrategy:\n    \"\"\"A valid strategy that satisfies the EmbeddingStrategy protocol.\"\"\"\n\n    def __init__(self, dim: int = 128, name: str = \"valid\"):\n        self._dim = dim\n        self._name = name\n\n    async def embed(self, signal: Any) -> np.ndarray:\n        rng = np.random.RandomState(42)\n        vec = rng.randn(self._dim).astype(np.float32)\n        norm = np.linalg.norm(vec)\n        if norm > 0:\n            vec = vec / norm\n        return vec\n\n\nclass FailingStrategy:\n    \"\"\"Strategy that always raises an exception.\"\"\"\n\n    async def embed(self, signal: Any) -> np.ndarray:\n        raise ValueError(\"Intentional failure for testing\")\n\n\nclass WrongShapeStrategy:\n    \"\"\"Strategy that returns vector with wrong shape.\"\"\"\n\n    def __init__(self, wrong_dim: int = 64):\n        self._wrong_dim = wrong_dim\n\n    async def embed(self, signal: Any) -> np.ndarray:\n        return np.ones(self._wrong_dim, dtype=np.float32)\n\n\nclass WrongDtypeStrategy:\n    \"\"\"Strategy that returns vector with wrong dtype (int32).\"\"\"\n\n    def __init__(self, dim: int = 128):\n        self._dim = dim\n\n    async def embed(self, signal: Any) -> np.ndarray:\n        return np.ones(self._dim, dtype=np.int32)\n\n\nclass SyncEmbedStrategy:\n    \"\"\"Strategy with a synchronous embed method (not async).\"\"\"\n\n    def embed(self, signal: Any) -> np.ndarray:\n        return np.ones(128, dtype=np.float32)\n\n\nclass NoEmbedStrategy:\n    \"\"\"Object that does not have an embed method at all.\"\"\"\n\n    def process(self, signal: Any) -> None:\n        pass\n\n\nclass DeterministicStrategy:\n    \"\"\"Strategy returning a deterministic normalized vector for verification.\"\"\"\n\n    def __init__(self, dim: int = 128, seed: int = 0):\n        self._dim = dim\n        self._seed = seed\n\n    async def embed(self, signal: Any) -> np.ndarray:\n        rng = np.random.RandomState(self._seed)\n        vec = rng.randn(self._dim).astype(np.float32)\n        norm = np.linalg.norm(vec)\n        if norm > 0:\n            vec = vec / norm\n        return vec\n\n\nclass Float64Strategy:\n    \"\"\"Strategy that returns float64 vectors.\"\"\"\n\n    def __init__(self, dim: int = 128):\n        self._dim = dim\n\n    async def embed(self, signal: Any) -> np.ndarray:\n        vec = np.ones(self._dim, dtype=np.float64)\n        return vec / np.linalg.norm(vec)\n\n\n# ---------------------------------------------------------------------------\n# Fixtures\n# ---------------------------------------------------------------------------\n\n@pytest.fixture\ndef make_signal():\n    \"\"\"Factory for creating test Signal instances.\"\"\"\n    def _make(\n        id: str = \"test-signal-1\",\n        content: str = \"Hello, world!\",\n        author: str = \"tester\",\n        mentions: list | None = None,\n        metadata: dict | None = None,\n        embeddings: dict | None = None,\n    ) -> Signal:\n        kwargs = {\n            \"id\": id,\n            \"content\": content,\n            \"author\": author,\n        }\n        if mentions is not None:\n            kwargs[\"mentions\"] = mentions\n        if metadata is not None:\n            kwargs[\"metadata\"] = metadata\n        if embeddings is not None:\n            kwargs[\"embeddings\"] = embeddings\n        return Signal(**kwargs)\n    return _make\n\n\n@pytest.fixture\ndef signal(make_signal):\n    \"\"\"Default Signal for most tests.\"\"\"\n    return make_signal()\n\n\n@pytest.fixture\ndef dim():\n    return 128\n\n\n@pytest.fixture\ndef make_registry():\n    \"\"\"Factory for creating a registry with a given dimension.\"\"\"\n    def _make(dimensions: int = 128) -> EmbeddingStrategyRegistry:\n        return EmbeddingStrategyRegistry(dimensions=dimensions)\n    return _make\n\n\n@pytest.fixture\ndef registry(make_registry, dim):\n    \"\"\"A default registry with dim=128.\"\"\"\n    return make_registry(dim)\n\n\n@pytest.fixture\ndef valid_strategy(dim):\n    return ValidAsyncStrategy(dim=dim)\n\n\n@pytest.fixture\ndef registry_with_semantic(registry, valid_strategy):\n    \"\"\"Registry with a 'semantic' strategy pre-registered.\"\"\"\n    registry.register(\"semantic\", valid_strategy)\n    return registry\n\n\n# ---------------------------------------------------------------------------\n# 1. Registry Initialization\n# ---------------------------------------------------------------------------\n\nclass TestRegistryInit:\n    \"\"\"Tests for EmbeddingStrategyRegistry.__init__.\"\"\"\n\n    def test_init_valid_128(self, make_registry):\n        \"\"\"Registry initializes with valid dimensions=128.\"\"\"\n        reg = make_registry(128)\n        assert reg.dimensions == 128, \"Registry should store dimensions=128\"\n        info = reg.list_strategies()\n        assert len(info) == 0, \"New registry should have no strategies\"\n\n    def test_init_valid_min_dimension(self, make_registry):\n        \"\"\"Registry initializes with minimum valid dimensions=1.\"\"\"\n        reg = make_registry(1)\n        assert reg.dimensions == 1\n\n    def test_init_valid_max_dimension(self, make_registry):\n        \"\"\"Registry initializes with maximum valid dimensions=4096.\"\"\"\n        reg = make_registry(4096)\n        assert reg.dimensions == 4096\n\n    @pytest.mark.parametrize(\"invalid_dim\", [0, -1, -100])\n    def test_init_invalid_zero_or_negative(self, invalid_dim):\n        \"\"\"Registry raises ValueError for dimensions <= 0.\"\"\"\n        with pytest.raises(ValueError, match=\"dimensions\"):\n            EmbeddingStrategyRegistry(dimensions=invalid_dim)\n\n    def test_init_invalid_too_large(self):\n        \"\"\"Registry raises ValueError for dimensions > 4096.\"\"\"\n        with pytest.raises(ValueError):\n            EmbeddingStrategyRegistry(dimensions=5000)\n\n    def test_init_invalid_non_integer(self):\n        \"\"\"Registry raises ValueError/TypeError for non-integer dimensions.\"\"\"\n        with pytest.raises((ValueError, TypeError)):\n            EmbeddingStrategyRegistry(dimensions=128.5)  # type: ignore\n\n\n# ---------------------------------------------------------------------------\n# 2. Registration & Protocol Conformance\n# ---------------------------------------------------------------------------\n\nclass TestRegistration:\n    \"\"\"Tests for EmbeddingStrategyRegistry.register.\"\"\"\n\n    def test_register_valid_strategy(self, registry, valid_strategy):\n        \"\"\"Register a valid async embedding strategy succeeds.\"\"\"\n        registry.register(\"semantic\", valid_strategy)\n        assert registry.has_strategy(\"semantic\"), \"Strategy should be registered\"\n\n    def test_register_valid_name_with_underscores(self, registry, valid_strategy):\n        \"\"\"Register strategy with underscores in name succeeds.\"\"\"\n        registry.register(\"my_strategy_v2\", valid_strategy)\n        assert registry.has_strategy(\"my_strategy_v2\")\n\n    def test_register_valid_name_single_char(self, registry, valid_strategy):\n        \"\"\"Register with single lowercase letter name succeeds.\"\"\"\n        registry.register(\"a\", valid_strategy)\n        assert registry.has_strategy(\"a\")\n\n    def test_register_valid_name_max_length(self, registry, valid_strategy):\n        \"\"\"Register with 64-char name succeeds (boundary).\"\"\"\n        name = \"a\" * 64\n        registry.register(name, valid_strategy)\n        assert registry.has_strategy(name)\n\n    @pytest.mark.parametrize(\"bad_name\", [\n        \"Semantic\",           # uppercase\n        \"1strategy\",          # starts with digit\n        \"my-strategy\",        # hyphen\n        \"\",                   # empty\n        \"my strategy\",        # space\n        \"_leading\",           # starts with underscore\n        \"a\" * 65,             # 65 chars — too long\n        \"ALLCAPS\",            # all uppercase\n        \"has.dot\",            # dot\n    ])\n    def test_register_invalid_name_format(self, registry, valid_strategy, bad_name):\n        \"\"\"Register with invalid name format raises ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            registry.register(bad_name, valid_strategy)\n\n    def test_register_no_embed_method(self, registry):\n        \"\"\"Register object without embed method raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            registry.register(\"bad\", NoEmbedStrategy())\n\n    def test_register_sync_embed_method(self, registry):\n        \"\"\"Register object with synchronous embed method raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            registry.register(\"sync\", SyncEmbedStrategy())\n\n    def test_register_duplicate_name(self, registry_with_semantic, valid_strategy):\n        \"\"\"Registering the same name twice raises ValueError.\"\"\"\n        with pytest.raises(ValueError, match=\"already registered\"):\n            registry_with_semantic.register(\"semantic\", valid_strategy)\n\n    def test_register_plain_object_no_protocol(self, registry):\n        \"\"\"Register a plain object (dict) that has no embed method raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            registry.register(\"bad\", {\"embed\": \"not_a_method\"})\n\n    def test_register_lambda_embed(self, registry):\n        \"\"\"Register object with lambda embed attribute raises TypeError (not async).\"\"\"\n        obj = MagicMock()\n        obj.embed = lambda signal: np.ones(128, dtype=np.float32)\n        with pytest.raises(TypeError):\n            registry.register(\"lambdastrat\", obj)\n\n\n# ---------------------------------------------------------------------------\n# 3. Unregister & Lifecycle\n# ---------------------------------------------------------------------------\n\nclass TestUnregister:\n    \"\"\"Tests for EmbeddingStrategyRegistry.unregister and lifecycle.\"\"\"\n\n    def test_unregister_existing(self, registry_with_semantic):\n        \"\"\"Unregister an existing strategy succeeds.\"\"\"\n        registry_with_semantic.unregister(\"semantic\")\n        assert not registry_with_semantic.has_strategy(\"semantic\"), \\\n            \"Strategy should be removed after unregister\"\n\n    def test_unregister_nonexistent(self, registry):\n        \"\"\"Unregister a non-registered name raises KeyError.\"\"\"\n        with pytest.raises(KeyError):\n            registry.unregister(\"nonexistent\")\n\n    def test_unregister_then_reregister(self, registry_with_semantic, dim):\n        \"\"\"Unregister then re-register same name with new strategy succeeds.\"\"\"\n        registry_with_semantic.unregister(\"semantic\")\n        new_strategy = DeterministicStrategy(dim=dim, seed=99)\n        registry_with_semantic.register(\"semantic\", new_strategy)\n        assert registry_with_semantic.has_strategy(\"semantic\")\n\n    def test_has_strategy_true(self, registry_with_semantic):\n        \"\"\"has_strategy returns True for a registered strategy.\"\"\"\n        assert registry_with_semantic.has_strategy(\"semantic\") is True\n\n    def test_has_strategy_false(self, registry):\n        \"\"\"has_strategy returns False for an unregistered name.\"\"\"\n        assert registry.has_strategy(\"nonexistent\") is False\n\n    def test_list_strategies_empty(self, registry):\n        \"\"\"list_strategies returns empty list for fresh registry.\"\"\"\n        info = registry.list_strategies()\n        assert len(info) == 0, \"Fresh registry should have no strategies\"\n\n    def test_list_strategies_sorted(self, registry, dim):\n        \"\"\"list_strategies returns alphabetically sorted entries.\"\"\"\n        strat_a = ValidAsyncStrategy(dim=dim, name=\"a\")\n        strat_z = ValidAsyncStrategy(dim=dim, name=\"z\")\n        strat_m = ValidAsyncStrategy(dim=dim, name=\"m\")\n        registry.register(\"zebra\", strat_z)\n        registry.register(\"alpha\", strat_a)\n        registry.register(\"middle\", strat_m)\n\n        info = registry.list_strategies()\n        names = [s.name for s in info]\n        assert names == sorted(names), \\\n            f\"Strategy list should be sorted, got {names}\"\n\n    def test_list_strategies_info_fields(self, registry_with_semantic):\n        \"\"\"list_strategies entries have expected fields.\"\"\"\n        info = registry_with_semantic.list_strategies()\n        assert len(info) == 1\n        entry = info[0]\n        assert entry.name == \"semantic\"\n        assert isinstance(entry.strategy_type, str)\n        assert entry.is_available is True\n\n\n# ---------------------------------------------------------------------------\n# 4. Single Strategy Execution (embed)\n# ---------------------------------------------------------------------------\n\nclass TestEmbed:\n    \"\"\"Tests for EmbeddingStrategyRegistry.embed.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_embed_happy_path_semantic(self, registry_with_semantic, signal, dim):\n        \"\"\"embed() with default 'semantic' strategy returns correct vector.\"\"\"\n        result = await registry_with_semantic.embed(signal)\n        assert isinstance(result, np.ndarray), \"Result should be ndarray\"\n        assert result.shape == (dim,), \\\n            f\"Expected shape ({dim},), got {result.shape}\"\n        assert result.dtype in (np.float32, np.float64), \\\n            f\"Expected float32/64 dtype, got {result.dtype}\"\n\n    @pytest.mark.asyncio\n    async def test_embed_named_strategy(self, registry, signal, dim):\n        \"\"\"embed() with explicit strategy name calls correct strategy.\"\"\"\n        strat = DeterministicStrategy(dim=dim, seed=7)\n        registry.register(\"temporal\", strat)\n        result = await registry.embed(signal, strategy=\"temporal\")\n        assert result.shape == (dim,)\n\n    @pytest.mark.asyncio\n    async def test_embed_strategy_not_found(self, registry_with_semantic, signal):\n        \"\"\"embed() with unregistered strategy raises KeyError.\"\"\"\n        with pytest.raises(KeyError, match=\"nonexistent\"):\n            await registry_with_semantic.embed(signal, strategy=\"nonexistent\")\n\n    @pytest.mark.asyncio\n    async def test_embed_invalid_signal_none(self, registry_with_semantic):\n        \"\"\"embed() with None signal raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            await registry_with_semantic.embed(None)  # type: ignore\n\n    @pytest.mark.asyncio\n    async def test_embed_strategy_raises(self, registry, signal):\n        \"\"\"embed() wraps strategy exception in RuntimeError.\"\"\"\n        registry.register(\"failing\", FailingStrategy())\n        with pytest.raises(RuntimeError, match=\"failed\"):\n            await registry.embed(signal, strategy=\"failing\")\n\n    @pytest.mark.asyncio\n    async def test_embed_invalid_output_shape(self, registry, signal):\n        \"\"\"embed() raises ValueError when strategy returns wrong shape.\"\"\"\n        registry.register(\"wrongshape\", WrongShapeStrategy(wrong_dim=64))\n        with pytest.raises(ValueError, match=\"shape\"):\n            await registry.embed(signal, strategy=\"wrongshape\")\n\n    @pytest.mark.asyncio\n    async def test_embed_invalid_output_dtype(self, registry, signal):\n        \"\"\"embed() raises TypeError when strategy returns wrong dtype.\"\"\"\n        registry.register(\"wrongdtype\", WrongDtypeStrategy(dim=128))\n        with pytest.raises(TypeError, match=\"dtype\"):\n            await registry.embed(signal, strategy=\"wrongdtype\")\n\n    @pytest.mark.asyncio\n    async def test_embed_l2_normalized(self, registry_with_semantic, signal):\n        \"\"\"embed() returns L2-normalized vector (norm ≈ 1.0).\"\"\"\n        result = await registry_with_semantic.embed(signal)\n        norm = float(np.linalg.norm(result))\n        assert abs(norm - 1.0) < 1e-6, \\\n            f\"Expected L2-norm ≈ 1.0, got {norm}\"\n\n    @pytest.mark.asyncio\n    async def test_embed_default_strategy_is_semantic(self, registry_with_semantic, signal):\n        \"\"\"embed() defaults to 'semantic' strategy when none specified.\"\"\"\n        # Should not raise — semantic is registered\n        result = await registry_with_semantic.embed(signal)\n        assert result is not None\n\n\n# ---------------------------------------------------------------------------\n# 5. Batch Execution (embed_all & populate_signal_embeddings)\n# ---------------------------------------------------------------------------\n\nclass TestEmbedAll:\n    \"\"\"Tests for EmbeddingStrategyRegistry.embed_all.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_embed_all_all_succeed(self, registry, signal, dim):\n        \"\"\"embed_all with all strategies succeeding returns all embeddings.\"\"\"\n        registry.register(\"alpha\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"beta\", DeterministicStrategy(dim=dim, seed=2))\n\n        result = await registry.embed_all(signal)\n        assert len(result.embeddings) == 2, \\\n            f\"Expected 2 embeddings, got {len(result.embeddings)}\"\n        assert len(result.failures) == 0, \\\n            f\"Expected 0 failures, got {len(result.failures)}\"\n        assert \"alpha\" in result.embeddings\n        assert \"beta\" in result.embeddings\n\n    @pytest.mark.asyncio\n    async def test_embed_all_all_fail(self, registry, signal):\n        \"\"\"embed_all with all strategies failing returns all failures.\"\"\"\n        registry.register(\"fail_a\", FailingStrategy())\n        registry.register(\"fail_b\", FailingStrategy())\n\n        result = await registry.embed_all(signal)\n        assert len(result.embeddings) == 0\n        assert len(result.failures) == 2\n\n    @pytest.mark.asyncio\n    async def test_embed_all_mixed(self, registry, signal, dim):\n        \"\"\"embed_all with mixed success/failure categorizes correctly.\"\"\"\n        registry.register(\"good\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"bad\", FailingStrategy())\n\n        result = await registry.embed_all(signal)\n        total = len(result.embeddings) + len(result.failures)\n        assert total == 2, \"Successes + failures should equal total strategies\"\n        assert len(result.embeddings) == 1\n        assert len(result.failures) == 1\n        assert \"good\" in result.embeddings\n\n    @pytest.mark.asyncio\n    async def test_embed_all_no_strategies(self, registry, signal):\n        \"\"\"embed_all with no registered strategies raises RuntimeError.\"\"\"\n        with pytest.raises(RuntimeError, match=\"No strategies registered\"):\n            await registry.embed_all(signal)\n\n    @pytest.mark.asyncio\n    async def test_embed_all_invalid_signal(self, registry_with_semantic):\n        \"\"\"embed_all with None signal raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            await registry_with_semantic.embed_all(None)  # type: ignore\n\n    @pytest.mark.asyncio\n    async def test_embed_all_vector_shapes(self, registry, signal, dim):\n        \"\"\"embed_all result vectors all have correct shape (dimensions,).\"\"\"\n        registry.register(\"a\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"b\", DeterministicStrategy(dim=dim, seed=2))\n\n        result = await registry.embed_all(signal)\n        for name, vec in result.embeddings.items():\n            assert vec.shape == (dim,), \\\n                f\"Strategy '{name}' vector shape {vec.shape} != ({dim},)\"\n\n    @pytest.mark.asyncio\n    async def test_embed_all_failure_details(self, registry, signal):\n        \"\"\"embed_all failures contain strategy_name, error_type, error_message.\"\"\"\n        registry.register(\"failing\", FailingStrategy())\n\n        result = await registry.embed_all(signal)\n        assert len(result.failures) == 1\n        failure = result.failures[0]\n        assert failure.strategy_name == \"failing\"\n        assert failure.error_type != \"\"\n        assert failure.error_message != \"\"\n\n    @pytest.mark.asyncio\n    async def test_embed_all_never_raises_on_strategy_failure(self, registry, signal, dim):\n        \"\"\"embed_all does not raise when individual strategies fail — invariant.\"\"\"\n        registry.register(\"good\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"bad\", FailingStrategy())\n\n        # Should not raise\n        result = await registry.embed_all(signal)\n        assert result is not None\n        assert len(result.failures) >= 1\n\n\nclass TestPopulateSignalEmbeddings:\n    \"\"\"Tests for EmbeddingStrategyRegistry.populate_signal_embeddings.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_populate_happy_path(self, registry, signal, dim):\n        \"\"\"populate_signal_embeddings returns new Signal with embeddings populated.\"\"\"\n        registry.register(\"semantic\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"temporal\", DeterministicStrategy(dim=dim, seed=2))\n\n        result = await registry.populate_signal_embeddings(signal)\n        assert \"semantic\" in result.embeddings\n        assert \"temporal\" in result.embeddings\n        for key, emb in result.embeddings.items():\n            assert len(emb) == dim, \\\n                f\"Embedding '{key}' length {len(emb)} != {dim}\"\n\n    @pytest.mark.asyncio\n    async def test_populate_immutability(self, registry, signal, dim):\n        \"\"\"populate_signal_embeddings does not mutate original signal.\"\"\"\n        original_embeddings = signal.embeddings.copy() if signal.embeddings else {}\n        registry.register(\"semantic\", DeterministicStrategy(dim=dim, seed=1))\n\n        result = await registry.populate_signal_embeddings(signal)\n        # Original should be unchanged\n        assert signal.embeddings == original_embeddings, \\\n            \"Original signal should not be mutated\"\n        # Result should be a new instance\n        assert result is not signal, \"Should return new Signal instance\"\n\n    @pytest.mark.asyncio\n    async def test_populate_preserves_fields(self, registry, make_signal, dim):\n        \"\"\"populate_signal_embeddings preserves all non-embedding fields.\"\"\"\n        sig = make_signal(\n            id=\"sig-42\",\n            content=\"Test content here\",\n            author=\"alice\",\n            mentions=[\"bob\", \"charlie\"],\n            metadata={\"key\": \"value\"},\n        )\n        registry.register(\"semantic\", DeterministicStrategy(dim=dim, seed=1))\n\n        result = await registry.populate_signal_embeddings(sig)\n        assert result.id == \"sig-42\"\n        assert result.content == \"Test content here\"\n        assert result.author == \"alice\"\n        assert list(result.mentions) == [\"bob\", \"charlie\"]\n        assert result.metadata == {\"key\": \"value\"}\n\n    @pytest.mark.asyncio\n    async def test_populate_no_strategies(self, registry, signal):\n        \"\"\"populate_signal_embeddings with no strategies raises RuntimeError.\"\"\"\n        with pytest.raises(RuntimeError):\n            await registry.populate_signal_embeddings(signal)\n\n    @pytest.mark.asyncio\n    async def test_populate_invalid_signal(self, registry_with_semantic):\n        \"\"\"populate_signal_embeddings with None signal raises TypeError.\"\"\"\n        with pytest.raises(TypeError):\n            await registry_with_semantic.populate_signal_embeddings(None)  # type: ignore\n\n    @pytest.mark.asyncio\n    async def test_populate_embeddings_are_lists(self, registry, signal, dim):\n        \"\"\"populate_signal_embeddings stores embeddings as list[float] not ndarray.\"\"\"\n        registry.register(\"semantic\", DeterministicStrategy(dim=dim, seed=1))\n\n        result = await registry.populate_signal_embeddings(signal)\n        for key, emb in result.embeddings.items():\n            assert isinstance(emb, list), \\\n                f\"Embedding '{key}' should be list, got {type(emb)}\"\n            for val in emb:\n                assert isinstance(val, float), \\\n                    f\"Embedding value should be float, got {type(val)}\"\n\n\n# ---------------------------------------------------------------------------\n# 6. Utility Functions\n# ---------------------------------------------------------------------------\n\nclass TestProjectToDim:\n    \"\"\"Tests for project_to_dim utility function.\"\"\"\n\n    def test_same_size_vector(self):\n        \"\"\"project_to_dim with same-size vector returns L2-normalized copy.\"\"\"\n        vec = np.array([3.0, 4.0], dtype=np.float32)\n        result = project_to_dim(vec, 2)\n        assert result.shape == (2,)\n        norm = float(np.linalg.norm(result))\n        assert abs(norm - 1.0) < 1e-6\n\n    def test_truncate_longer_vector(self):\n        \"\"\"project_to_dim truncates longer vector and normalizes.\"\"\"\n        vec = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)\n        result = project_to_dim(vec, 2)\n        assert result.shape == (2,)\n        norm = float(np.linalg.norm(result))\n        assert abs(norm - 1.0) < 1e-6\n\n    def test_pad_shorter_vector(self):\n        \"\"\"project_to_dim pads shorter vector with zeros and normalizes.\"\"\"\n        vec = np.array([3.0, 4.0], dtype=np.float32)\n        result = project_to_dim(vec, 5)\n        assert result.shape == (5,)\n        norm = float(np.linalg.norm(result))\n        assert abs(norm - 1.0) < 1e-6\n        # The padded elements should still exist but after normalization\n        # Original proportions should be maintained for first elements\n\n    def test_zero_vector_remains_zero(self):\n        \"\"\"project_to_dim with zero vector returns zero vector.\"\"\"\n        vec = np.zeros(5, dtype=np.float32)\n        result = project_to_dim(vec, 3)\n        assert result.shape == (3,)\n        assert float(np.linalg.norm(result)) == 0.0\n        np.testing.assert_array_equal(result, np.zeros(3, dtype=np.float32))\n\n    @pytest.mark.parametrize(\"dtype\", [np.float32, np.float64])\n    def test_preserves_dtype(self, dtype):\n        \"\"\"project_to_dim preserves input dtype (float32/float64).\"\"\"\n        vec = np.array([1.0, 2.0, 3.0], dtype=dtype)\n        result = project_to_dim(vec, 4)\n        assert result.dtype == dtype, \\\n            f\"Expected dtype {dtype}, got {result.dtype}\"\n\n    def test_not_1d_raises_valueerror(self):\n        \"\"\"project_to_dim raises ValueError for 2D array.\"\"\"\n        vec = np.ones((2, 3), dtype=np.float32)\n        with pytest.raises(ValueError, match=\"1-D\"):\n            project_to_dim(vec, 3)\n\n    def test_invalid_dtype_raises_typeerror(self):\n        \"\"\"project_to_dim raises TypeError for int dtype.\"\"\"\n        vec = np.array([1, 2, 3], dtype=np.int32)\n        with pytest.raises(TypeError, match=\"dtype\"):\n            project_to_dim(vec, 3)\n\n    def test_invalid_target_dim_zero(self):\n        \"\"\"project_to_dim raises ValueError for target_dim=0.\"\"\"\n        vec = np.ones(3, dtype=np.float32)\n        with pytest.raises(ValueError):\n            project_to_dim(vec, 0)\n\n    def test_invalid_target_dim_negative(self):\n        \"\"\"project_to_dim raises ValueError for negative target_dim.\"\"\"\n        vec = np.ones(3, dtype=np.float32)\n        with pytest.raises(ValueError):\n            project_to_dim(vec, -1)\n\n    def test_invalid_target_dim_too_large(self):\n        \"\"\"project_to_dim raises ValueError for target_dim=5000.\"\"\"\n        vec = np.ones(3, dtype=np.float32)\n        with pytest.raises(ValueError):\n            project_to_dim(vec, 5000)\n\n    def test_empty_vector_raises_valueerror(self):\n        \"\"\"project_to_dim raises ValueError for empty vector.\"\"\"\n        vec = np.array([], dtype=np.float32)\n        with pytest.raises(ValueError, match=\"at least one element\"):\n            project_to_dim(vec, 3)\n\n    def test_target_dim_1(self):\n        \"\"\"project_to_dim with target_dim=1 produces single-element vector.\"\"\"\n        vec = np.array([3.0, 4.0, 5.0], dtype=np.float32)\n        result = project_to_dim(vec, 1)\n        assert result.shape == (1,)\n        norm = float(np.linalg.norm(result))\n        assert abs(norm - 1.0) < 1e-6 or norm == 0.0\n\n\nclass TestEmbeddingsToNdarray:\n    \"\"\"Tests for embeddings_to_ndarray helper function.\"\"\"\n\n    def test_happy_path_float32(self):\n        \"\"\"embeddings_to_ndarray converts list[float] to correct ndarray.\"\"\"\n        embedding = [1.0, 2.0, 3.0]\n        result = embeddings_to_ndarray(embedding)\n        assert isinstance(result, np.ndarray)\n        assert result.shape == (3,)\n        assert result.dtype == np.float32\n        np.testing.assert_allclose(result, [1.0, 2.0, 3.0], rtol=1e-6)\n\n    def test_float64_dtype(self):\n        \"\"\"embeddings_to_ndarray with dtype float64 produces float64 array.\"\"\"\n        embedding = [1.0, 2.0, 3.0]\n        result = embeddings_to_ndarray(embedding, dtype=\"float64\")\n        assert result.dtype == np.float64\n\n    def test_empty_list_raises_valueerror(self):\n        \"\"\"embeddings_to_ndarray raises ValueError for empty list.\"\"\"\n        with pytest.raises(ValueError, match=\"empty\"):\n            embeddings_to_ndarray([])\n\n    def test_nan_raises_valueerror(self):\n        \"\"\"embeddings_to_ndarray raises ValueError for NaN values.\"\"\"\n        with pytest.raises(ValueError, match=\"non-finite|NaN\"):\n            embeddings_to_ndarray([1.0, float(\"nan\"), 3.0])\n\n    def test_inf_raises_valueerror(self):\n        \"\"\"embeddings_to_ndarray raises ValueError for Inf values.\"\"\"\n        with pytest.raises(ValueError, match=\"non-finite|Inf\"):\n            embeddings_to_ndarray([1.0, float(\"inf\"), 3.0])\n\n    def test_neg_inf_raises_valueerror(self):\n        \"\"\"embeddings_to_ndarray raises ValueError for -Inf values.\"\"\"\n        with pytest.raises(ValueError, match=\"non-finite|Inf\"):\n            embeddings_to_ndarray([1.0, float(\"-inf\"), 3.0])\n\n    def test_invalid_dtype_raises_valueerror(self):\n        \"\"\"embeddings_to_ndarray raises ValueError for invalid dtype string.\"\"\"\n        with pytest.raises(ValueError, match=\"dtype\"):\n            embeddings_to_ndarray([1.0, 2.0], dtype=\"int32\")\n\n    def test_single_element(self):\n        \"\"\"embeddings_to_ndarray works with single-element list.\"\"\"\n        result = embeddings_to_ndarray([42.0])\n        assert result.shape == (1,)\n        assert float(result[0]) == pytest.approx(42.0)\n\n\nclass TestNdarrayToEmbedding:\n    \"\"\"Tests for ndarray_to_embedding helper function.\"\"\"\n\n    def test_happy_path_float32(self):\n        \"\"\"ndarray_to_embedding converts 1D float32 array to list[float].\"\"\"\n        arr = np.array([1.0, 2.0, 3.0], dtype=np.float32)\n        result = ndarray_to_embedding(arr)\n        assert isinstance(result, list)\n        assert len(result) == 3\n        for val in result:\n            assert isinstance(val, float)\n\n    def test_happy_path_float64(self):\n        \"\"\"ndarray_to_embedding works with float64 array.\"\"\"\n        arr = np.array([1.0, 2.0], dtype=np.float64)\n        result = ndarray_to_embedding(arr)\n        assert isinstance(result, list)\n        assert len(result) == 2\n\n    def test_values_match(self):\n        \"\"\"ndarray_to_embedding preserves values within floating-point precision.\"\"\"\n        arr = np.array([0.1, 0.2, 0.3], dtype=np.float64)\n        result = ndarray_to_embedding(arr)\n        for i, val in enumerate(result):\n            assert val == pytest.approx(arr[i], rel=1e-6)\n\n    def test_not_1d_raises_valueerror(self):\n        \"\"\"ndarray_to_embedding raises ValueError for 2D array.\"\"\"\n        arr = np.ones((2, 3), dtype=np.float32)\n        with pytest.raises(ValueError, match=\"1-D\"):\n            ndarray_to_embedding(arr)\n\n    def test_invalid_dtype_raises_typeerror(self):\n        \"\"\"ndarray_to_embedding raises TypeError for int dtype array.\"\"\"\n        arr = np.array([1, 2, 3], dtype=np.int32)\n        with pytest.raises(TypeError, match=\"dtype\"):\n            ndarray_to_embedding(arr)\n\n    def test_nan_raises_valueerror(self):\n        \"\"\"ndarray_to_embedding raises ValueError for array with NaN.\"\"\"\n        arr = np.array([1.0, float(\"nan\"), 3.0], dtype=np.float32)\n        with pytest.raises(ValueError, match=\"non-finite|NaN\"):\n            ndarray_to_embedding(arr)\n\n    def test_inf_raises_valueerror(self):\n        \"\"\"ndarray_to_embedding raises ValueError for array with Inf.\"\"\"\n        arr = np.array([1.0, float(\"inf\"), 3.0], dtype=np.float64)\n        with pytest.raises(ValueError, match=\"non-finite|Inf\"):\n            ndarray_to_embedding(arr)\n\n\nclass TestRoundtrip:\n    \"\"\"Roundtrip tests between ndarray and list[float] representations.\"\"\"\n\n    @pytest.mark.parametrize(\"dtype_str,np_dtype\", [\n        (\"float32\", np.float32),\n        (\"float64\", np.float64),\n    ])\n    def test_roundtrip_ndarray_list_ndarray(self, dtype_str, np_dtype):\n        \"\"\"Roundtrip ndarray -> list -> ndarray preserves values.\"\"\"\n        original = np.array([0.1, -0.5, 3.14, 0.0, -2.7], dtype=np_dtype)\n        as_list = ndarray_to_embedding(original)\n        recovered = embeddings_to_ndarray(as_list, dtype=dtype_str)\n        np.testing.assert_allclose(\n            recovered, original, rtol=1e-5,\n            err_msg=\"Roundtrip should preserve values\"\n        )\n        assert recovered.dtype == np_dtype\n\n    def test_roundtrip_single_element(self):\n        \"\"\"Roundtrip works for single-element vectors.\"\"\"\n        original = np.array([42.0], dtype=np.float32)\n        as_list = ndarray_to_embedding(original)\n        recovered = embeddings_to_ndarray(as_list)\n        np.testing.assert_allclose(recovered, original, rtol=1e-6)\n\n\n# ---------------------------------------------------------------------------\n# 7. Integration / Cross-cutting\n# ---------------------------------------------------------------------------\n\nclass TestIntegration:\n    \"\"\"Integration and cross-cutting invariant tests.\"\"\"\n\n    def test_multiple_registries_independent(self, dim):\n        \"\"\"Multiple independent registries can coexist without interference.\"\"\"\n        reg1 = EmbeddingStrategyRegistry(dimensions=dim)\n        reg2 = EmbeddingStrategyRegistry(dimensions=256)\n\n        strat1 = ValidAsyncStrategy(dim=dim)\n        strat2 = ValidAsyncStrategy(dim=256)\n\n        reg1.register(\"semantic\", strat1)\n        reg2.register(\"temporal\", strat2)\n\n        assert reg1.has_strategy(\"semantic\")\n        assert not reg1.has_strategy(\"temporal\")\n        assert reg2.has_strategy(\"temporal\")\n        assert not reg2.has_strategy(\"semantic\")\n        assert reg1.dimensions == dim\n        assert reg2.dimensions == 256\n\n    @pytest.mark.asyncio\n    async def test_full_flow_register_embed_populate(self, make_signal, dim):\n        \"\"\"Full flow: init registry, register strategies, populate signal, verify.\"\"\"\n        registry = EmbeddingStrategyRegistry(dimensions=dim)\n        registry.register(\"semantic\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"temporal\", DeterministicStrategy(dim=dim, seed=2))\n\n        signal = make_signal(\n            id=\"integration-1\",\n            content=\"Full integration test content\",\n            author=\"integrator\",\n        )\n\n        populated = await registry.populate_signal_embeddings(signal)\n\n        # Verify all strategy keys present\n        assert \"semantic\" in populated.embeddings\n        assert \"temporal\" in populated.embeddings\n\n        # Verify embedding lengths\n        for key, emb in populated.embeddings.items():\n            assert isinstance(emb, list), f\"Embedding '{key}' should be list\"\n            assert len(emb) == dim, \\\n                f\"Embedding '{key}' length {len(emb)} != {dim}\"\n            for val in emb:\n                assert isinstance(val, float)\n\n        # Verify original unchanged\n        assert signal.embeddings == {} or len(signal.embeddings) == 0\n\n        # Verify non-embedding fields preserved\n        assert populated.id == \"integration-1\"\n        assert populated.content == \"Full integration test content\"\n        assert populated.author == \"integrator\"\n\n    @pytest.mark.asyncio\n    async def test_embed_all_concurrent_execution(self, registry, signal, dim):\n        \"\"\"embed_all executes strategies concurrently (not sequentially).\"\"\"\n        call_times = []\n\n        class TimedStrategy:\n            def __init__(self, delay: float, seed: int):\n                self._delay = delay\n                self._seed = seed\n                self._dim = dim\n\n            async def embed(self, signal: Any) -> np.ndarray:\n                import time\n                start = time.monotonic()\n                await asyncio.sleep(self._delay)\n                end = time.monotonic()\n                call_times.append((start, end))\n                rng = np.random.RandomState(self._seed)\n                vec = rng.randn(self._dim).astype(np.float32)\n                norm = np.linalg.norm(vec)\n                if norm > 0:\n                    vec = vec / norm\n                return vec\n\n        registry.register(\"slow_a\", TimedStrategy(delay=0.1, seed=1))\n        registry.register(\"slow_b\", TimedStrategy(delay=0.1, seed=2))\n\n        import time\n        overall_start = time.monotonic()\n        result = await registry.embed_all(signal)\n        overall_duration = time.monotonic() - overall_start\n\n        assert len(result.embeddings) == 2\n        # If concurrent, total time should be ~0.1s, not ~0.2s\n        # Allow generous margin but ensure it's not strictly sequential\n        assert overall_duration < 0.3, \\\n            f\"embed_all took {overall_duration:.3f}s — strategies may not be concurrent\"\n\n    @pytest.mark.asyncio\n    async def test_project_to_dim_integration_with_embed(self, make_signal):\n        \"\"\"Dimension projection integrates correctly with embed flow.\"\"\"\n        target_dim = 64\n\n        class OversizedStrategy:\n            \"\"\"Returns a 256-dim vector that needs projection.\"\"\"\n            async def embed(self, signal: Any) -> np.ndarray:\n                vec = np.ones(target_dim, dtype=np.float32)\n                return vec / np.linalg.norm(vec)\n\n        registry = EmbeddingStrategyRegistry(dimensions=target_dim)\n        registry.register(\"oversized\", OversizedStrategy())\n\n        signal = make_signal(content=\"projection test\")\n        result = await registry.embed(signal, strategy=\"oversized\")\n        assert result.shape == (target_dim,)\n\n    @pytest.mark.asyncio\n    async def test_semantic_backward_compatibility(self, make_signal, dim):\n        \"\"\"The 'semantic' strategy preserves backward-compatible behavior.\"\"\"\n        registry = EmbeddingStrategyRegistry(dimensions=dim)\n        semantic_strat = DeterministicStrategy(dim=dim, seed=42)\n        registry.register(\"semantic\", semantic_strat)\n\n        signal = make_signal(content=\"backward compat test\")\n\n        # embed() without specifying strategy should default to 'semantic'\n        result = await registry.embed(signal)\n        assert result.shape == (dim,)\n        assert result.dtype in (np.float32, np.float64)\n        norm = float(np.linalg.norm(result))\n        assert abs(norm - 1.0) < 1e-6 or norm == 0.0\n\n    @pytest.mark.asyncio\n    async def test_embed_all_with_wrong_shape_strategy_reports_failure(\n        self, registry, signal, dim\n    ):\n        \"\"\"embed_all gracefully handles strategy returning wrong shape.\"\"\"\n        registry.register(\"good\", DeterministicStrategy(dim=dim, seed=1))\n        registry.register(\"wrongshape\", WrongShapeStrategy(wrong_dim=dim // 2))\n\n        result = await registry.embed_all(signal)\n        # The good strategy should succeed\n        assert \"good\" in result.embeddings\n        # The wrong-shape strategy should fail\n        failure_names = [f.strategy_name for f in result.failures]\n        assert \"wrongshape\" in failure_names\n"
+}

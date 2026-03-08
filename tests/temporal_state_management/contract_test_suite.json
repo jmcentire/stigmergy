@@ -1,0 +1,625 @@
+{
+  "component_id": "temporal_state_management",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "parse_since_none_returns_stored",
+      "description": "parse_since_argument(None) returns SinceSpec with STORED policy and timestamp=None",
+      "function": "parse_since_argument",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "SinceSpec(policy=SincePolicy.STORED, timestamp=None)",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.STORED",
+        "result.timestamp is None"
+      ]
+    },
+    {
+      "id": "parse_since_all_lowercase",
+      "description": "parse_since_argument('all') returns SinceSpec with ALL policy and timestamp=None",
+      "function": "parse_since_argument",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "all"
+      },
+      "input_description": "",
+      "expected_output_description": "SinceSpec(policy=SincePolicy.ALL, timestamp=None)",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.ALL",
+        "result.timestamp is None"
+      ]
+    },
+    {
+      "id": "parse_since_all_case_insensitive",
+      "description": "parse_since_argument('ALL') and 'All' both return ALL policy",
+      "function": "parse_since_argument",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "ALL"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.ALL",
+        "result.timestamp is None"
+      ]
+    },
+    {
+      "id": "parse_since_iso8601_with_z",
+      "description": "parse_since_argument with ISO 8601 string ending in Z returns EXPLICIT with UTC datetime",
+      "function": "parse_since_argument",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "2024-01-15T10:30:00Z"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.EXPLICIT",
+        "result.timestamp is not None",
+        "result.timestamp.tzinfo is not None",
+        "result.timestamp.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "parse_since_iso8601_with_offset",
+      "description": "parse_since_argument with ISO 8601 string with +05:00 offset converts to UTC",
+      "function": "parse_since_argument",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "2024-01-15T15:30:00+05:00"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.EXPLICIT",
+        "result.timestamp is not None",
+        "result.timestamp.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "parse_since_iso8601_naive",
+      "description": "parse_since_argument with naive ISO 8601 string (no tz) assumes UTC",
+      "function": "parse_since_argument",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "2024-01-15T10:30:00"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.EXPLICIT",
+        "result.timestamp is not None",
+        "result.timestamp.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "parse_since_empty_string_raises",
+      "description": "parse_since_argument('') raises ValueError about empty string",
+      "function": "parse_since_argument",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'empty string' in str(exc.value).lower() or '--since' in str(exc.value)"
+      ]
+    },
+    {
+      "id": "parse_since_invalid_iso_raises",
+      "description": "parse_since_argument('not-a-date') raises ValueError about ISO 8601",
+      "function": "parse_since_argument",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "not-a-date"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'ISO 8601' in str(exc.value) or 'parse' in str(exc.value).lower()"
+      ]
+    },
+    {
+      "id": "parse_since_garbage_raises",
+      "description": "parse_since_argument('12/31/2024') raises ValueError for non-ISO format",
+      "function": "parse_since_argument",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "12/31/2024"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "parse_since_explicit_timestamp_not_none",
+      "description": "Invariant: when policy is EXPLICIT, timestamp must be non-None",
+      "function": "parse_since_argument",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw": "2024-06-01T00:00:00Z"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.policy == SincePolicy.EXPLICIT",
+        "result.timestamp is not None"
+      ]
+    },
+    {
+      "id": "resolve_all_policy_returns_none",
+      "description": "resolve_effective_since with ALL policy always returns None regardless of stored",
+      "function": "resolve_effective_since",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "spec_policy": "ALL",
+        "stored": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "resolve_all_policy_with_stored_returns_none",
+      "description": "resolve_effective_since with ALL policy returns None even when stored timestamp exists",
+      "function": "resolve_effective_since",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "spec_policy": "ALL",
+        "stored": "2024-01-01T00:00:00+00:00"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "resolve_stored_policy_with_stored_ts",
+      "description": "resolve_effective_since with STORED policy and existing stored timestamp returns that timestamp",
+      "function": "resolve_effective_since",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "spec_policy": "STORED",
+        "stored": "2024-06-15T12:00:00+00:00"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "resolve_stored_policy_no_stored_ts",
+      "description": "resolve_effective_since with STORED policy and no stored timestamp (first run) returns None",
+      "function": "resolve_effective_since",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "spec_policy": "STORED",
+        "stored": "None"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "resolve_explicit_policy_returns_spec_ts",
+      "description": "resolve_effective_since with EXPLICIT policy returns the spec timestamp, ignoring stored",
+      "function": "resolve_effective_since",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "spec_policy": "EXPLICIT",
+        "spec_timestamp": "2024-03-01T08:00:00+00:00"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "resolve_explicit_policy_ignores_stored",
+      "description": "resolve_effective_since with EXPLICIT policy ignores the stored timestamp entirely",
+      "function": "resolve_effective_since",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "spec_policy": "EXPLICIT",
+        "spec_timestamp": "2024-03-01T08:00:00+00:00",
+        "stored": "2024-01-01T00:00:00+00:00"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is not None"
+      ]
+    },
+    {
+      "id": "resolve_result_always_utc_or_none",
+      "description": "Invariant: resolve_effective_since result is always None or UTC-aware datetime",
+      "function": "resolve_effective_since",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None or (result.tzinfo is not None and result.utcoffset() == timedelta(0))"
+      ]
+    },
+    {
+      "id": "load_state_valid_yaml",
+      "description": "load_state returns RunState when state.yaml contains valid version 1 and UTC timestamp",
+      "function": "load_state",
+      "category": "happy_path",
+      "setup_description": "Write valid state.yaml to tmp_path/.stigmergy/state.yaml",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is not None",
+        "result.version == 1",
+        "result.last_run_timestamp.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "load_state_missing_file",
+      "description": "load_state returns None when state.yaml does not exist (first-run case)",
+      "function": "load_state",
+      "category": "happy_path",
+      "setup_description": "tmp_path with no .stigmergy directory",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "load_state_corrupt_yaml",
+      "description": "load_state returns None and warns when state.yaml contains invalid YAML",
+      "function": "load_state",
+      "category": "error_case",
+      "setup_description": "Write malformed YAML to state.yaml",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "load_state_invalid_schema",
+      "description": "load_state returns None when YAML is valid but schema is wrong (e.g., version=2)",
+      "function": "load_state",
+      "category": "error_case",
+      "setup_description": "Write YAML with version: 2 to state.yaml",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "load_state_missing_timestamp",
+      "description": "load_state returns None when YAML is valid but last_run_timestamp is missing",
+      "function": "load_state",
+      "category": "error_case",
+      "setup_description": "Write YAML with only version: 1 to state.yaml",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "load_state_permission_denied",
+      "description": "load_state returns None when state.yaml is not readable",
+      "function": "load_state",
+      "category": "error_case",
+      "setup_description": "Write valid state.yaml then chmod 000",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "load_state_naive_timestamp",
+      "description": "load_state returns None or converts when state.yaml has naive timestamp string",
+      "function": "load_state",
+      "category": "edge_case",
+      "setup_description": "Write YAML with naive datetime string as last_run_timestamp",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None or result.last_run_timestamp.tzinfo is not None"
+      ]
+    },
+    {
+      "id": "load_state_empty_file",
+      "description": "load_state returns None when state.yaml is empty",
+      "function": "load_state",
+      "category": "edge_case",
+      "setup_description": "Write empty file as state.yaml",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "save_state_creates_dir_and_file",
+      "description": "save_state creates .stigmergy/ directory and state.yaml when they don't exist",
+      "function": "save_state",
+      "category": "happy_path",
+      "setup_description": "tmp_path with no .stigmergy directory",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "(state_dir / '.stigmergy' / 'state.yaml').exists()"
+      ]
+    },
+    {
+      "id": "save_state_valid_yaml_content",
+      "description": "save_state writes valid YAML with version 1 and ISO 8601 timestamp string",
+      "function": "save_state",
+      "category": "happy_path",
+      "setup_description": "tmp_path with writable directory",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "content['version'] == 1",
+        "'last_run_timestamp' in content"
+      ]
+    },
+    {
+      "id": "save_state_round_trip",
+      "description": "save_state followed by load_state preserves the timestamp",
+      "function": "save_state",
+      "category": "happy_path",
+      "setup_description": "tmp_path for round-trip test",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "loaded.last_run_timestamp == original_timestamp"
+      ]
+    },
+    {
+      "id": "save_state_naive_timestamp_raises",
+      "description": "save_state raises ValueError when given a naive (non-UTC) datetime",
+      "function": "save_state",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "'UTC' in str(exc.value) or 'utc' in str(exc.value).lower()"
+      ]
+    },
+    {
+      "id": "save_state_non_utc_offset_raises",
+      "description": "save_state raises ValueError when given a non-UTC timezone offset",
+      "function": "save_state",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": []
+    },
+    {
+      "id": "save_state_overwrites_existing",
+      "description": "save_state overwrites existing state.yaml with new timestamp",
+      "function": "save_state",
+      "category": "happy_path",
+      "setup_description": "Write initial state.yaml, then save with new timestamp",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "loaded.last_run_timestamp == new_timestamp"
+      ]
+    },
+    {
+      "id": "save_state_idempotent",
+      "description": "Calling save_state twice with same timestamp produces identical file",
+      "function": "save_state",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "content_first == content_second"
+      ]
+    },
+    {
+      "id": "save_state_timestamp_as_string_not_yaml_datetime",
+      "description": "Invariant: timestamp in YAML is serialized as ISO 8601 string, not PyYAML datetime",
+      "function": "save_state",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "isinstance(raw_content_value, str)"
+      ]
+    },
+    {
+      "id": "invariant_sincespec_timestamp_iff_explicit",
+      "description": "SinceSpec.timestamp is non-None iff policy is EXPLICIT",
+      "function": "parse_since_argument",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "(result.policy == SincePolicy.EXPLICIT) == (result.timestamp is not None)"
+      ]
+    },
+    {
+      "id": "invariant_runstate_version_always_1",
+      "description": "RunState.version must always be exactly 1",
+      "function": "load_state",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result.version == 1"
+      ]
+    },
+    {
+      "id": "invariant_all_datetimes_utc",
+      "description": "All datetime values in RunState and SinceSpec must be UTC-aware",
+      "function": "resolve_effective_since",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "result is None or result.utcoffset() == timedelta(0)"
+      ]
+    },
+    {
+      "id": "integration_full_workflow",
+      "description": "Full workflow: parse → resolve → load → save → load verifies end-to-end consistency",
+      "function": "save_state",
+      "category": "happy_path",
+      "setup_description": "Run full pipeline from parse_since_argument through save_state and verify with load_state",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    },
+    {
+      "id": "integration_first_run_no_state",
+      "description": "First run with no state file: --since omitted → STORED → None cutoff → process all → save",
+      "function": "resolve_effective_since",
+      "category": "happy_path",
+      "setup_description": "No existing state file, simulate first run workflow",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": []
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for Temporal State Management component.\n\nTests verify behavior at boundaries (inputs/outputs) against the contract.\nOrganized into groups:\n  1. parse_since_argument tests\n  2. resolve_effective_since decision-table tests\n  3. load_state async I/O tests\n  4. save_state async I/O tests\n  5. Invariant and property-based tests\n  6. Integration / workflow tests\n\nRun with: pytest tests/test_temporal_state_management.py -v\n\"\"\"\nimport os\nimport stat\nimport sys\nimport textwrap\nfrom datetime import datetime, timedelta, timezone\nfrom pathlib import Path\nfrom unittest.mock import AsyncMock, MagicMock, patch\n\nimport pytest\nimport yaml\n\n# ---------------------------------------------------------------------------\n# Import the component under test\n# ---------------------------------------------------------------------------\nfrom stigmergy.cli.temporal_state import (\n    RunState,\n    SincePolicy,\n    SinceSpec,\n    load_state,\n    parse_since_argument,\n    resolve_effective_since,\n    save_state,\n)\n\n# ---------------------------------------------------------------------------\n# Helpers\n# ---------------------------------------------------------------------------\nUTC = timezone.utc\n\n\ndef utc_dt(year, month, day, hour=0, minute=0, second=0) -> datetime:\n    \"\"\"Convenience: create a UTC-aware datetime.\"\"\"\n    return datetime(year, month, day, hour, minute, second, tzinfo=UTC)\n\n\nSTATE_YAML_REL = Path(\".stigmergy\") / \"state.yaml\"\n\n\ndef write_state_yaml(state_dir: Path, content: str) -> Path:\n    \"\"\"Write raw content to .stigmergy/state.yaml under state_dir.\"\"\"\n    yaml_path = state_dir / STATE_YAML_REL\n    yaml_path.parent.mkdir(parents=True, exist_ok=True)\n    yaml_path.write_text(content)\n    return yaml_path\n\n\n# ============================================================================\n# 1. parse_since_argument tests\n# ============================================================================\nclass TestParseSinceArgument:\n    \"\"\"Tests for the pure function parse_since_argument.\"\"\"\n\n    def test_none_returns_stored_policy(self):\n        \"\"\"parse_since_argument(None) → STORED policy, timestamp=None.\"\"\"\n        result = parse_since_argument(None)\n        assert result.policy == SincePolicy.STORED, (\n            f\"Expected STORED policy for None input, got {result.policy}\"\n        )\n        assert result.timestamp is None, (\n            \"Expected timestamp=None for STORED policy\"\n        )\n\n    def test_all_lowercase_returns_all_policy(self):\n        \"\"\"parse_since_argument('all') → ALL policy, timestamp=None.\"\"\"\n        result = parse_since_argument(\"all\")\n        assert result.policy == SincePolicy.ALL\n        assert result.timestamp is None\n\n    @pytest.mark.parametrize(\"raw\", [\"ALL\", \"All\", \"aLl\", \"alL\"])\n    def test_all_case_insensitive(self, raw: str):\n        \"\"\"'all' in any case → ALL policy.\"\"\"\n        result = parse_since_argument(raw)\n        assert result.policy == SincePolicy.ALL, (\n            f\"Expected ALL policy for '{raw}', got {result.policy}\"\n        )\n        assert result.timestamp is None\n\n    def test_iso8601_with_z_suffix(self):\n        \"\"\"ISO 8601 string with 'Z' → EXPLICIT + UTC datetime.\"\"\"\n        result = parse_since_argument(\"2024-01-15T10:30:00Z\")\n        assert result.policy == SincePolicy.EXPLICIT\n        assert result.timestamp is not None\n        assert result.timestamp.tzinfo is not None\n        assert result.timestamp.utcoffset() == timedelta(0), (\n            \"Timestamp must be UTC-aware\"\n        )\n        assert result.timestamp.year == 2024\n        assert result.timestamp.month == 1\n        assert result.timestamp.day == 15\n        assert result.timestamp.hour == 10\n        assert result.timestamp.minute == 30\n\n    def test_iso8601_with_positive_offset_converts_to_utc(self):\n        \"\"\"ISO 8601 with +05:00 offset is converted to UTC.\"\"\"\n        result = parse_since_argument(\"2024-01-15T15:30:00+05:00\")\n        assert result.policy == SincePolicy.EXPLICIT\n        assert result.timestamp is not None\n        assert result.timestamp.utcoffset() == timedelta(0), (\n            \"Offset-aware input must be converted to UTC\"\n        )\n        # 15:30 +05:00 → 10:30 UTC\n        assert result.timestamp.hour == 10\n        assert result.timestamp.minute == 30\n\n    def test_iso8601_with_negative_offset_converts_to_utc(self):\n        \"\"\"ISO 8601 with -03:00 offset is converted to UTC.\"\"\"\n        result = parse_since_argument(\"2024-06-01T09:00:00-03:00\")\n        assert result.policy == SincePolicy.EXPLICIT\n        assert result.timestamp is not None\n        assert result.timestamp.utcoffset() == timedelta(0)\n        # 09:00 -03:00 → 12:00 UTC\n        assert result.timestamp.hour == 12\n\n    def test_iso8601_naive_assumed_utc(self):\n        \"\"\"Naive ISO 8601 string (no tz) is assumed UTC.\"\"\"\n        result = parse_since_argument(\"2024-01-15T10:30:00\")\n        assert result.policy == SincePolicy.EXPLICIT\n        assert result.timestamp is not None\n        assert result.timestamp.utcoffset() == timedelta(0), (\n            \"Naive datetime input must be assumed UTC\"\n        )\n        assert result.timestamp.hour == 10\n\n    def test_iso8601_date_only(self):\n        \"\"\"Date-only ISO string like '2024-01-15' should parse or raise clearly.\"\"\"\n        # Contract says ISO 8601 datetime; date-only may or may not be supported.\n        # If supported, it should be EXPLICIT with UTC. If not, ValueError.\n        try:\n            result = parse_since_argument(\"2024-01-15\")\n            assert result.policy == SincePolicy.EXPLICIT\n            assert result.timestamp is not None\n            assert result.timestamp.utcoffset() == timedelta(0)\n        except ValueError:\n            pass  # Acceptable per contract — not a datetime format\n\n    def test_empty_string_raises_valueerror(self):\n        \"\"\"Empty string must raise ValueError with descriptive message.\"\"\"\n        with pytest.raises(ValueError) as exc:\n            parse_since_argument(\"\")\n        error_msg = str(exc.value).lower()\n        assert \"empty\" in error_msg or \"--since\" in str(exc.value), (\n            f\"Expected error about empty string, got: {exc.value}\"\n        )\n\n    def test_invalid_iso_string_raises_valueerror(self):\n        \"\"\"Non-ISO, non-'all' string raises ValueError.\"\"\"\n        with pytest.raises(ValueError) as exc:\n            parse_since_argument(\"not-a-date\")\n        assert \"ISO 8601\" in str(exc.value) or \"parse\" in str(exc.value).lower(), (\n            f\"Expected ISO 8601 parse error, got: {exc.value}\"\n        )\n\n    @pytest.mark.parametrize(\"raw\", [\n        \"12/31/2024\",\n        \"yesterday\",\n        \"2024-13-01T00:00:00Z\",  # invalid month\n        \"hello world\",\n        \"   \",\n    ])\n    def test_garbage_input_raises_valueerror(self, raw: str):\n        \"\"\"Various garbage inputs raise ValueError.\"\"\"\n        with pytest.raises(ValueError):\n            parse_since_argument(raw)\n\n    @pytest.mark.parametrize(\"raw,expected_policy\", [\n        (None, SincePolicy.STORED),\n        (\"all\", SincePolicy.ALL),\n        (\"2024-06-01T00:00:00Z\", SincePolicy.EXPLICIT),\n    ])\n    def test_invariant_timestamp_iff_explicit(self, raw, expected_policy):\n        \"\"\"Invariant: timestamp is non-None iff policy is EXPLICIT.\"\"\"\n        result = parse_since_argument(raw)\n        assert result.policy == expected_policy\n        if result.policy == SincePolicy.EXPLICIT:\n            assert result.timestamp is not None, (\n                \"EXPLICIT policy must have non-None timestamp\"\n            )\n        else:\n            assert result.timestamp is None, (\n                f\"{result.policy.name} policy must have None timestamp\"\n            )\n\n\n# ============================================================================\n# 2. resolve_effective_since decision-table tests\n# ============================================================================\nclass TestResolveEffectiveSince:\n    \"\"\"Decision-table tests for the pure function resolve_effective_since.\"\"\"\n\n    STORED_TS = utc_dt(2024, 6, 15, 12, 0, 0)\n    EXPLICIT_TS = utc_dt(2024, 3, 1, 8, 0, 0)\n\n    @pytest.mark.parametrize(\n        \"policy, spec_ts, stored, expected_desc\",\n        [\n            # ALL policy: always returns None\n            (SincePolicy.ALL, None, None, \"None\"),\n            (SincePolicy.ALL, None, STORED_TS, \"None\"),\n            # STORED policy: returns stored or None\n            (SincePolicy.STORED, None, None, \"None\"),\n            (SincePolicy.STORED, None, STORED_TS, \"stored\"),\n            # EXPLICIT policy: always returns spec timestamp\n            (SincePolicy.EXPLICIT, EXPLICIT_TS, None, \"explicit\"),\n            (SincePolicy.EXPLICIT, EXPLICIT_TS, STORED_TS, \"explicit\"),\n        ],\n        ids=[\n            \"ALL+no_stored→None\",\n            \"ALL+has_stored→None\",\n            \"STORED+no_stored→None\",\n            \"STORED+has_stored→stored_ts\",\n            \"EXPLICIT+no_stored→explicit_ts\",\n            \"EXPLICIT+has_stored→explicit_ts\",\n        ],\n    )\n    def test_decision_table(self, policy, spec_ts, stored, expected_desc):\n        \"\"\"Verify all policy × stored combinations produce correct results.\"\"\"\n        spec = SinceSpec(policy=policy, timestamp=spec_ts)\n        result = resolve_effective_since(spec, stored)\n\n        if expected_desc == \"None\":\n            assert result is None, (\n                f\"Expected None for {policy.name} + stored={stored}, got {result}\"\n            )\n        elif expected_desc == \"stored\":\n            assert result == stored, (\n                f\"Expected stored timestamp {stored}, got {result}\"\n            )\n        elif expected_desc == \"explicit\":\n            assert result == spec_ts, (\n                f\"Expected explicit timestamp {spec_ts}, got {result}\"\n            )\n\n    def test_all_policy_none_stored(self):\n        \"\"\"ALL policy with no stored → None.\"\"\"\n        spec = SinceSpec(policy=SincePolicy.ALL, timestamp=None)\n        assert resolve_effective_since(spec, None) is None\n\n    def test_all_policy_with_stored(self):\n        \"\"\"ALL policy ignores stored timestamp → None.\"\"\"\n        spec = SinceSpec(policy=SincePolicy.ALL, timestamp=None)\n        assert resolve_effective_since(spec, self.STORED_TS) is None\n\n    def test_stored_policy_returns_stored_timestamp(self):\n        \"\"\"STORED policy with existing stored → returns that timestamp.\"\"\"\n        spec = SinceSpec(policy=SincePolicy.STORED, timestamp=None)\n        result = resolve_effective_since(spec, self.STORED_TS)\n        assert result == self.STORED_TS\n\n    def test_stored_policy_no_stored_returns_none(self):\n        \"\"\"STORED policy with no stored (first run) → None (process all).\"\"\"\n        spec = SinceSpec(policy=SincePolicy.STORED, timestamp=None)\n        result = resolve_effective_since(spec, None)\n        assert result is None\n\n    def test_explicit_policy_returns_spec_timestamp(self):\n        \"\"\"EXPLICIT policy → returns spec.timestamp regardless of stored.\"\"\"\n        spec = SinceSpec(policy=SincePolicy.EXPLICIT, timestamp=self.EXPLICIT_TS)\n        result = resolve_effective_since(spec, self.STORED_TS)\n        assert result == self.EXPLICIT_TS\n\n    def test_explicit_policy_ignores_stored(self):\n        \"\"\"EXPLICIT policy ignores the stored value entirely.\"\"\"\n        spec = SinceSpec(policy=SincePolicy.EXPLICIT, timestamp=self.EXPLICIT_TS)\n        result_no_stored = resolve_effective_since(spec, None)\n        result_with_stored = resolve_effective_since(spec, self.STORED_TS)\n        assert result_no_stored == result_with_stored == self.EXPLICIT_TS\n\n    @pytest.mark.parametrize(\n        \"policy, spec_ts, stored\",\n        [\n            (SincePolicy.ALL, None, None),\n            (SincePolicy.STORED, None, utc_dt(2024, 1, 1)),\n            (SincePolicy.EXPLICIT, utc_dt(2024, 3, 1), None),\n        ],\n    )\n    def test_invariant_result_utc_or_none(self, policy, spec_ts, stored):\n        \"\"\"Invariant: result is always None or UTC-aware datetime.\"\"\"\n        spec = SinceSpec(policy=policy, timestamp=spec_ts)\n        result = resolve_effective_since(spec, stored)\n        if result is not None:\n            assert result.tzinfo is not None, \"Result datetime must be tz-aware\"\n            assert result.utcoffset() == timedelta(0), \"Result datetime must be UTC\"\n\n\n# ============================================================================\n# 3. load_state async tests\n# ============================================================================\nclass TestLoadState:\n    \"\"\"Async tests for load_state using real filesystem via tmp_path.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_valid_state_yaml(self, tmp_path: Path):\n        \"\"\"load_state reads valid state.yaml and returns RunState.\"\"\"\n        ts = \"2024-06-15T12:00:00+00:00\"\n        content = f\"version: 1\\nlast_run_timestamp: '{ts}'\\n\"\n        write_state_yaml(tmp_path, content)\n\n        result = await load_state(tmp_path)\n\n        assert result is not None, \"Expected a RunState for valid YAML\"\n        assert result.version == 1\n        assert result.last_run_timestamp.utcoffset() == timedelta(0)\n        assert result.last_run_timestamp.year == 2024\n        assert result.last_run_timestamp.month == 6\n        assert result.last_run_timestamp.day == 15\n\n    @pytest.mark.asyncio\n    async def test_missing_file_returns_none(self, tmp_path: Path):\n        \"\"\"load_state returns None when state.yaml doesn't exist (first-run).\"\"\"\n        result = await load_state(tmp_path)\n        assert result is None, (\n            \"Expected None for missing state file (first-run case)\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_missing_stigmergy_dir_returns_none(self, tmp_path: Path):\n        \"\"\"load_state returns None when .stigmergy/ directory doesn't exist.\"\"\"\n        result = await load_state(tmp_path)\n        assert result is None\n\n    @pytest.mark.asyncio\n    async def test_corrupt_yaml_returns_none(self, tmp_path: Path):\n        \"\"\"load_state returns None for corrupt/unparseable YAML.\"\"\"\n        write_state_yaml(tmp_path, \"{{{{not: valid: yaml: [[[\")\n\n        result = await load_state(tmp_path)\n        assert result is None, \"Expected None for corrupt YAML\"\n\n    @pytest.mark.asyncio\n    async def test_invalid_schema_wrong_version(self, tmp_path: Path):\n        \"\"\"load_state returns None when version != 1.\"\"\"\n        content = \"version: 2\\nlast_run_timestamp: '2024-01-01T00:00:00+00:00'\\n\"\n        write_state_yaml(tmp_path, content)\n\n        result = await load_state(tmp_path)\n        assert result is None, \"Expected None for schema with version=2\"\n\n    @pytest.mark.asyncio\n    async def test_invalid_schema_missing_timestamp(self, tmp_path: Path):\n        \"\"\"load_state returns None when last_run_timestamp key is missing.\"\"\"\n        write_state_yaml(tmp_path, \"version: 1\\n\")\n\n        result = await load_state(tmp_path)\n        assert result is None, \"Expected None when last_run_timestamp is missing\"\n\n    @pytest.mark.asyncio\n    async def test_empty_file_returns_none(self, tmp_path: Path):\n        \"\"\"load_state returns None for an empty state.yaml file.\"\"\"\n        write_state_yaml(tmp_path, \"\")\n\n        result = await load_state(tmp_path)\n        assert result is None, \"Expected None for empty state file\"\n\n    @pytest.mark.asyncio\n    async def test_permission_denied_returns_none(self, tmp_path: Path):\n        \"\"\"load_state returns None when state.yaml is unreadable.\"\"\"\n        if sys.platform == \"win32\":\n            pytest.skip(\"Permission test requires POSIX filesystem\")\n\n        ts = \"2024-06-15T12:00:00+00:00\"\n        yaml_path = write_state_yaml(\n            tmp_path, f\"version: 1\\nlast_run_timestamp: '{ts}'\\n\"\n        )\n        os.chmod(yaml_path, 0o000)\n\n        try:\n            result = await load_state(tmp_path)\n            assert result is None, \"Expected None for permission-denied file\"\n        finally:\n            os.chmod(yaml_path, stat.S_IRUSR | stat.S_IWUSR)\n\n    @pytest.mark.asyncio\n    async def test_yaml_native_datetime_handling(self, tmp_path: Path):\n        \"\"\"YAML native datetime (not string) should still load or gracefully fail.\"\"\"\n        # PyYAML safe_load can parse dates like 2024-06-15 as datetime.date\n        # The implementation must handle this gracefully\n        content = \"version: 1\\nlast_run_timestamp: 2024-06-15T12:00:00+00:00\\n\"\n        write_state_yaml(tmp_path, content)\n\n        result = await load_state(tmp_path)\n        # Either successfully loaded (implementation converts) or None (validation fails)\n        if result is not None:\n            assert result.last_run_timestamp.tzinfo is not None\n            assert result.last_run_timestamp.utcoffset() == timedelta(0)\n\n    @pytest.mark.asyncio\n    async def test_extra_fields_ignored_gracefully(self, tmp_path: Path):\n        \"\"\"Extra unknown fields in state.yaml should not cause failure.\"\"\"\n        content = (\n            \"version: 1\\n\"\n            \"last_run_timestamp: '2024-01-01T00:00:00+00:00'\\n\"\n            \"unknown_field: 42\\n\"\n        )\n        write_state_yaml(tmp_path, content)\n\n        result = await load_state(tmp_path)\n        # Pydantic v2 with extra='ignore' or 'forbid' — either way test is valid\n        # If extra='forbid', returns None (validation error); if 'ignore', returns RunState\n        if result is not None:\n            assert result.version == 1\n\n\n# ============================================================================\n# 4. save_state async tests\n# ============================================================================\nclass TestSaveState:\n    \"\"\"Async tests for save_state using real filesystem via tmp_path.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_creates_directory_and_file(self, tmp_path: Path):\n        \"\"\"save_state creates .stigmergy/ dir and state.yaml when absent.\"\"\"\n        ts = utc_dt(2024, 7, 1, 15, 30, 0)\n\n        await save_state(tmp_path, ts)\n\n        yaml_path = tmp_path / STATE_YAML_REL\n        assert yaml_path.parent.exists(), \".stigmergy/ directory must be created\"\n        assert yaml_path.exists(), \"state.yaml must be created\"\n\n    @pytest.mark.asyncio\n    async def test_writes_valid_yaml(self, tmp_path: Path):\n        \"\"\"save_state writes parseable YAML with version=1 and timestamp.\"\"\"\n        ts = utc_dt(2024, 7, 1, 15, 30, 0)\n\n        await save_state(tmp_path, ts)\n\n        yaml_path = tmp_path / STATE_YAML_REL\n        content = yaml.safe_load(yaml_path.read_text())\n        assert content[\"version\"] == 1, \"version must be 1\"\n        assert \"last_run_timestamp\" in content, \"must contain last_run_timestamp\"\n\n    @pytest.mark.asyncio\n    async def test_timestamp_serialized_as_string(self, tmp_path: Path):\n        \"\"\"Invariant: timestamp is serialized as ISO 8601 string, not YAML datetime.\"\"\"\n        ts = utc_dt(2024, 7, 1, 15, 30, 0)\n\n        await save_state(tmp_path, ts)\n\n        yaml_path = tmp_path / STATE_YAML_REL\n        raw_text = yaml_path.read_text()\n        # The timestamp value should be quoted or at least be a string when loaded\n        content = yaml.safe_load(raw_text)\n        ts_value = content[\"last_run_timestamp\"]\n        assert isinstance(ts_value, str), (\n            f\"Timestamp must be serialized as string, got {type(ts_value).__name__}: {ts_value}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_round_trip_preserves_timestamp(self, tmp_path: Path):\n        \"\"\"save_state → load_state round-trip preserves the timestamp exactly.\"\"\"\n        original_ts = utc_dt(2024, 7, 1, 15, 30, 45)\n\n        await save_state(tmp_path, original_ts)\n        loaded = await load_state(tmp_path)\n\n        assert loaded is not None, \"load_state must return RunState after save\"\n        assert loaded.last_run_timestamp == original_ts, (\n            f\"Round-trip failed: saved {original_ts}, loaded {loaded.last_run_timestamp}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_naive_datetime_raises_valueerror(self, tmp_path: Path):\n        \"\"\"save_state raises ValueError for naive (no tzinfo) datetime.\"\"\"\n        naive_ts = datetime(2024, 7, 1, 15, 30, 0)  # no tzinfo\n\n        with pytest.raises((ValueError, Exception)) as exc:\n            await save_state(tmp_path, naive_ts)\n        # Accept ValueError or Pydantic ValidationError\n        error_msg = str(exc.value).lower()\n        assert \"utc\" in error_msg or \"tz\" in error_msg or \"timezone\" in error_msg, (\n            f\"Expected UTC-related error, got: {exc.value}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_non_utc_timezone_raises_valueerror(self, tmp_path: Path):\n        \"\"\"save_state raises ValueError for non-UTC timezone.\"\"\"\n        eastern = timezone(timedelta(hours=-5))\n        non_utc_ts = datetime(2024, 7, 1, 15, 30, 0, tzinfo=eastern)\n\n        with pytest.raises((ValueError, Exception)) as exc:\n            await save_state(tmp_path, non_utc_ts)\n        error_msg = str(exc.value).lower()\n        assert \"utc\" in error_msg or \"tz\" in error_msg or \"timezone\" in error_msg, (\n            f\"Expected UTC-related error, got: {exc.value}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_overwrites_existing_state(self, tmp_path: Path):\n        \"\"\"save_state overwrites existing state.yaml with new timestamp.\"\"\"\n        ts1 = utc_dt(2024, 1, 1, 0, 0, 0)\n        ts2 = utc_dt(2024, 12, 31, 23, 59, 59)\n\n        await save_state(tmp_path, ts1)\n        await save_state(tmp_path, ts2)\n\n        loaded = await load_state(tmp_path)\n        assert loaded is not None\n        assert loaded.last_run_timestamp == ts2, (\n            f\"Expected overwritten timestamp {ts2}, got {loaded.last_run_timestamp}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_idempotent_same_timestamp(self, tmp_path: Path):\n        \"\"\"Calling save_state twice with same timestamp produces identical files.\"\"\"\n        ts = utc_dt(2024, 7, 1, 12, 0, 0)\n\n        await save_state(tmp_path, ts)\n        content_first = (tmp_path / STATE_YAML_REL).read_text()\n\n        await save_state(tmp_path, ts)\n        content_second = (tmp_path / STATE_YAML_REL).read_text()\n\n        assert content_first == content_second, (\n            \"Idempotent save_state must produce identical file content\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_permission_denied_mkdir(self, tmp_path: Path):\n        \"\"\"save_state raises OSError when .stigmergy/ cannot be created.\"\"\"\n        if sys.platform == \"win32\":\n            pytest.skip(\"Permission test requires POSIX filesystem\")\n\n        # Make tmp_path read-only so mkdir fails\n        os.chmod(tmp_path, stat.S_IRUSR | stat.S_IXUSR)\n\n        try:\n            with pytest.raises(OSError):\n                await save_state(tmp_path, utc_dt(2024, 1, 1))\n        finally:\n            os.chmod(tmp_path, stat.S_IRWXU)\n\n    @pytest.mark.asyncio\n    async def test_existing_stigmergy_dir_reused(self, tmp_path: Path):\n        \"\"\"save_state reuses existing .stigmergy/ dir without error.\"\"\"\n        stigmergy_dir = tmp_path / \".stigmergy\"\n        stigmergy_dir.mkdir()\n\n        ts = utc_dt(2024, 5, 20, 8, 0, 0)\n        await save_state(tmp_path, ts)\n\n        loaded = await load_state(tmp_path)\n        assert loaded is not None\n        assert loaded.last_run_timestamp == ts\n\n\n# ============================================================================\n# 5. Invariant and property-based tests\n# ============================================================================\nclass TestInvariants:\n    \"\"\"Tests verifying contract invariants across the component.\"\"\"\n\n    @pytest.mark.parametrize(\"raw,expected_policy\", [\n        (None, SincePolicy.STORED),\n        (\"all\", SincePolicy.ALL),\n        (\"ALL\", SincePolicy.ALL),\n        (\"2024-01-01T00:00:00Z\", SincePolicy.EXPLICIT),\n        (\"2024-06-15T10:30:00+02:00\", SincePolicy.EXPLICIT),\n        (\"2024-12-31T23:59:59\", SincePolicy.EXPLICIT),\n    ])\n    def test_sincespec_timestamp_iff_explicit(self, raw, expected_policy):\n        \"\"\"Invariant: SinceSpec.timestamp is non-None iff policy is EXPLICIT.\"\"\"\n        result = parse_since_argument(raw)\n        assert result.policy == expected_policy\n        is_explicit = result.policy == SincePolicy.EXPLICIT\n        has_timestamp = result.timestamp is not None\n        assert is_explicit == has_timestamp, (\n            f\"policy={result.policy.name}, timestamp={'set' if has_timestamp else 'None'}: \"\n            f\"timestamp must be non-None iff policy is EXPLICIT\"\n        )\n\n    def test_sincespec_is_frozen(self):\n        \"\"\"Invariant: SinceSpec is immutable (frozen Pydantic model).\"\"\"\n        spec = parse_since_argument(None)\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            spec.policy = SincePolicy.ALL  # type: ignore\n\n    @pytest.mark.asyncio\n    async def test_runstate_version_always_1(self, tmp_path: Path):\n        \"\"\"Invariant: RunState.version loaded from valid state is always 1.\"\"\"\n        content = \"version: 1\\nlast_run_timestamp: '2024-01-01T00:00:00+00:00'\\n\"\n        write_state_yaml(tmp_path, content)\n\n        result = await load_state(tmp_path)\n        assert result is not None\n        assert result.version == 1, f\"RunState.version must be 1, got {result.version}\"\n\n    def test_runstate_rejects_version_not_1(self):\n        \"\"\"Invariant: RunState with version != 1 fails validation.\"\"\"\n        with pytest.raises(Exception):\n            RunState(version=2, last_run_timestamp=utc_dt(2024, 1, 1))\n\n    def test_runstate_rejects_naive_datetime(self):\n        \"\"\"Invariant: RunState rejects naive (non-UTC) datetime.\"\"\"\n        naive_dt = datetime(2024, 1, 1, 0, 0, 0)\n        with pytest.raises(Exception):\n            RunState(version=1, last_run_timestamp=naive_dt)\n\n    def test_runstate_is_frozen(self):\n        \"\"\"Invariant: RunState is immutable (frozen Pydantic model).\"\"\"\n        state = RunState(version=1, last_run_timestamp=utc_dt(2024, 1, 1))\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            state.version = 2  # type: ignore\n\n    @pytest.mark.asyncio\n    async def test_load_state_does_not_modify_files(self, tmp_path: Path):\n        \"\"\"Invariant: load_state is read-only — does not create or modify files.\"\"\"\n        # First: non-existent case\n        before_contents = set(tmp_path.rglob(\"*\"))\n        await load_state(tmp_path)\n        after_contents = set(tmp_path.rglob(\"*\"))\n        assert before_contents == after_contents, (\n            \"load_state must not create any files\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_save_then_load_round_trip_multiple_timestamps(self, tmp_path: Path):\n        \"\"\"Property: save → load round-trip preserves any valid UTC timestamp.\"\"\"\n        timestamps = [\n            utc_dt(2024, 1, 1, 0, 0, 0),\n            utc_dt(2024, 6, 15, 12, 30, 45),\n            utc_dt(2024, 12, 31, 23, 59, 59),\n            utc_dt(2000, 1, 1, 0, 0, 0),\n        ]\n        for ts in timestamps:\n            await save_state(tmp_path, ts)\n            loaded = await load_state(tmp_path)\n            assert loaded is not None, f\"Failed to load state after saving {ts}\"\n            assert loaded.last_run_timestamp == ts, (\n                f\"Round-trip failed for {ts}: got {loaded.last_run_timestamp}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_no_temp_files_remain_after_save(self, tmp_path: Path):\n        \"\"\"Invariant: No temporary files remain in .stigmergy/ after save_state.\"\"\"\n        ts = utc_dt(2024, 7, 1, 12, 0, 0)\n        await save_state(tmp_path, ts)\n\n        stigmergy_dir = tmp_path / \".stigmergy\"\n        files = list(stigmergy_dir.iterdir())\n        assert len(files) == 1, (\n            f\"Expected only state.yaml in .stigmergy/, found: {[f.name for f in files]}\"\n        )\n        assert files[0].name == \"state.yaml\"\n\n\n# ============================================================================\n# 6. Integration / workflow tests\n# ============================================================================\nclass TestIntegrationWorkflow:\n    \"\"\"End-to-end workflow tests combining multiple functions.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_first_run_full_workflow(self, tmp_path: Path):\n        \"\"\"\n        First run: no state file → --since omitted → process all → save.\n\n        Simulates: parse(None) → resolve(STORED, None) → process → save\n        Then: load → verify round-trip\n        \"\"\"\n        # Step 1: Parse --since (omitted = None)\n        spec = parse_since_argument(None)\n        assert spec.policy == SincePolicy.STORED\n\n        # Step 2: Load state (first run, no file)\n        stored_state = await load_state(tmp_path)\n        assert stored_state is None\n\n        stored_ts = stored_state.last_run_timestamp if stored_state else None\n\n        # Step 3: Resolve effective since\n        effective_since = resolve_effective_since(spec, stored_ts)\n        assert effective_since is None, (\n            \"First run with no stored state should process all (None cutoff)\"\n        )\n\n        # Step 4: Simulate processing... then save completion timestamp\n        completion_ts = utc_dt(2024, 7, 15, 14, 30, 0)\n        await save_state(tmp_path, completion_ts)\n\n        # Step 5: Verify state was persisted\n        reloaded = await load_state(tmp_path)\n        assert reloaded is not None\n        assert reloaded.last_run_timestamp == completion_ts\n\n    @pytest.mark.asyncio\n    async def test_subsequent_run_uses_stored_timestamp(self, tmp_path: Path):\n        \"\"\"\n        Subsequent run: has stored state → --since omitted → use stored cutoff.\n        \"\"\"\n        # Setup: save a prior run's timestamp\n        prior_ts = utc_dt(2024, 7, 10, 10, 0, 0)\n        await save_state(tmp_path, prior_ts)\n\n        # Step 1: Parse --since (omitted)\n        spec = parse_since_argument(None)\n        assert spec.policy == SincePolicy.STORED\n\n        # Step 2: Load stored state\n        stored_state = await load_state(tmp_path)\n        assert stored_state is not None\n        stored_ts = stored_state.last_run_timestamp\n\n        # Step 3: Resolve → should return stored timestamp\n        effective_since = resolve_effective_since(spec, stored_ts)\n        assert effective_since == prior_ts, (\n            f\"Subsequent run should use stored {prior_ts}, got {effective_since}\"\n        )\n\n        # Step 4: Save new completion\n        new_ts = utc_dt(2024, 7, 15, 14, 30, 0)\n        await save_state(tmp_path, new_ts)\n\n        # Step 5: Next load sees updated timestamp\n        final = await load_state(tmp_path)\n        assert final is not None\n        assert final.last_run_timestamp == new_ts\n\n    @pytest.mark.asyncio\n    async def test_since_all_ignores_stored(self, tmp_path: Path):\n        \"\"\"--since all → process everything regardless of stored state.\"\"\"\n        # Setup: save a prior timestamp\n        prior_ts = utc_dt(2024, 7, 10, 10, 0, 0)\n        await save_state(tmp_path, prior_ts)\n\n        # Parse --since all\n        spec = parse_since_argument(\"all\")\n        assert spec.policy == SincePolicy.ALL\n\n        # Load stored\n        stored_state = await load_state(tmp_path)\n        stored_ts = stored_state.last_run_timestamp if stored_state else None\n\n        # Resolve → None (process everything)\n        effective_since = resolve_effective_since(spec, stored_ts)\n        assert effective_since is None, (\n            \"'--since all' must result in None cutoff (process everything)\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_since_explicit_overrides_stored(self, tmp_path: Path):\n        \"\"\"--since <datetime> → use that datetime, ignore stored.\"\"\"\n        # Setup: save a prior timestamp\n        prior_ts = utc_dt(2024, 7, 10, 10, 0, 0)\n        await save_state(tmp_path, prior_ts)\n\n        # Parse explicit --since\n        spec = parse_since_argument(\"2024-06-01T00:00:00Z\")\n        assert spec.policy == SincePolicy.EXPLICIT\n\n        # Load stored\n        stored_state = await load_state(tmp_path)\n        stored_ts = stored_state.last_run_timestamp if stored_state else None\n\n        # Resolve → explicit timestamp\n        effective_since = resolve_effective_since(spec, stored_ts)\n        assert effective_since is not None\n        assert effective_since == spec.timestamp\n        assert effective_since != prior_ts, (\n            \"Explicit --since must override stored timestamp\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_corrupt_state_degrades_gracefully(self, tmp_path: Path):\n        \"\"\"Corrupt state file → treated as first run (no cutoff).\"\"\"\n        # Write corrupt YAML\n        write_state_yaml(tmp_path, \"!!!corrupt{{{yaml\")\n\n        # Parse (--since omitted)\n        spec = parse_since_argument(None)\n\n        # Load → None (corrupt)\n        stored_state = await load_state(tmp_path)\n        assert stored_state is None\n\n        # Resolve → None (treat as first run)\n        effective_since = resolve_effective_since(spec, None)\n        assert effective_since is None, (\n            \"Corrupt state should degrade to 'process all' (None cutoff)\"\n        )\n"
+}

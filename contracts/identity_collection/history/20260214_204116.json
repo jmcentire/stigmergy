@@ -1,0 +1,879 @@
+{
+  "component_id": "identity_collection",
+  "name": "Identity Unknown Collection & Matching",
+  "description": "After each run, collect the unknown set from the identity resolver. For each unknown identifier, call suggest_match() to find fuzzy match candidates with confidence scores. Package results into a structured format (unknown_id, candidates with scores). Provide API for confirming a match (writes to AliasStore). Handle the case where suggest_match returns no candidates (normal empty-tuple return, not an error). All async. Mode-awareness (interactive/non-interactive) is decoupled into ResolutionHandler implementations. Confidence thresholds are policy-layer concerns, not baked into types.",
+  "version": 1,
+  "types": [
+    {
+      "name": "str",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "UTF-8 string primitive."
+    },
+    {
+      "name": "int",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Integer primitive."
+    },
+    {
+      "name": "float",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "IEEE 754 double-precision floating-point primitive."
+    },
+    {
+      "name": "bool",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Boolean primitive."
+    },
+    {
+      "name": "datetime",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "ISO-8601 datetime with timezone (UTC). Maps to Python datetime.datetime."
+    },
+    {
+      "name": "UnknownIdentifier",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "identifier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw identifier string that could not be resolved by the identity resolver.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "identifier must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The origin context where this unknown identifier was discovered (e.g., commit email, PR author field).",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "source must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "discovered_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp of when this unknown identifier was first encountered in the current run.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 value type representing a single unknown identifier discovered during an identity resolution run. Immutable after construction (model_config = ConfigDict(frozen=True))."
+    },
+    {
+      "name": "MatchCandidate",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "canonical_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The canonical identity ID that this candidate maps to in the known identity store.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "canonical_id must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "display_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable display name for the candidate identity, used in interactive prompts and log output.",
+          "validators": []
+        },
+        {
+          "name": "confidence",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Confidence score for this match, in the closed interval [0.0, 1.0]. Higher is more confident. Thresholding is a policy-layer concern, not enforced here beyond range.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=0.0,le=1.0",
+              "error_message": "confidence must be between 0.0 and 1.0 inclusive."
+            }
+          ]
+        },
+        {
+          "name": "match_method",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The algorithm or heuristic that produced this candidate (e.g., 'email_domain', 'levenshtein', 'token_overlap', 'exact_prefix').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "match_method must be a non-empty string."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 value type representing a single candidate match for an unknown identifier. Carries a confidence score in [0.0, 1.0] and the method used to produce the match. Immutable after construction."
+    },
+    {
+      "name": "MatchCandidateTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "MatchCandidate",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered tuple of MatchCandidate values. Uses tuple (not list) for immutability in frozen models. May be empty when no candidates are found — this is a normal condition, not an error."
+    },
+    {
+      "name": "MatchResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "unknown",
+          "type_ref": "UnknownIdentifier",
+          "required": true,
+          "default": "",
+          "description": "The unknown identifier for which matching was attempted.",
+          "validators": []
+        },
+        {
+          "name": "candidates",
+          "type_ref": "MatchCandidateTuple",
+          "required": true,
+          "default": "",
+          "description": "Ordered tuple of match candidates sorted by descending confidence. Empty tuple means no candidates were found (normal condition).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 value type pairing an UnknownIdentifier with its match candidates (possibly empty). An empty candidates tuple signals no candidates were found, which is a normal return, not an error."
+    },
+    {
+      "name": "ConfirmationResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "unknown_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw unknown identifier string that was confirmed.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "unknown_id must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "confirmed_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The canonical identity ID that the unknown was confirmed to map to.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "confirmed_id must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "confirmed_at",
+          "type_ref": "datetime",
+          "required": true,
+          "default": "",
+          "description": "UTC timestamp of when the confirmation was made.",
+          "validators": []
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Origin context or reason for the confirmation (e.g., 'interactive_prompt', 'auto_high_confidence', 'cli_flag'). May be empty string if unspecified.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 value type representing a confirmed mapping from an unknown identifier to a canonical identity. Produced after user or automated confirmation and persisted to AliasStore."
+    },
+    {
+      "name": "MatchResultTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "MatchResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered tuple of MatchResult values. One entry per unknown identifier processed. Uses tuple for immutability."
+    },
+    {
+      "name": "ConfirmationResultTuple",
+      "kind": "list",
+      "fields": [],
+      "item_type": "ConfirmationResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered tuple of ConfirmationResult values. One entry per confirmed match from a resolution handler pass."
+    },
+    {
+      "name": "IdentityResolutionError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the error.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional key-value context for debugging (e.g., identifier, store path).",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base error type for all identity resolution errors. Carries a human-readable message and optional context dict. Subtypes: StoreWriteError, MatchSuggestionError."
+    },
+    {
+      "name": "StoreWriteError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the store write failure.",
+          "validators": []
+        },
+        {
+          "name": "unknown_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The unknown identifier that was being confirmed when the write failed.",
+          "validators": []
+        },
+        {
+          "name": "confirmed_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The canonical ID that was being written when the failure occurred.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional key-value context for debugging.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when a write to the AliasStore fails (e.g., I/O error, permission denied, serialization failure). Subtype of IdentityResolutionError."
+    },
+    {
+      "name": "MatchSuggestionError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the suggestion failure.",
+          "validators": []
+        },
+        {
+          "name": "identifier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The identifier for which suggestion failed.",
+          "validators": []
+        },
+        {
+          "name": "context",
+          "type_ref": "dict",
+          "required": false,
+          "default": "{}",
+          "description": "Optional key-value context for debugging.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when a suggest_match() call fails for a specific identifier (e.g., backend timeout, index corruption). Subtype of IdentityResolutionError. Does NOT represent zero candidates — that is a normal empty-tuple return."
+    },
+    {
+      "name": "FrozenStringSet",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A frozenset of strings. Used for input deduplication of unknown identifier strings. Duplicate entries are collapsed. Unordered."
+    },
+    {
+      "name": "OptionalResolutionHandler",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "ResolutionHandler"
+      ],
+      "description": "An optional ResolutionHandler protocol instance. When None, no resolution handling is performed (non-interactive / log-and-skip mode)."
+    },
+    {
+      "name": "MatchSuggester",
+      "kind": "struct",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol interface (typing.Protocol) for match suggestion backends. Structural subtyping — any class implementing the suggest_match async method with the correct signature satisfies this protocol. Implementations may use Levenshtein distance, token overlap, ML embeddings, etc."
+    },
+    {
+      "name": "ResolutionHandler",
+      "kind": "struct",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol interface (typing.Protocol) for handling match results. Structural subtyping. Implementations encapsulate mode-awareness: interactive handlers prompt users, non-interactive handlers log and skip. The core types are mode-agnostic."
+    },
+    {
+      "name": "AliasStore",
+      "kind": "struct",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "External dependency interface for the persistent alias store (identity/store.py). Provides async methods for checking existing aliases and writing new confirmed mappings. Treated as an opaque protocol dependency."
+    }
+  ],
+  "functions": [
+    {
+      "name": "MatchSuggester.suggest_match",
+      "description": "Async protocol method. Given a raw identifier string, return an ordered tuple of MatchCandidate values sorted by descending confidence. The limit parameter caps the maximum number of candidates returned. Returns an empty tuple if no candidates are found — this is a normal condition, not an error. Implementations may use any matching strategy (fuzzy string, ML embedding, domain heuristics).",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "MatchSuggester",
+          "required": true,
+          "default": "",
+          "description": "The MatchSuggester protocol implementation instance.",
+          "validators": []
+        },
+        {
+          "name": "identifier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw unknown identifier string to find candidates for.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "identifier must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "limit",
+          "type_ref": "int",
+          "required": false,
+          "default": "5",
+          "description": "Maximum number of candidates to return. Must be >= 1.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "ge=1",
+              "error_message": "limit must be at least 1."
+            }
+          ]
+        }
+      ],
+      "output_type": "MatchCandidateTuple",
+      "error_cases": [
+        {
+          "name": "suggestion_backend_failure",
+          "condition": "The underlying match backend (index, ML model, external service) is unreachable or returns an unrecoverable error.",
+          "error_type": "MatchSuggestionError",
+          "error_data": {
+            "identifier": "The identifier that failed."
+          }
+        }
+      ],
+      "preconditions": [
+        "identifier is a non-empty string.",
+        "limit >= 1."
+      ],
+      "postconditions": [
+        "Returned tuple length <= limit.",
+        "Returned tuple is sorted by descending confidence.",
+        "All MatchCandidate.confidence values are in [0.0, 1.0].",
+        "An empty tuple is a valid normal return indicating no candidates.",
+        "No MatchCandidate.canonical_id equals the input identifier (self-matches filtered)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "ResolutionHandler.handle_results",
+      "description": "Async protocol method. Given a tuple of MatchResult values, process them according to the handler's mode (interactive: prompt user for confirmations; non-interactive: log and skip). Returns a tuple of ConfirmationResult values for any matches that were confirmed during handling. May return an empty tuple if no matches were confirmed.",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "ResolutionHandler",
+          "required": true,
+          "default": "",
+          "description": "The ResolutionHandler protocol implementation instance.",
+          "validators": []
+        },
+        {
+          "name": "results",
+          "type_ref": "MatchResultTuple",
+          "required": true,
+          "default": "",
+          "description": "Tuple of MatchResult values to handle. May include results with empty candidate tuples.",
+          "validators": []
+        }
+      ],
+      "output_type": "ConfirmationResultTuple",
+      "error_cases": [
+        {
+          "name": "handler_io_error",
+          "condition": "The handler encounters an I/O error during interactive prompting or logging (e.g., broken pipe, filesystem error).",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "message": "Description of the I/O failure."
+          }
+        }
+      ],
+      "preconditions": [
+        "results is a tuple of valid MatchResult values."
+      ],
+      "postconditions": [
+        "Each ConfirmationResult.unknown_id corresponds to a MatchResult.unknown.identifier in the input.",
+        "Each ConfirmationResult.confirmed_id corresponds to a MatchCandidate.canonical_id from the matching MatchResult.candidates.",
+        "Returned tuple length <= number of MatchResult entries with non-empty candidates."
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Interactive implementations may write prompts to stdout/stderr.",
+        "Non-interactive implementations may write log entries."
+      ]
+    },
+    {
+      "name": "AliasStore.has_alias",
+      "description": "Async method on the AliasStore dependency. Check whether a given identifier already has a confirmed alias mapping. Used by UnknownCollector to pre-filter previously-confirmed identifiers before invoking suggest_match.",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "AliasStore",
+          "required": true,
+          "default": "",
+          "description": "The AliasStore instance.",
+          "validators": []
+        },
+        {
+          "name": "identifier",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The identifier to check for an existing alias.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "identifier must be a non-empty string."
+            }
+          ]
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "store_read_error",
+          "condition": "The alias store is unreachable or corrupted.",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "message": "Description of the store read failure."
+          }
+        }
+      ],
+      "preconditions": [
+        "identifier is a non-empty string."
+      ],
+      "postconditions": [
+        "Returns true if and only if a confirmed alias mapping exists for the identifier."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "AliasStore.write_alias",
+      "description": "Async method on the AliasStore dependency. Write or upsert a confirmed alias mapping. Idempotent — writing the same (unknown_id, confirmed_id) pair multiple times has the same effect as writing it once.",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "AliasStore",
+          "required": true,
+          "default": "",
+          "description": "The AliasStore instance.",
+          "validators": []
+        },
+        {
+          "name": "unknown_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The unknown identifier to create an alias for.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "unknown_id must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "confirmed_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The canonical identity ID to map the unknown identifier to.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "confirmed_id must be a non-empty string."
+            }
+          ]
+        }
+      ],
+      "output_type": "bool",
+      "error_cases": [
+        {
+          "name": "store_write_failure",
+          "condition": "The alias store cannot persist the mapping (I/O error, permission denied, serialization failure).",
+          "error_type": "StoreWriteError",
+          "error_data": {
+            "unknown_id": "The identifier being written.",
+            "confirmed_id": "The canonical ID being written."
+          }
+        }
+      ],
+      "preconditions": [
+        "unknown_id is a non-empty string.",
+        "confirmed_id is a non-empty string."
+      ],
+      "postconditions": [
+        "After successful return, AliasStore.has_alias(unknown_id) returns true.",
+        "The alias maps unknown_id to confirmed_id.",
+        "Returns true on successful write."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Persists a new or updated alias mapping in the underlying AliasStore (identity/store.py)."
+      ]
+    },
+    {
+      "name": "UnknownCollector.__init__",
+      "description": "Constructor for UnknownCollector. Accepts dependencies via composition (not inheritance). The match_suggester and alias_store are required; the resolution_handler is optional (when absent, the collector operates in 'collect-and-match-only' mode without attempting resolution).",
+      "inputs": [
+        {
+          "name": "match_suggester",
+          "type_ref": "MatchSuggester",
+          "required": true,
+          "default": "",
+          "description": "A MatchSuggester protocol implementation for finding fuzzy match candidates.",
+          "validators": []
+        },
+        {
+          "name": "alias_store",
+          "type_ref": "AliasStore",
+          "required": true,
+          "default": "",
+          "description": "The AliasStore for checking existing aliases and writing confirmed mappings.",
+          "validators": []
+        },
+        {
+          "name": "resolution_handler",
+          "type_ref": "OptionalResolutionHandler",
+          "required": false,
+          "default": "None",
+          "description": "Optional ResolutionHandler protocol implementation. When provided, collect_and_match will delegate resolution to this handler. When None, results are returned without resolution.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [
+        "match_suggester satisfies the MatchSuggester protocol.",
+        "alias_store satisfies the AliasStore interface.",
+        "If provided, resolution_handler satisfies the ResolutionHandler protocol."
+      ],
+      "postconditions": [
+        "UnknownCollector instance is initialized and ready for use.",
+        "Dependencies are stored as instance attributes (not copied)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "UnknownCollector.collect_and_match",
+      "description": "Async. Given a frozenset of raw unknown identifier strings and a source context, (1) pre-filter out identifiers that already have confirmed aliases in the AliasStore, (2) construct UnknownIdentifier value objects for the remaining identifiers, (3) call suggest_match() in parallel (asyncio.gather or equivalent) for each, (4) filter self-matches from candidates, (5) package into MatchResult tuples. Returns a tuple of MatchResult values — one per unfiltered unknown. MatchResults with empty candidate tuples are included (no-candidates is normal). If a ResolutionHandler was provided at construction, it is NOT invoked here — callers should invoke it separately or use a higher-level orchestrator.",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The UnknownCollector instance.",
+          "validators": []
+        },
+        {
+          "name": "unknowns",
+          "type_ref": "FrozenStringSet",
+          "required": true,
+          "default": "",
+          "description": "A frozenset of raw unknown identifier strings to process. Duplicates are inherently collapsed by frozenset semantics.",
+          "validators": []
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The origin context for these unknowns (e.g., 'git_log_run_2024-01-15').",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "source must be a non-empty string."
+            }
+          ]
+        }
+      ],
+      "output_type": "MatchResultTuple",
+      "error_cases": [
+        {
+          "name": "partial_suggestion_failure",
+          "condition": "One or more suggest_match() calls fail while others succeed. The failing identifiers produce MatchSuggestionError. Behavior: collect successful results and raise an aggregate IdentityResolutionError containing the individual MatchSuggestionErrors in its context.",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "failed_identifiers": "JSON array of identifiers that failed.",
+            "errors": "JSON array of individual MatchSuggestionError messages."
+          }
+        },
+        {
+          "name": "alias_store_pre_filter_failure",
+          "condition": "The AliasStore is unreachable during the pre-filter phase (has_alias calls fail).",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "message": "Description of the store connectivity failure during pre-filtering."
+          }
+        },
+        {
+          "name": "all_suggestions_failed",
+          "condition": "Every suggest_match() call fails — no results can be returned.",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "failed_identifiers": "JSON array of all identifiers.",
+            "errors": "JSON array of all MatchSuggestionError messages."
+          }
+        }
+      ],
+      "preconditions": [
+        "unknowns is a frozenset of strings (may be empty).",
+        "source is a non-empty string.",
+        "The UnknownCollector has been properly initialized with match_suggester and alias_store."
+      ],
+      "postconditions": [
+        "Returned tuple contains one MatchResult per unknown identifier that was NOT already in the AliasStore.",
+        "Each MatchResult.unknown.source equals the input source parameter.",
+        "Each MatchResult.unknown.discovered_at is set to the current UTC time at processing.",
+        "Each MatchResult.candidates is sorted by descending confidence.",
+        "No MatchResult.candidates contains a self-match (candidate.canonical_id == unknown.identifier).",
+        "If unknowns is empty, returns an empty tuple.",
+        "Identifiers already confirmed in AliasStore are excluded from results.",
+        "MatchResults with empty candidate tuples are included (no-candidates is normal)."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Reads from AliasStore to pre-filter known aliases.",
+        "Invokes MatchSuggester.suggest_match() concurrently for each unknown identifier."
+      ]
+    },
+    {
+      "name": "UnknownCollector.confirm_match",
+      "description": "Async. Confirm a single match by writing the alias mapping (unknown_id -> confirmed_id) to the AliasStore. Idempotent — confirming the same pair multiple times produces the same result and does not error. Returns a ConfirmationResult with the current UTC timestamp. The source parameter provides context for the confirmation origin.",
+      "inputs": [
+        {
+          "name": "self",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The UnknownCollector instance.",
+          "validators": []
+        },
+        {
+          "name": "unknown_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw unknown identifier string to confirm.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "unknown_id must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "confirmed_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The canonical identity ID to map the unknown identifier to.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "min=1",
+              "error_message": "confirmed_id must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "source",
+          "type_ref": "str",
+          "required": false,
+          "default": "''",
+          "description": "Optional origin context for the confirmation (e.g., 'interactive_prompt', 'auto_high_confidence'). Defaults to empty string.",
+          "validators": []
+        }
+      ],
+      "output_type": "ConfirmationResult",
+      "error_cases": [
+        {
+          "name": "store_write_failure",
+          "condition": "The AliasStore cannot persist the alias mapping (I/O error, permission denied, serialization failure).",
+          "error_type": "StoreWriteError",
+          "error_data": {
+            "unknown_id": "The identifier being confirmed.",
+            "confirmed_id": "The canonical ID being written."
+          }
+        },
+        {
+          "name": "self_match_rejected",
+          "condition": "unknown_id equals confirmed_id — an identity cannot be aliased to itself.",
+          "error_type": "IdentityResolutionError",
+          "error_data": {
+            "message": "Cannot confirm a self-match: unknown_id equals confirmed_id.",
+            "unknown_id": "The identifier.",
+            "confirmed_id": "Same as unknown_id."
+          }
+        }
+      ],
+      "preconditions": [
+        "unknown_id is a non-empty string.",
+        "confirmed_id is a non-empty string.",
+        "unknown_id != confirmed_id (cannot confirm an identity to itself).",
+        "The UnknownCollector has been properly initialized with alias_store."
+      ],
+      "postconditions": [
+        "The AliasStore contains a mapping from unknown_id to confirmed_id.",
+        "Returned ConfirmationResult.unknown_id equals the input unknown_id.",
+        "Returned ConfirmationResult.confirmed_id equals the input confirmed_id.",
+        "Returned ConfirmationResult.confirmed_at is set to the current UTC time.",
+        "Returned ConfirmationResult.source equals the input source parameter.",
+        "Subsequent calls to AliasStore.has_alias(unknown_id) return true.",
+        "Repeated calls with the same arguments produce equivalent ConfirmationResult values (idempotent)."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Writes a confirmed alias mapping to the AliasStore (identity/store.py)."
+      ]
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All value types (UnknownIdentifier, MatchCandidate, MatchResult, ConfirmationResult) are frozen/immutable after construction.",
+    "No-candidates is always represented as an empty tuple in MatchResult.candidates — never as None, never as an error.",
+    "Self-matches (candidate.canonical_id == unknown.identifier) are never present in MatchResult.candidates.",
+    "All I/O operations (suggest_match, has_alias, write_alias, handle_results, collect_and_match, confirm_match) are async.",
+    "Mode-awareness (interactive vs. non-interactive) is encapsulated entirely in ResolutionHandler implementations — core types and UnknownCollector are mode-agnostic.",
+    "Confidence thresholds are policy-layer concerns — they are never enforced or filtered within the core types or UnknownCollector.",
+    "tuple is used instead of list for all frozen model collection fields to enforce immutability.",
+    "frozenset is used for unknown identifier input to guarantee deduplication.",
+    "UnknownCollector always pre-filters against AliasStore before invoking suggest_match to avoid redundant work on already-confirmed identifiers.",
+    "confirm_match is idempotent — repeated calls with the same (unknown_id, confirmed_id) pair produce the same observable effect.",
+    "IdentityResolutionError is the base error type; StoreWriteError and MatchSuggestionError are subtypes.",
+    "UnknownCollector uses composition (constructor injection) for all dependencies, never inheritance."
+  ],
+  "requires": []
+}

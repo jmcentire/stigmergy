@@ -1,0 +1,969 @@
+{
+  "component_id": "business_weight_routing",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "vbw_happy_valid_mid",
+      "description": "validate_business_weight returns 0.5 unchanged for a valid mid-range weight",
+      "function": "validate_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 0.5 exactly",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.5"
+      ]
+    },
+    {
+      "id": "vbw_happy_boundary_1",
+      "description": "validate_business_weight returns 1.0 unchanged for the upper boundary",
+      "function": "validate_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "1.0"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 1.0 exactly",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "vbw_edge_clamp_below_floor",
+      "description": "validate_business_weight clamps 0.05 up to operational floor 0.1",
+      "function": "validate_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.05"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 0.1 (clamped)",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.1"
+      ]
+    },
+    {
+      "id": "vbw_edge_clamp_zero",
+      "description": "validate_business_weight clamps 0.0 up to operational floor 0.1",
+      "function": "validate_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 0.1 (clamped from 0.0)",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.1"
+      ]
+    },
+    {
+      "id": "vbw_edge_exact_floor",
+      "description": "validate_business_weight returns 0.1 unchanged at exact floor boundary",
+      "function": "validate_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "0.1"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 0.1 exactly (not clamped)",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.1"
+      ]
+    },
+    {
+      "id": "vbw_error_below_zero",
+      "description": "validate_business_weight raises ValueError for negative weight",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "-0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "vbw_error_above_one",
+      "description": "validate_business_weight raises ValueError for weight > 1.0",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "1.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "vbw_error_nan",
+      "description": "validate_business_weight raises ValueError for NaN input",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "float('nan')"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "vbw_error_inf",
+      "description": "validate_business_weight raises ValueError for positive infinity",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "float('inf')"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "vbw_error_neg_inf",
+      "description": "validate_business_weight raises ValueError for negative infinity",
+      "function": "validate_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "raw_weight": "float('-inf')"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "cbw_happy_all_half",
+      "description": "compute_business_weight with all inputs 0.5 returns a weight in [0.1, 1.0]",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.5",
+        "seniority": "0.5",
+        "gravity": "0.5",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "A float in [0.1, 1.0]",
+      "expected_error": "",
+      "assertions": [
+        "result >= 0.1",
+        "result <= 1.0"
+      ]
+    },
+    {
+      "id": "cbw_happy_all_ones",
+      "description": "compute_business_weight with all inputs 1.0 returns exactly 1.0",
+      "function": "compute_business_weight",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "1.0",
+        "seniority": "1.0",
+        "gravity": "1.0",
+        "velocity": "1.0"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 1.0",
+      "expected_error": "",
+      "assertions": [
+        "result == 1.0"
+      ]
+    },
+    {
+      "id": "cbw_edge_all_zeros",
+      "description": "compute_business_weight with all inputs 0.0 returns 0.1 (operational floor)",
+      "function": "compute_business_weight",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.0",
+        "seniority": "0.0",
+        "gravity": "0.0",
+        "velocity": "0.0"
+      },
+      "input_description": "",
+      "expected_output_description": "Returns 0.1 (floor)",
+      "expected_error": "",
+      "assertions": [
+        "result == 0.1"
+      ]
+    },
+    {
+      "id": "cbw_happy_deterministic",
+      "description": "compute_business_weight is deterministic — same inputs produce same output",
+      "function": "compute_business_weight",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.3",
+        "seniority": "0.7",
+        "gravity": "0.2",
+        "velocity": "0.9"
+      },
+      "input_description": "",
+      "expected_output_description": "Two calls produce identical results",
+      "expected_error": "",
+      "assertions": [
+        "result1 == result2"
+      ]
+    },
+    {
+      "id": "cbw_error_frequency_negative",
+      "description": "compute_business_weight raises ValueError for negative frequency",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "-0.1",
+        "seniority": "0.5",
+        "gravity": "0.5",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "cbw_error_seniority_above",
+      "description": "compute_business_weight raises ValueError for seniority > 1.0",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.5",
+        "seniority": "1.1",
+        "gravity": "0.5",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "cbw_error_gravity_negative",
+      "description": "compute_business_weight raises ValueError for negative gravity",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.5",
+        "seniority": "0.5",
+        "gravity": "-0.01",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "cbw_error_velocity_above",
+      "description": "compute_business_weight raises ValueError for velocity > 1.0",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.5",
+        "seniority": "0.5",
+        "gravity": "0.5",
+        "velocity": "2.0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "cbw_error_nan_input",
+      "description": "compute_business_weight raises ValueError when frequency is NaN",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "float('nan')",
+        "seniority": "0.5",
+        "gravity": "0.5",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "cbw_error_inf_input",
+      "description": "compute_business_weight raises ValueError when gravity is inf",
+      "function": "compute_business_weight",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "frequency": "0.5",
+        "seniority": "0.5",
+        "gravity": "float('inf')",
+        "velocity": "0.5"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "wro_happy_descending",
+      "description": "weighted_routing_order sorts contexts by descending business_weight",
+      "function": "weighted_routing_order",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('a', 0.3), Context('b', 0.9), Context('c', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Order: b(0.9), c(0.5), a(0.3)",
+      "expected_error": "",
+      "assertions": [
+        "result[0].context_id == 'b'",
+        "result[1].context_id == 'c'",
+        "result[2].context_id == 'a'"
+      ]
+    },
+    {
+      "id": "wro_happy_single",
+      "description": "weighted_routing_order with a single context returns it unchanged",
+      "function": "weighted_routing_order",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('x', 0.7)]"
+      },
+      "input_description": "",
+      "expected_output_description": "List of one context",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].context_id == 'x'"
+      ]
+    },
+    {
+      "id": "wro_edge_empty",
+      "description": "weighted_routing_order with empty list returns empty list",
+      "function": "weighted_routing_order",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[]"
+      },
+      "input_description": "",
+      "expected_output_description": "Empty list",
+      "expected_error": "",
+      "assertions": [
+        "result == []"
+      ]
+    },
+    {
+      "id": "wro_edge_stable_tiebreak",
+      "description": "weighted_routing_order preserves insertion order for equal weights",
+      "function": "weighted_routing_order",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('a', 0.5), Context('b', 0.5), Context('c', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Same order: a, b, c",
+      "expected_error": "",
+      "assertions": [
+        "result[0].context_id == 'a'",
+        "result[1].context_id == 'b'",
+        "result[2].context_id == 'c'"
+      ]
+    },
+    {
+      "id": "wro_invariant_no_mutation",
+      "description": "weighted_routing_order does not add, remove, or mutate contexts",
+      "function": "weighted_routing_order",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('a', 0.2), Context('b', 0.8)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Same set of context_ids, same count",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 2",
+        "set(c.context_id for c in result) == {'a', 'b'}"
+      ]
+    },
+    {
+      "id": "wro_error_invalid_weight",
+      "description": "weighted_routing_order raises ValueError for invalid weight in context",
+      "function": "weighted_routing_order",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('bad', 1.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "bpq_happy_ordering",
+      "description": "build_priority_queue produces entries that pop in descending weight order",
+      "function": "build_priority_queue",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('a', 0.3), Context('b', 0.9), Context('c', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Heap pop order: b, c, a",
+      "expected_error": "",
+      "assertions": [
+        "popped[0].context.context_id == 'b'",
+        "popped[1].context.context_id == 'c'",
+        "popped[2].context.context_id == 'a'"
+      ]
+    },
+    {
+      "id": "bpq_happy_single",
+      "description": "build_priority_queue with single context returns one entry",
+      "function": "build_priority_queue",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('only', 0.7)]"
+      },
+      "input_description": "",
+      "expected_output_description": "One entry with correct key",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].priority_key.insertion_counter == 0"
+      ]
+    },
+    {
+      "id": "bpq_edge_stable_fifo",
+      "description": "build_priority_queue breaks ties in FIFO insertion order",
+      "function": "build_priority_queue",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('first', 0.5), Context('second', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Pop order: first, second",
+      "expected_error": "",
+      "assertions": [
+        "popped[0].context.context_id == 'first'",
+        "popped[1].context.context_id == 'second'"
+      ]
+    },
+    {
+      "id": "bpq_edge_neg_weight_key",
+      "description": "build_priority_queue sets neg_weight to -business_weight",
+      "function": "build_priority_queue",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('x', 0.8)]"
+      },
+      "input_description": "",
+      "expected_output_description": "neg_weight == -0.8",
+      "expected_error": "",
+      "assertions": [
+        "result[0].priority_key.neg_weight == -0.8"
+      ]
+    },
+    {
+      "id": "bpq_invariant_counter",
+      "description": "build_priority_queue assigns insertion_counter equal to original index",
+      "function": "build_priority_queue",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('a', 0.3), Context('b', 0.9), Context('c', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Each entry has correct insertion_counter",
+      "expected_error": "",
+      "assertions": [
+        "all entries have insertion_counter matching their original input index"
+      ]
+    },
+    {
+      "id": "bpq_error_invalid_weight",
+      "description": "build_priority_queue raises ValueError for context with weight > 1.0",
+      "function": "build_priority_queue",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "contexts": "[Context('bad', 2.0)]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "crs_happy_basic",
+      "description": "create_routing_snapshot creates a snapshot with correct fields and sorted ordering",
+      "function": "create_routing_snapshot",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "'round-1'",
+        "contexts": "[Context('a', 0.3), Context('b', 0.8)]",
+        "snapshot_timestamp_ms": "1700000000000"
+      },
+      "input_description": "",
+      "expected_output_description": "Snapshot with round_id, timestamp, and contexts sorted descending",
+      "expected_error": "",
+      "assertions": [
+        "result.round_id == 'round-1'",
+        "result.snapshot_timestamp_ms == 1700000000000",
+        "result.ordered_contexts[0].context_id == 'b'",
+        "result.ordered_contexts[1].context_id == 'a'"
+      ]
+    },
+    {
+      "id": "crs_happy_empty_contexts",
+      "description": "create_routing_snapshot with empty contexts creates snapshot with empty ordered list",
+      "function": "create_routing_snapshot",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "'round-2'",
+        "contexts": "[]",
+        "snapshot_timestamp_ms": "1700000000000"
+      },
+      "input_description": "",
+      "expected_output_description": "Snapshot with empty ordered_contexts",
+      "expected_error": "",
+      "assertions": [
+        "result.ordered_contexts == []"
+      ]
+    },
+    {
+      "id": "crs_error_empty_round_id",
+      "description": "create_routing_snapshot raises ValueError for empty round_id",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "''",
+        "contexts": "[]",
+        "snapshot_timestamp_ms": "1700000000000"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "crs_error_whitespace_round_id",
+      "description": "create_routing_snapshot raises ValueError for whitespace-only round_id",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "'   '",
+        "contexts": "[]",
+        "snapshot_timestamp_ms": "1700000000000"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "crs_error_zero_timestamp",
+      "description": "create_routing_snapshot raises ValueError for zero timestamp",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "'round-3'",
+        "contexts": "[]",
+        "snapshot_timestamp_ms": "0"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "crs_error_negative_timestamp",
+      "description": "create_routing_snapshot raises ValueError for negative timestamp",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "'round-4'",
+        "contexts": "[]",
+        "snapshot_timestamp_ms": "-100"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "crs_error_invalid_weight",
+      "description": "create_routing_snapshot raises ValueError for context with invalid weight",
+      "function": "create_routing_snapshot",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "round_id": "'round-5'",
+        "contexts": "[Context('bad', -0.5)]",
+        "snapshot_timestamp_ms": "1700000000000"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "atb_happy_proportional",
+      "description": "allocate_token_budget distributes tokens proportionally by weight, sum equals total",
+      "function": "allocate_token_budget",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "1000",
+        "contexts": "[Context('a', 0.8), Context('b', 0.2)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Sum of allocated_tokens == 1000; 'a' gets more than 'b'",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == 1000",
+        "result_map['a'].allocated_tokens > result_map['b'].allocated_tokens"
+      ]
+    },
+    {
+      "id": "atb_happy_single_context",
+      "description": "allocate_token_budget gives entire budget to a single context",
+      "function": "allocate_token_budget",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "500",
+        "contexts": "[Context('only', 0.7)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Single allocation of 500 tokens",
+      "expected_error": "",
+      "assertions": [
+        "len(result) == 1",
+        "result[0].allocated_tokens == 500",
+        "result[0].proportion == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "atb_edge_zero_budget",
+      "description": "allocate_token_budget with zero budget gives all zeros",
+      "function": "allocate_token_budget",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "0",
+        "contexts": "[Context('a', 0.5), Context('b', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "All allocated_tokens are 0, all proportions are 0.0",
+      "expected_error": "",
+      "assertions": [
+        "all(a.allocated_tokens == 0 for a in result)",
+        "all(a.proportion == 0.0 for a in result)"
+      ]
+    },
+    {
+      "id": "atb_edge_equal_weights",
+      "description": "allocate_token_budget with equal weights gives equal shares within ±1 token",
+      "function": "allocate_token_budget",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "100",
+        "contexts": "[Context('a', 0.5), Context('b', 0.5), Context('c', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Each gets ~33-34 tokens, sum == 100",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == 100",
+        "max(a.allocated_tokens for a in result) - min(a.allocated_tokens for a in result) <= 1"
+      ]
+    },
+    {
+      "id": "atb_edge_budget_one_many_contexts",
+      "description": "allocate_token_budget with budget=1 and many contexts still sums to 1",
+      "function": "allocate_token_budget",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "1",
+        "contexts": "[Context('a', 0.5), Context('b', 0.3), Context('c', 0.2)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Exactly one context gets 1 token, sum == 1",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == 1"
+      ]
+    },
+    {
+      "id": "atb_invariant_conservation",
+      "description": "Token budget conservation: sum of allocated_tokens always equals total_budget",
+      "function": "allocate_token_budget",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "9999",
+        "contexts": "[Context('a', 0.1), Context('b', 0.4), Context('c', 0.9), Context('d', 0.6)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Sum equals 9999 exactly",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.allocated_tokens for a in result) == 9999"
+      ]
+    },
+    {
+      "id": "atb_invariant_proportions_sum",
+      "description": "Token budget proportions sum to ~1.0 when budget > 0",
+      "function": "allocate_token_budget",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "1000",
+        "contexts": "[Context('a', 0.3), Context('b', 0.7)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Sum of proportions is approximately 1.0",
+      "expected_error": "",
+      "assertions": [
+        "sum(a.proportion for a in result) == pytest.approx(1.0)"
+      ]
+    },
+    {
+      "id": "atb_invariant_nonneg_tokens",
+      "description": "All allocated_tokens are non-negative",
+      "function": "allocate_token_budget",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "50",
+        "contexts": "[Context('a', 0.1), Context('b', 1.0)]"
+      },
+      "input_description": "",
+      "expected_output_description": "No negative allocations",
+      "expected_error": "",
+      "assertions": [
+        "all(a.allocated_tokens >= 0 for a in result)"
+      ]
+    },
+    {
+      "id": "atb_error_negative_budget",
+      "description": "allocate_token_budget raises ValueError for negative budget",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "-10",
+        "contexts": "[Context('a', 0.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "atb_error_empty_contexts",
+      "description": "allocate_token_budget raises ValueError for empty contexts list",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "100",
+        "contexts": "[]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "atb_error_duplicate_ids",
+      "description": "allocate_token_budget raises ValueError for duplicate context_ids",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "100",
+        "contexts": "[Context('dup', 0.5), Context('dup', 0.3)]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "atb_error_invalid_weight",
+      "description": "allocate_token_budget raises ValueError for context with invalid weight",
+      "function": "allocate_token_budget",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "100",
+        "contexts": "[Context('bad', 1.5)]"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "ValueError",
+      "assertions": [
+        "raises ValueError"
+      ]
+    },
+    {
+      "id": "atb_invariant_weight_snapshot",
+      "description": "Each allocation records the context's business_weight for auditability",
+      "function": "allocate_token_budget",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "total_budget": "100",
+        "contexts": "[Context('a', 0.3), Context('b', 0.7)]"
+      },
+      "input_description": "",
+      "expected_output_description": "Each allocation's business_weight matches the input context's weight",
+      "expected_error": "",
+      "assertions": [
+        "result_map['a'].business_weight == 0.3",
+        "result_map['b'].business_weight == 0.7"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for Business Weight Routing & Budget Integration (v1).\n\nTests verify the contract for component 'business_weight_routing' covering:\n- validate_business_weight\n- compute_business_weight\n- weighted_routing_order\n- build_priority_queue\n- create_routing_snapshot\n- allocate_token_budget\n\nAll functions under test are pure with no external dependencies.\n\"\"\"\n\nimport math\nimport heapq\nimport pytest\n\nfrom src.business_weight_routing import (\n    validate_business_weight,\n    compute_business_weight,\n    weighted_routing_order,\n    build_priority_queue,\n    create_routing_snapshot,\n    allocate_token_budget,\n    Context,\n    PriorityQueueEntry,\n    RoutingSnapshot,\n    TokenBudgetAllocation,\n)\n\n\n# ---------------------------------------------------------------------------\n# Fixtures\n# ---------------------------------------------------------------------------\n\n@pytest.fixture\ndef make_context():\n    \"\"\"Factory fixture for creating Context objects.\"\"\"\n    def _make(context_id: str, business_weight: float = 0.5) -> Context:\n        return Context(context_id=context_id, business_weight=business_weight)\n    return _make\n\n\n@pytest.fixture\ndef make_contexts(make_context):\n    \"\"\"Factory fixture for creating a list of Context objects from (id, weight) pairs.\"\"\"\n    def _make(pairs):\n        return [make_context(cid, w) for cid, w in pairs]\n    return _make\n\n\n# ===========================================================================\n# Class 1: validate_business_weight\n# ===========================================================================\n\nclass TestValidateBusinessWeight:\n    \"\"\"Tests for validate_business_weight: validates and normalizes raw weight values.\"\"\"\n\n    @pytest.mark.parametrize(\n        \"raw_weight, expected\",\n        [\n            (0.5, 0.5),\n            (1.0, 1.0),\n            (0.1, 0.1),\n            (0.75, 0.75),\n            (0.99, 0.99),\n        ],\n        ids=[\"mid-range\", \"upper-bound\", \"exact-floor\", \"three-quarters\", \"near-max\"],\n    )\n    def test_valid_weight_returned_unchanged(self, raw_weight, expected):\n        \"\"\"Valid weights in [0.1, 1.0] are returned unchanged.\"\"\"\n        result = validate_business_weight(raw_weight)\n        assert result == expected, (\n            f\"Expected {expected} for raw_weight={raw_weight}, got {result}\"\n        )\n\n    @pytest.mark.parametrize(\n        \"raw_weight\",\n        [0.0, 0.05, 0.01, 0.099],\n        ids=[\"zero\", \"0.05\", \"0.01\", \"just-below-floor\"],\n    )\n    def test_weight_below_floor_clamped_to_0_1(self, raw_weight):\n        \"\"\"Weights in [0.0, 0.1) are clamped up to the operational floor of 0.1.\"\"\"\n        result = validate_business_weight(raw_weight)\n        assert result == 0.1, (\n            f\"Expected 0.1 (clamped) for raw_weight={raw_weight}, got {result}\"\n        )\n\n    def test_postcondition_result_range(self):\n        \"\"\"Postcondition: result is always in [0.1, 1.0] for any valid input.\"\"\"\n        for raw in [0.0, 0.05, 0.1, 0.5, 1.0]:\n            result = validate_business_weight(raw)\n            assert 0.1 <= result <= 1.0, (\n                f\"Result {result} outside [0.1, 1.0] for raw_weight={raw}\"\n            )\n\n    @pytest.mark.parametrize(\n        \"raw_weight, desc\",\n        [\n            (-0.5, \"negative value\"),\n            (-0.001, \"slightly negative\"),\n            (-100.0, \"large negative\"),\n        ],\n        ids=[\"neg-half\", \"slightly-neg\", \"large-neg\"],\n    )\n    def test_error_below_zero(self, raw_weight, desc):\n        \"\"\"ValueError raised for raw_weight < 0.0.\"\"\"\n        with pytest.raises(ValueError):\n            validate_business_weight(raw_weight)\n\n    @pytest.mark.parametrize(\n        \"raw_weight\",\n        [1.5, 1.0001, 100.0],\n        ids=[\"1.5\", \"just-over-1\", \"large\"],\n    )\n    def test_error_above_one(self, raw_weight):\n        \"\"\"ValueError raised for raw_weight > 1.0.\"\"\"\n        with pytest.raises(ValueError):\n            validate_business_weight(raw_weight)\n\n    def test_error_nan(self):\n        \"\"\"ValueError raised for NaN input.\"\"\"\n        with pytest.raises(ValueError):\n            validate_business_weight(float(\"nan\"))\n\n    def test_error_positive_inf(self):\n        \"\"\"ValueError raised for positive infinity.\"\"\"\n        with pytest.raises(ValueError):\n            validate_business_weight(float(\"inf\"))\n\n    def test_error_negative_inf(self):\n        \"\"\"ValueError raised for negative infinity.\"\"\"\n        with pytest.raises(ValueError):\n            validate_business_weight(float(\"-inf\"))\n\n\n# ===========================================================================\n# Class 2: compute_business_weight\n# ===========================================================================\n\nclass TestComputeBusinessWeight:\n    \"\"\"Tests for compute_business_weight: computes weight from four normalised signals.\"\"\"\n\n    def test_all_inputs_half_returns_valid_weight(self):\n        \"\"\"All inputs at 0.5 produce a valid BusinessWeight in [0.1, 1.0].\"\"\"\n        result = compute_business_weight(\n            frequency=0.5, seniority=0.5, gravity=0.5, velocity=0.5\n        )\n        assert 0.1 <= result <= 1.0, (\n            f\"Expected result in [0.1, 1.0], got {result}\"\n        )\n\n    def test_all_inputs_one_returns_one(self):\n        \"\"\"All inputs at 1.0 produce exactly 1.0.\"\"\"\n        result = compute_business_weight(\n            frequency=1.0, seniority=1.0, gravity=1.0, velocity=1.0\n        )\n        assert result == 1.0, f\"Expected 1.0, got {result}\"\n\n    def test_all_inputs_zero_returns_floor(self):\n        \"\"\"All inputs at 0.0 produce the operational floor 0.1.\"\"\"\n        result = compute_business_weight(\n            frequency=0.0, seniority=0.0, gravity=0.0, velocity=0.0\n        )\n        assert result == 0.1, f\"Expected 0.1 (floor), got {result}\"\n\n    def test_deterministic_output(self):\n        \"\"\"Same inputs always produce the same output (pure function).\"\"\"\n        kwargs = dict(frequency=0.3, seniority=0.7, gravity=0.2, velocity=0.9)\n        result1 = compute_business_weight(**kwargs)\n        result2 = compute_business_weight(**kwargs)\n        assert result1 == result2, \"compute_business_weight is not deterministic\"\n\n    def test_result_always_in_valid_range(self):\n        \"\"\"Output is always in [0.1, 1.0] for a variety of valid inputs.\"\"\"\n        test_vectors = [\n            (0.0, 0.0, 0.0, 0.0),\n            (1.0, 1.0, 1.0, 1.0),\n            (0.0, 1.0, 0.0, 1.0),\n            (0.5, 0.5, 0.5, 0.5),\n            (0.1, 0.1, 0.1, 0.1),\n        ]\n        for f, s, g, v in test_vectors:\n            result = compute_business_weight(\n                frequency=f, seniority=s, gravity=g, velocity=v\n            )\n            assert 0.1 <= result <= 1.0, (\n                f\"Result {result} outside [0.1, 1.0] for inputs ({f}, {s}, {g}, {v})\"\n            )\n\n    # ---- Error cases: each input out of range independently ----\n\n    def test_error_frequency_negative(self):\n        \"\"\"ValueError for frequency < 0.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=-0.1, seniority=0.5, gravity=0.5, velocity=0.5\n            )\n\n    def test_error_frequency_above_one(self):\n        \"\"\"ValueError for frequency > 1.0.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=1.1, seniority=0.5, gravity=0.5, velocity=0.5\n            )\n\n    def test_error_seniority_above_one(self):\n        \"\"\"ValueError for seniority > 1.0.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=0.5, seniority=1.1, gravity=0.5, velocity=0.5\n            )\n\n    def test_error_gravity_negative(self):\n        \"\"\"ValueError for gravity < 0.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=0.5, seniority=0.5, gravity=-0.01, velocity=0.5\n            )\n\n    def test_error_velocity_above_one(self):\n        \"\"\"ValueError for velocity > 1.0.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=0.5, seniority=0.5, gravity=0.5, velocity=2.0\n            )\n\n    def test_error_nan_frequency(self):\n        \"\"\"ValueError for NaN frequency.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=float(\"nan\"), seniority=0.5, gravity=0.5, velocity=0.5\n            )\n\n    def test_error_inf_gravity(self):\n        \"\"\"ValueError for inf gravity.\"\"\"\n        with pytest.raises(ValueError):\n            compute_business_weight(\n                frequency=0.5, seniority=0.5, gravity=float(\"inf\"), velocity=0.5\n            )\n\n\n# ===========================================================================\n# Class 3: weighted_routing_order\n# ===========================================================================\n\nclass TestWeightedRoutingOrder:\n    \"\"\"Tests for weighted_routing_order: sorts contexts by descending business_weight.\"\"\"\n\n    def test_descending_order(self, make_contexts):\n        \"\"\"Contexts are returned in descending business_weight order.\"\"\"\n        contexts = make_contexts([(\"a\", 0.3), (\"b\", 0.9), (\"c\", 0.5)])\n        result = weighted_routing_order(contexts)\n        ids = [c.context_id for c in result]\n        assert ids == [\"b\", \"c\", \"a\"], f\"Expected ['b', 'c', 'a'], got {ids}\"\n\n    def test_single_context(self, make_contexts):\n        \"\"\"A single context is returned unchanged.\"\"\"\n        contexts = make_contexts([(\"x\", 0.7)])\n        result = weighted_routing_order(contexts)\n        assert len(result) == 1\n        assert result[0].context_id == \"x\"\n\n    def test_empty_list_returns_empty(self):\n        \"\"\"Empty input returns empty list — not an error.\"\"\"\n        result = weighted_routing_order([])\n        assert result == [], f\"Expected empty list, got {result}\"\n\n    def test_stable_tiebreak_preserves_insertion_order(self, make_contexts):\n        \"\"\"Equal weights preserve original insertion order (stable sort).\"\"\"\n        contexts = make_contexts([(\"a\", 0.5), (\"b\", 0.5), (\"c\", 0.5)])\n        result = weighted_routing_order(contexts)\n        ids = [c.context_id for c in result]\n        assert ids == [\"a\", \"b\", \"c\"], (\n            f\"Expected stable order ['a', 'b', 'c'], got {ids}\"\n        )\n\n    def test_no_contexts_added_or_removed(self, make_contexts):\n        \"\"\"Output has same length and same set of context_ids as input.\"\"\"\n        contexts = make_contexts([(\"a\", 0.2), (\"b\", 0.8)])\n        result = weighted_routing_order(contexts)\n        assert len(result) == len(contexts)\n        assert {c.context_id for c in result} == {c.context_id for c in contexts}\n\n    def test_descending_invariant(self, make_contexts):\n        \"\"\"For all i < j: result[i].business_weight >= result[j].business_weight.\"\"\"\n        contexts = make_contexts([\n            (\"a\", 0.1), (\"b\", 0.9), (\"c\", 0.5), (\"d\", 0.5), (\"e\", 1.0)\n        ])\n        result = weighted_routing_order(contexts)\n        for i in range(len(result) - 1):\n            assert result[i].business_weight >= result[i + 1].business_weight, (\n                f\"Ordering violated at index {i}: \"\n                f\"{result[i].business_weight} < {result[i + 1].business_weight}\"\n            )\n\n    def test_error_invalid_weight_in_context(self, make_context):\n        \"\"\"ValueError raised when a context has invalid weight.\"\"\"\n        bad = make_context(\"bad\", 1.5)\n        with pytest.raises(ValueError):\n            weighted_routing_order([bad])\n\n\n# ===========================================================================\n# Class 4: build_priority_queue\n# ===========================================================================\n\nclass TestBuildPriorityQueue:\n    \"\"\"Tests for build_priority_queue: creates heapq-compatible priority queue.\"\"\"\n\n    def test_pop_order_descending_weight(self, make_contexts):\n        \"\"\"Popping from the heap yields contexts in descending weight order.\"\"\"\n        contexts = make_contexts([(\"a\", 0.3), (\"b\", 0.9), (\"c\", 0.5)])\n        heap = build_priority_queue(contexts)\n        # Use heapq to pop all entries in priority order\n        popped = []\n        heap_copy = list(heap)\n        while heap_copy:\n            popped.append(heapq.heappop(heap_copy))\n        ids = [e.context.context_id for e in popped]\n        assert ids == [\"b\", \"c\", \"a\"], (\n            f\"Expected pop order ['b', 'c', 'a'], got {ids}\"\n        )\n\n    def test_single_context_entry(self, make_contexts):\n        \"\"\"Single context produces one entry with insertion_counter == 0.\"\"\"\n        contexts = make_contexts([(\"only\", 0.7)])\n        result = build_priority_queue(contexts)\n        assert len(result) == 1\n        assert result[0].priority_key.insertion_counter == 0\n\n    def test_stable_fifo_tiebreak(self, make_contexts):\n        \"\"\"Equal weights are broken by insertion order (FIFO).\"\"\"\n        contexts = make_contexts([(\"first\", 0.5), (\"second\", 0.5)])\n        heap = build_priority_queue(contexts)\n        heap_copy = list(heap)\n        popped = []\n        while heap_copy:\n            popped.append(heapq.heappop(heap_copy))\n        ids = [e.context.context_id for e in popped]\n        assert ids == [\"first\", \"second\"], (\n            f\"Expected FIFO order ['first', 'second'], got {ids}\"\n        )\n\n    def test_neg_weight_key_value(self, make_contexts):\n        \"\"\"neg_weight in PriorityKey equals -business_weight.\"\"\"\n        contexts = make_contexts([(\"x\", 0.8)])\n        result = build_priority_queue(contexts)\n        assert result[0].priority_key.neg_weight == pytest.approx(-0.8), (\n            f\"Expected neg_weight == -0.8, got {result[0].priority_key.neg_weight}\"\n        )\n\n    def test_insertion_counter_matches_index(self, make_contexts):\n        \"\"\"Each entry's insertion_counter equals its original input index.\"\"\"\n        contexts = make_contexts([(\"a\", 0.3), (\"b\", 0.9), (\"c\", 0.5)])\n        result = build_priority_queue(contexts)\n        # Build a mapping from context_id -> insertion_counter\n        counter_map = {\n            e.context.context_id: e.priority_key.insertion_counter for e in result\n        }\n        # Original indices: a=0, b=1, c=2\n        assert counter_map[\"a\"] == 0, f\"Expected counter 0 for 'a', got {counter_map['a']}\"\n        assert counter_map[\"b\"] == 1, f\"Expected counter 1 for 'b', got {counter_map['b']}\"\n        assert counter_map[\"c\"] == 2, f\"Expected counter 2 for 'c', got {counter_map['c']}\"\n\n    def test_result_length_matches_input(self, make_contexts):\n        \"\"\"Output list has same length as input.\"\"\"\n        contexts = make_contexts([(\"a\", 0.2), (\"b\", 0.8), (\"c\", 0.5)])\n        result = build_priority_queue(contexts)\n        assert len(result) == len(contexts)\n\n    def test_error_invalid_weight(self, make_context):\n        \"\"\"ValueError raised for context with weight > 1.0.\"\"\"\n        bad = make_context(\"bad\", 2.0)\n        with pytest.raises(ValueError):\n            build_priority_queue([bad])\n\n\n# ===========================================================================\n# Class 5: create_routing_snapshot\n# ===========================================================================\n\nclass TestCreateRoutingSnapshot:\n    \"\"\"Tests for create_routing_snapshot: creates immutable snapshot of routing queue.\"\"\"\n\n    def test_happy_path_snapshot_fields(self, make_contexts):\n        \"\"\"Snapshot has correct round_id, timestamp, and sorted contexts.\"\"\"\n        contexts = make_contexts([(\"a\", 0.3), (\"b\", 0.8)])\n        result = create_routing_snapshot(\n            round_id=\"round-1\",\n            contexts=contexts,\n            snapshot_timestamp_ms=1700000000000,\n        )\n        assert result.round_id == \"round-1\"\n        assert result.snapshot_timestamp_ms == 1700000000000\n        assert result.ordered_contexts[0].context_id == \"b\", (\n            \"Higher weight context should come first\"\n        )\n        assert result.ordered_contexts[1].context_id == \"a\"\n\n    def test_snapshot_matches_weighted_routing_order(self, make_contexts):\n        \"\"\"Snapshot's ordered_contexts equals weighted_routing_order(contexts).\"\"\"\n        contexts = make_contexts([(\"a\", 0.1), (\"b\", 0.9), (\"c\", 0.5)])\n        snapshot = create_routing_snapshot(\n            round_id=\"round-x\",\n            contexts=contexts,\n            snapshot_timestamp_ms=1700000000000,\n        )\n        expected_order = weighted_routing_order(contexts)\n        snapshot_ids = [c.context_id for c in snapshot.ordered_contexts]\n        expected_ids = [c.context_id for c in expected_order]\n        assert snapshot_ids == expected_ids, (\n            f\"Snapshot order {snapshot_ids} != expected {expected_ids}\"\n        )\n\n    def test_empty_contexts_creates_valid_snapshot(self):\n        \"\"\"Empty contexts list produces a snapshot with empty ordered_contexts.\"\"\"\n        result = create_routing_snapshot(\n            round_id=\"round-empty\",\n            contexts=[],\n            snapshot_timestamp_ms=1700000000000,\n        )\n        assert result.ordered_contexts == [] or len(result.ordered_contexts) == 0\n\n    def test_error_empty_round_id(self):\n        \"\"\"ValueError for empty round_id string.\"\"\"\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"\",\n                contexts=[],\n                snapshot_timestamp_ms=1700000000000,\n            )\n\n    def test_error_whitespace_round_id(self):\n        \"\"\"ValueError for whitespace-only round_id.\"\"\"\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"   \",\n                contexts=[],\n                snapshot_timestamp_ms=1700000000000,\n            )\n\n    def test_error_zero_timestamp(self):\n        \"\"\"ValueError for timestamp == 0.\"\"\"\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"round-z\",\n                contexts=[],\n                snapshot_timestamp_ms=0,\n            )\n\n    def test_error_negative_timestamp(self):\n        \"\"\"ValueError for negative timestamp.\"\"\"\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"round-neg\",\n                contexts=[],\n                snapshot_timestamp_ms=-100,\n            )\n\n    def test_error_invalid_weight_in_context(self, make_context):\n        \"\"\"ValueError for context with invalid weight.\"\"\"\n        bad = make_context(\"bad\", -0.5)\n        with pytest.raises(ValueError):\n            create_routing_snapshot(\n                round_id=\"round-bad\",\n                contexts=[bad],\n                snapshot_timestamp_ms=1700000000000,\n            )\n\n\n# ===========================================================================\n# Class 6: allocate_token_budget\n# ===========================================================================\n\nclass TestAllocateTokenBudget:\n    \"\"\"Tests for allocate_token_budget: distributes token budget proportionally.\"\"\"\n\n    def _result_map(self, result):\n        \"\"\"Helper: convert result list to dict keyed by context_id.\"\"\"\n        return {a.context_id: a for a in result}\n\n    def test_proportional_distribution(self, make_contexts):\n        \"\"\"Higher-weight context gets more tokens; total is conserved.\"\"\"\n        contexts = make_contexts([(\"a\", 0.8), (\"b\", 0.2)])\n        result = allocate_token_budget(total_budget=1000, contexts=contexts)\n        rmap = self._result_map(result)\n        assert sum(a.allocated_tokens for a in result) == 1000, (\n            \"Token sum must equal total_budget\"\n        )\n        assert rmap[\"a\"].allocated_tokens > rmap[\"b\"].allocated_tokens, (\n            \"Context 'a' (weight=0.8) should get more tokens than 'b' (weight=0.2)\"\n        )\n\n    def test_single_context_gets_full_budget(self, make_contexts):\n        \"\"\"A single context receives the entire budget.\"\"\"\n        contexts = make_contexts([(\"only\", 0.7)])\n        result = allocate_token_budget(total_budget=500, contexts=contexts)\n        assert len(result) == 1\n        assert result[0].allocated_tokens == 500\n        assert result[0].proportion == pytest.approx(1.0)\n\n    def test_zero_budget_all_zeros(self, make_contexts):\n        \"\"\"With total_budget=0, all allocations are 0 tokens and 0.0 proportion.\"\"\"\n        contexts = make_contexts([(\"a\", 0.5), (\"b\", 0.5)])\n        result = allocate_token_budget(total_budget=0, contexts=contexts)\n        for alloc in result:\n            assert alloc.allocated_tokens == 0, (\n                f\"Expected 0 tokens for {alloc.context_id}, got {alloc.allocated_tokens}\"\n            )\n            assert alloc.proportion == 0.0, (\n                f\"Expected proportion 0.0 for {alloc.context_id}, got {alloc.proportion}\"\n            )\n\n    def test_equal_weights_equal_shares(self, make_contexts):\n        \"\"\"Equal weights produce allocations within ±1 token of each other.\"\"\"\n        contexts = make_contexts([(\"a\", 0.5), (\"b\", 0.5), (\"c\", 0.5)])\n        result = allocate_token_budget(total_budget=100, contexts=contexts)\n        tokens = [a.allocated_tokens for a in result]\n        assert sum(tokens) == 100\n        assert max(tokens) - min(tokens) <= 1, (\n            f\"Equal-weight allocations differ by more than 1: {tokens}\"\n        )\n\n    def test_budget_one_with_many_contexts(self, make_contexts):\n        \"\"\"With budget=1 and multiple contexts, sum still equals 1.\"\"\"\n        contexts = make_contexts([(\"a\", 0.5), (\"b\", 0.3), (\"c\", 0.2)])\n        result = allocate_token_budget(total_budget=1, contexts=contexts)\n        assert sum(a.allocated_tokens for a in result) == 1\n\n    def test_conservation_invariant_large_budget(self, make_contexts):\n        \"\"\"Sum of allocated_tokens == total_budget for a large budget with 4 contexts.\"\"\"\n        contexts = make_contexts([\n            (\"a\", 0.1), (\"b\", 0.4), (\"c\", 0.9), (\"d\", 0.6)\n        ])\n        result = allocate_token_budget(total_budget=9999, contexts=contexts)\n        assert sum(a.allocated_tokens for a in result) == 9999\n\n    def test_proportions_sum_to_one(self, make_contexts):\n        \"\"\"Sum of proportions is approximately 1.0 when budget > 0.\"\"\"\n        contexts = make_contexts([(\"a\", 0.3), (\"b\", 0.7)])\n        result = allocate_token_budget(total_budget=1000, contexts=contexts)\n        total_prop = sum(a.proportion for a in result)\n        assert total_prop == pytest.approx(1.0), (\n            f\"Proportions sum to {total_prop}, expected ~1.0\"\n        )\n\n    def test_all_tokens_nonnegative(self, make_contexts):\n        \"\"\"All allocated_tokens are >= 0.\"\"\"\n        contexts = make_contexts([(\"a\", 0.1), (\"b\", 1.0)])\n        result = allocate_token_budget(total_budget=50, contexts=contexts)\n        for alloc in result:\n            assert alloc.allocated_tokens >= 0, (\n                f\"Negative allocation for {alloc.context_id}: {alloc.allocated_tokens}\"\n            )\n\n    def test_weight_snapshot_in_allocation(self, make_contexts):\n        \"\"\"Each allocation records the correct business_weight for auditability.\"\"\"\n        contexts = make_contexts([(\"a\", 0.3), (\"b\", 0.7)])\n        result = allocate_token_budget(total_budget=100, contexts=contexts)\n        rmap = self._result_map(result)\n        assert rmap[\"a\"].business_weight == pytest.approx(0.3)\n        assert rmap[\"b\"].business_weight == pytest.approx(0.7)\n\n    def test_context_ids_match_input(self, make_contexts):\n        \"\"\"Each allocation's context_id matches exactly one input context.\"\"\"\n        contexts = make_contexts([(\"x\", 0.4), (\"y\", 0.6)])\n        result = allocate_token_budget(total_budget=200, contexts=contexts)\n        result_ids = {a.context_id for a in result}\n        input_ids = {c.context_id for c in contexts}\n        assert result_ids == input_ids, (\n            f\"Result context_ids {result_ids} != input {input_ids}\"\n        )\n\n    def test_proportions_in_valid_range(self, make_contexts):\n        \"\"\"All proportions are in [0.0, 1.0].\"\"\"\n        contexts = make_contexts([(\"a\", 0.2), (\"b\", 0.5), (\"c\", 0.8)])\n        result = allocate_token_budget(total_budget=1000, contexts=contexts)\n        for alloc in result:\n            assert 0.0 <= alloc.proportion <= 1.0, (\n                f\"Proportion {alloc.proportion} out of range for {alloc.context_id}\"\n            )\n\n    # ---- Error cases ----\n\n    def test_error_negative_budget(self, make_contexts):\n        \"\"\"ValueError for negative total_budget.\"\"\"\n        contexts = make_contexts([(\"a\", 0.5)])\n        with pytest.raises(ValueError):\n            allocate_token_budget(total_budget=-10, contexts=contexts)\n\n    def test_error_empty_contexts(self):\n        \"\"\"ValueError for empty contexts list.\"\"\"\n        with pytest.raises(ValueError):\n            allocate_token_budget(total_budget=100, contexts=[])\n\n    def test_error_duplicate_context_ids(self, make_contexts):\n        \"\"\"ValueError for duplicate context_ids.\"\"\"\n        contexts = make_contexts([(\"dup\", 0.5), (\"dup\", 0.3)])\n        with pytest.raises(ValueError):\n            allocate_token_budget(total_budget=100, contexts=contexts)\n\n    def test_error_invalid_weight(self, make_context):\n        \"\"\"ValueError for context with weight outside [0.0, 1.0].\"\"\"\n        bad = make_context(\"bad\", 1.5)\n        with pytest.raises(ValueError):\n            allocate_token_budget(total_budget=100, contexts=[bad])\n"
+}

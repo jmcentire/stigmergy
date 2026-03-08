@@ -1,0 +1,660 @@
+{
+  "component_id": "embedding_context_weights",
+  "name": "Per-Context Embedding Dimension Weights",
+  "description": "Each context learns which embedding dimensions (semantic, technical, social) are most predictive for its domain via feedback. Stores per-context weight vector over embedding strategies as logits with softmax normalization. Updates weights in-place when signals are accepted (match-based learning with decaying learning rate). Modifies familiarity score calculation to use per-context dimension weights when computing the embedding component of familiarity. Defaults to equal weights (logit 0.0) for new/unknown strategies. Logits serialize naturally to YAML/JSON. Softmax is computed with numerical stability (subtract max before exp). Empty strategy intersections fall back to 0.0 similarity.",
+  "version": 1,
+  "types": [
+    {
+      "name": "EmbeddingDimensionWeights",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "logits",
+          "type_ref": "StrategyLogitsMap",
+          "required": true,
+          "default": "{}",
+          "description": "Per-strategy unnormalized log-weights. Keys are strategy names (e.g. 'semantic', 'technical', 'social'). Values are finite floats. Missing strategies are treated as logit 0.0 on read. Default is empty dict for a newly created instance.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isfinite(v) for v in logits.values())",
+              "error_message": "All logit values must be finite floats (no NaN, no Inf)."
+            }
+          ]
+        },
+        {
+          "name": "learning_rate",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.05",
+          "description": "Initial learning rate for logit updates. Must be positive. Effective learning rate decays as learning_rate / (1 + update_count * 0.01).",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 < learning_rate <= 1.0",
+              "error_message": "Learning rate must be in the range (0.0, 1.0]."
+            }
+          ]
+        },
+        {
+          "name": "update_count",
+          "type_ref": "int",
+          "required": false,
+          "default": "0",
+          "description": "Number of weight updates applied so far. Monotonically increasing. Used for learning rate decay calculation.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "update_count >= 0",
+              "error_message": "Update count must be non-negative."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mutable Pydantic BaseModel (not frozen) storing per-strategy logits with softmax-normalized weights computed property. Composed into Context as an optional field, lazily initialized with equal weights (logit 0.0 for each known strategy) on first access. Learning rate decays with update_count for ART stability."
+    },
+    {
+      "name": "StrategyLogitsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to logit value (float). All keys must be non-empty strings, all values must be finite floats.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(k, str) and len(k) > 0 and isinstance(v, float) and isfinite(v) for k, v in entries.items())",
+              "error_message": "All keys must be non-empty strings and all values must be finite floats."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, float] representing strategy name to logit value mapping. All values must be finite floats. Keys are non-empty strategy name strings."
+    },
+    {
+      "name": "NormalizedWeightsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to normalized weight (float). Values sum to 1.0. Each value is in (0.0, 1.0).",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "abs(sum(entries.values()) - 1.0) < 1e-9 and all(0.0 < v < 1.0 for v in entries.values())",
+              "error_message": "Normalized weights must each be in (0.0, 1.0) and sum to 1.0 within floating point tolerance."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, float] representing strategy name to softmax-normalized weight. All values are in (0.0, 1.0) and sum to 1.0. Produced by applying numerically stable softmax (subtract max logit before exp) over the logits map."
+    },
+    {
+      "name": "StrategyContributionsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to similarity contribution (float). All values must be finite.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(k, str) and len(k) > 0 and isinstance(v, float) and isfinite(v) for k, v in entries.items())",
+              "error_message": "All keys must be non-empty strings and all values must be finite floats."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, float] representing per-strategy similarity contributions used during weight updates. Keys are strategy names, values are similarity contribution scores (typically in [0.0, 1.0] but not strictly enforced). All values must be finite."
+    },
+    {
+      "name": "EmbeddingsDict",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name (str) to embedding vector (list of float). All vectors should share the same dimensionality.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(isinstance(k, str) and len(k) > 0 and isinstance(v, list) for k, v in entries.items())",
+              "error_message": "All keys must be non-empty strings and all values must be lists of floats."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for dict[str, list] representing Signal.embeddings: strategy name to embedding vector (represented as list of floats, standing in for ndarray). All vectors must have the same fixed dimensionality."
+    },
+    {
+      "name": "WeightedSimilarityResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "similarity",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The weighted similarity score. In [0.0, 1.0] when inputs are unit-normalized. Returns 0.0 when the intersection of available strategies is empty.",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "isfinite(similarity)",
+              "error_message": "Similarity must be a finite float."
+            }
+          ]
+        },
+        {
+          "name": "per_strategy_similarities",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name to its individual cosine similarity. Only strategies present in the intersection are included.",
+          "validators": []
+        },
+        {
+          "name": "strategies_used",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of strategy names that were present in the intersection of signal embeddings, context prototypes, and weights. Empty list if no intersection.",
+          "validators": []
+        },
+        {
+          "name": "effective_weights",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "The re-normalized weights used for only the intersecting strategies. Sums to 1.0 over the intersection. Empty dict if no intersection.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of computing a weighted embedding similarity, including the aggregate score and per-strategy breakdown for diagnostic and learning purposes."
+    },
+    {
+      "name": "DimensionWeightsUpdateResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The updated EmbeddingDimensionWeights instance (same reference if mutated in-place).",
+          "validators": []
+        },
+        {
+          "name": "effective_learning_rate",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "The effective (decayed) learning rate that was used for this update.",
+          "validators": []
+        },
+        {
+          "name": "logit_deltas",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from strategy name to the delta applied to its logit during this update.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of a weight update operation, capturing both the updated weights object and diagnostic information about the update."
+    }
+  ],
+  "functions": [
+    {
+      "name": "get_normalized_weights",
+      "description": "Compute softmax-normalized weights from the logits in an EmbeddingDimensionWeights instance. Uses numerically stable softmax: subtract max logit before exponentiating. For an empty logits dict, returns an empty dict. Missing strategies requested via the optional 'strategies' parameter are included with default logit 0.0. This is a pure read operation with no side effects on the weights object.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The weights instance whose logits to normalize.",
+          "validators": []
+        },
+        {
+          "name": "strategies",
+          "type_ref": "list",
+          "required": false,
+          "default": "None",
+          "description": "Optional list of strategy names to include. If provided, any strategies not in logits are treated as logit 0.0. If None, uses only the strategies present in logits.",
+          "validators": []
+        }
+      ],
+      "output_type": "NormalizedWeightsMap",
+      "error_cases": [
+        {
+          "name": "non_finite_logit",
+          "condition": "Any logit value in the effective strategy set is NaN or Inf (should be caught by validator, but defensive check).",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Logit values must be finite. Found non-finite value for strategy."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights with all finite logit values."
+      ],
+      "postconditions": [
+        "If the effective strategy set is non-empty, all returned weights are in (0.0, 1.0) and sum to 1.0 within floating-point tolerance (1e-9).",
+        "If the effective strategy set is empty, returns an empty dict.",
+        "The dimension_weights instance is not modified (no side effects on read).",
+        "Softmax is computed with numerical stability: max logit is subtracted before exp to avoid overflow."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "compute_weighted_embedding_similarity",
+      "description": "Pure function to compute weighted cosine similarity between a signal's per-strategy embeddings and a context's per-strategy prototype embeddings, using per-strategy weights. Only the intersection of strategies present in signal_embeddings, context_prototypes, and weights is used. Weights are re-normalized over the intersection. If the intersection is empty, returns similarity 0.0. Each per-strategy similarity is cosine similarity. Intended to replace the single-embedding similarity component in the 5-component familiarity function.",
+      "inputs": [
+        {
+          "name": "signal_embeddings",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Signal's per-strategy embeddings: dict[str, list[float]] (strategy name -> embedding vector). Vectors are lists of floats standing in for ndarray.",
+          "validators": []
+        },
+        {
+          "name": "context_prototypes",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Context's per-strategy prototype embeddings: dict[str, list[float]] (strategy name -> prototype vector). Must share dimensionality with corresponding signal embeddings.",
+          "validators": []
+        },
+        {
+          "name": "dimension_weights",
+          "type_ref": "dict",
+          "required": false,
+          "default": "None",
+          "description": "Optional dict[str, float] of normalized per-strategy weights. When None, equal weights are used across all strategies in the intersection (backward compatible). When provided, only the intersection of keys across all three dicts is used.",
+          "validators": []
+        }
+      ],
+      "output_type": "WeightedSimilarityResult",
+      "error_cases": [
+        {
+          "name": "dimension_mismatch",
+          "condition": "For some strategy in the intersection, signal_embeddings[strategy] and context_prototypes[strategy] have different lengths.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Embedding dimension mismatch for strategy '{strategy}': signal has {n_signal} dimensions, prototype has {n_proto} dimensions."
+          }
+        },
+        {
+          "name": "zero_norm_vector",
+          "condition": "A signal or prototype embedding vector in the intersection has zero norm (all zeros), making cosine similarity undefined.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Zero-norm embedding vector for strategy '{strategy}' in '{source}'. Cosine similarity undefined."
+          }
+        },
+        {
+          "name": "non_finite_embedding",
+          "condition": "An embedding vector contains NaN or Inf values.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Non-finite values found in embedding vector for strategy '{strategy}' in '{source}'."
+          }
+        },
+        {
+          "name": "negative_weight",
+          "condition": "A provided dimension weight is negative.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Negative weight {weight} for strategy '{strategy}'. Weights must be non-negative."
+          }
+        }
+      ],
+      "preconditions": [
+        "For each strategy in the intersection, signal_embeddings[strategy] and context_prototypes[strategy] must have the same dimensionality (list length).",
+        "Embedding vectors must contain only finite float values.",
+        "If dimension_weights is provided, all values must be non-negative finite floats."
+      ],
+      "postconditions": [
+        "result.similarity is a finite float.",
+        "If the intersection of available strategies is empty, result.similarity == 0.0 and result.strategies_used is empty.",
+        "If inputs are unit-normalized, result.similarity is in [-1.0, 1.0] (cosine similarity range).",
+        "result.strategies_used contains exactly the strategy names in the intersection.",
+        "result.effective_weights sums to 1.0 over the intersection (or is empty if no intersection).",
+        "result.per_strategy_similarities contains one entry per strategy in the intersection.",
+        "No input arguments are modified."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "record_acceptance",
+      "description": "Update the dimension weights in-place based on a signal acceptance event (match-based learning). Computes per-strategy similarity contributions between the accepted signal and the matched context prototype, then adjusts logits: logit_i += effective_lr * (contribution_i - mean_contribution). This centers the update so it is zero-sum across strategies, only adjusting relative importance. Effective learning rate is learning_rate / (1 + update_count * 0.01). After the update, update_count is incremented. New strategies not yet in logits are inserted with default logit 0.0 before the update. Mutates the weights instance in-place and returns diagnostic information.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The weights instance to update in-place.",
+          "validators": []
+        },
+        {
+          "name": "strategy_contributions",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "dict[str, float] mapping strategy name to its similarity contribution for the accepted signal. Typically each value is the cosine similarity for that strategy. All values must be finite.",
+          "validators": []
+        }
+      ],
+      "output_type": "DimensionWeightsUpdateResult",
+      "error_cases": [
+        {
+          "name": "empty_contributions",
+          "condition": "strategy_contributions is empty (no strategies provided).",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "strategy_contributions must be non-empty. At least one strategy contribution is required for a weight update."
+          }
+        },
+        {
+          "name": "non_finite_contribution",
+          "condition": "Any value in strategy_contributions is NaN or Inf.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Non-finite contribution value for strategy '{strategy}'. All contributions must be finite floats."
+          }
+        },
+        {
+          "name": "zero_learning_rate",
+          "condition": "dimension_weights.learning_rate is zero or negative (should be prevented by validator).",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Learning rate must be positive. Got {learning_rate}."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights instance.",
+        "strategy_contributions is non-empty (at least one strategy contribution must be provided).",
+        "All contribution values are finite floats.",
+        "dimension_weights.learning_rate > 0.",
+        "dimension_weights.update_count >= 0."
+      ],
+      "postconditions": [
+        "dimension_weights.update_count has been incremented by 1.",
+        "For each strategy in strategy_contributions, dimension_weights.logits[strategy] has been updated by the computed delta.",
+        "The sum of all logit deltas across strategies is approximately 0.0 (zero-sum update, within floating-point tolerance).",
+        "All logit values remain finite after update.",
+        "result.weights is the same object as the input dimension_weights (in-place mutation).",
+        "result.effective_learning_rate == dimension_weights.learning_rate / (1 + (old_update_count) * 0.01), where old_update_count is the count before increment.",
+        "result.logit_deltas contains one entry per strategy in strategy_contributions."
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Mutates dimension_weights.logits in-place with updated logit values.",
+        "Increments dimension_weights.update_count by 1."
+      ]
+    },
+    {
+      "name": "initialize_dimension_weights",
+      "description": "Factory function to create a new EmbeddingDimensionWeights instance with equal weights (logit 0.0) for a given set of strategy names. Used for lazy initialization when a Context first needs dimension weights. If no strategies are provided, creates an instance with an empty logits dict (strategies will be added on first update or first access with explicit strategy list).",
+      "inputs": [
+        {
+          "name": "strategy_names",
+          "type_ref": "list",
+          "required": false,
+          "default": "[]",
+          "description": "List of strategy name strings to initialize. Each will get logit 0.0 (equal weights under softmax).",
+          "validators": []
+        },
+        {
+          "name": "learning_rate",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.05",
+          "description": "Initial learning rate for the new weights instance.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 < learning_rate <= 1.0",
+              "error_message": "Learning rate must be in (0.0, 1.0]."
+            }
+          ]
+        }
+      ],
+      "output_type": "EmbeddingDimensionWeights",
+      "error_cases": [
+        {
+          "name": "empty_strategy_name",
+          "condition": "Any strategy name in the list is an empty string.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Strategy names must be non-empty strings. Found empty string at index {index}."
+          }
+        },
+        {
+          "name": "duplicate_strategy_name",
+          "condition": "Duplicate strategy names in the list.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Duplicate strategy name '{name}' found. Strategy names must be unique."
+          }
+        },
+        {
+          "name": "invalid_learning_rate",
+          "condition": "learning_rate is not in (0.0, 1.0].",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Learning rate must be in (0.0, 1.0]. Got {learning_rate}."
+          }
+        }
+      ],
+      "preconditions": [
+        "All strategy names are non-empty strings.",
+        "learning_rate is in (0.0, 1.0]."
+      ],
+      "postconditions": [
+        "Returned instance has logits[s] == 0.0 for every s in strategy_names.",
+        "Returned instance has update_count == 0.",
+        "Returned instance has learning_rate equal to the provided learning_rate.",
+        "Softmax of equal logits yields equal weights: 1/len(strategy_names) for each strategy (when strategy_names is non-empty)."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "ensure_strategies_present",
+      "description": "Ensure that all specified strategies are present in the dimension weights logits dict. Any missing strategies are inserted with default logit 0.0. This supports the requirement that missing strategies are handled gracefully on access. Mutates the weights in-place.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The weights instance to update.",
+          "validators": []
+        },
+        {
+          "name": "strategy_names",
+          "type_ref": "list",
+          "required": true,
+          "default": "",
+          "description": "List of strategy names that must be present in logits.",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingDimensionWeights",
+      "error_cases": [
+        {
+          "name": "empty_strategy_name",
+          "condition": "Any strategy name in the list is an empty string.",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "Strategy names must be non-empty strings."
+          }
+        }
+      ],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights instance.",
+        "All strategy names are non-empty strings."
+      ],
+      "postconditions": [
+        "For every s in strategy_names, dimension_weights.logits contains key s.",
+        "Pre-existing logit values are unchanged.",
+        "Newly inserted strategies have logit value 0.0.",
+        "Returned instance is the same object as the input (in-place mutation)."
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Mutates dimension_weights.logits in-place by inserting missing strategy keys with logit 0.0."
+      ]
+    },
+    {
+      "name": "serialize_dimension_weights",
+      "description": "Serialize an EmbeddingDimensionWeights instance to a plain dict suitable for YAML/JSON serialization. Logits dict serializes naturally. Includes all fields: logits, learning_rate, update_count.",
+      "inputs": [
+        {
+          "name": "dimension_weights",
+          "type_ref": "EmbeddingDimensionWeights",
+          "required": true,
+          "default": "",
+          "description": "The weights instance to serialize.",
+          "validators": []
+        }
+      ],
+      "output_type": "dict",
+      "error_cases": [],
+      "preconditions": [
+        "dimension_weights is a valid EmbeddingDimensionWeights instance with all finite logit values."
+      ],
+      "postconditions": [
+        "Returned dict has keys 'logits' (dict[str, float]), 'learning_rate' (float), 'update_count' (int).",
+        "All values in the 'logits' sub-dict are finite floats.",
+        "The returned dict is JSON-serializable."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deserialize_dimension_weights",
+      "description": "Deserialize a plain dict (from YAML/JSON) into an EmbeddingDimensionWeights instance. Validates that all logit values are finite floats. Applies Pydantic validation.",
+      "inputs": [
+        {
+          "name": "data",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "A plain dict with keys 'logits' (dict[str, float]), optional 'learning_rate' (float), optional 'update_count' (int).",
+          "validators": []
+        }
+      ],
+      "output_type": "EmbeddingDimensionWeights",
+      "error_cases": [
+        {
+          "name": "missing_logits_key",
+          "condition": "data does not contain the 'logits' key.",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Missing required key 'logits' in serialized dimension weights data."
+          }
+        },
+        {
+          "name": "non_finite_logit_value",
+          "condition": "Any value in data['logits'] is NaN, Inf, or not a float.",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Non-finite or non-float logit value for strategy '{strategy}': {value}."
+          }
+        },
+        {
+          "name": "invalid_learning_rate",
+          "condition": "data['learning_rate'] is present but not in (0.0, 1.0].",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Invalid learning_rate: {value}. Must be in (0.0, 1.0]."
+          }
+        },
+        {
+          "name": "invalid_update_count",
+          "condition": "data['update_count'] is present but negative or not an integer.",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Invalid update_count: {value}. Must be a non-negative integer."
+          }
+        },
+        {
+          "name": "invalid_logits_type",
+          "condition": "data['logits'] is not a dict.",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Expected 'logits' to be a dict, got {type}."
+          }
+        }
+      ],
+      "preconditions": [
+        "data is a dict.",
+        "data contains key 'logits' which is a dict[str, float]."
+      ],
+      "postconditions": [
+        "Returned EmbeddingDimensionWeights has logits matching data['logits'].",
+        "If 'learning_rate' is in data, it is used; otherwise defaults to 0.05.",
+        "If 'update_count' is in data, it is used; otherwise defaults to 0.",
+        "All logit values are validated as finite floats."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All logit values stored in EmbeddingDimensionWeights.logits are always finite floats (no NaN, no Inf).",
+    "update_count is always a non-negative integer and monotonically increases across the lifetime of a weights instance.",
+    "learning_rate is always in the range (0.0, 1.0] and never changes after initialization.",
+    "Effective learning rate is always learning_rate / (1 + update_count * 0.01), providing monotonic decay.",
+    "Softmax normalization of logits always uses the numerically stable form: exp(logit_i - max(logits)) / sum(exp(logit_j - max(logits))).",
+    "Missing strategies are always treated as logit 0.0 (the neutral/equal-weight default).",
+    "Weight updates are always zero-sum across strategies: sum of logit deltas equals 0.0 (within floating-point tolerance).",
+    "An EmbeddingDimensionWeights instance with all logits equal to 0.0 produces equal normalized weights: 1/N for N strategies.",
+    "When dimension_weights is None or the strategy intersection is empty, compute_weighted_embedding_similarity returns 0.0 (backward-compatible fallback).",
+    "get_normalized_weights never modifies the EmbeddingDimensionWeights instance (pure read, no side effects).",
+    "Serialization round-trip: deserialize_dimension_weights(serialize_dimension_weights(w)) produces an equivalent instance."
+  ],
+  "requires": []
+}

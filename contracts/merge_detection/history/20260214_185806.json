@@ -1,0 +1,433 @@
+{
+  "component_id": "merge_detection",
+  "name": "Merge Trigger Detection",
+  "description": "Implement merge trigger detection in core/lifecycle.py. Track signal ID sets per context over a rolling time window. Compute signal overlap as Jaccard similarity (set intersection / set union) between neighboring context pairs. Compute assessment agreement by comparing accept/reject decisions and familiarity scores on signals both contexts have seen. Trigger merge when overlap > 0.7 AND agreement > 0.8 (strict inequality). Only check neighboring contexts (not all pairs). Return merge candidates as an ordered list sorted by combined_score (overlap * agreement) descending. Implemented as a synchronous pure function following the existing fork/decay pattern.",
+  "version": 1,
+  "types": [
+    {
+      "name": "ContextId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for context identifiers. Represented as a non-empty string."
+    },
+    {
+      "name": "SignalId",
+      "kind": "primitive",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Type alias for signal identifiers. Represented as a non-empty string."
+    },
+    {
+      "name": "SignalIdSet",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A frozenset of signal ID strings representing all signals observed by a context within the rolling time window. Represented as a list at the contract level but implemented as frozenset[str] for immutability."
+    },
+    {
+      "name": "AssessmentSummary",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "accepted",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the signal was accepted (true) or rejected (false) by the context.",
+          "validators": []
+        },
+        {
+          "name": "familiarity_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Familiarity score for the signal within the context. Normalized to [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "familiarity_score must be between 0.0 and 1.0 inclusive."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model representing the assessment of a single signal within a context. Contains the accept/reject decision and the familiarity score."
+    },
+    {
+      "name": "AssessmentMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of SignalId (str) -> AssessmentSummary. Keys are signal ID strings, values are AssessmentSummary structs.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A mapping from signal ID to AssessmentSummary for a single context. Represents all assessments a context has made on its observed signals."
+    },
+    {
+      "name": "NeighborSet",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A frozenset of context ID strings representing the neighbors of a given context. Represented as a list at the contract level but implemented as frozenset[str]."
+    },
+    {
+      "name": "SignalWindowsInput",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of ContextId (str) -> SignalIdSet (frozenset[str]). Each key is a context ID, each value is the set of signal IDs seen by that context.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mapping from context ID to the frozenset of signal IDs observed by that context in the rolling time window."
+    },
+    {
+      "name": "AssessmentsInput",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of ContextId (str) -> Mapping[SignalId (str), AssessmentSummary]. Nested mapping of assessments per context per signal.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mapping from context ID to the mapping of signal ID to AssessmentSummary for that context."
+    },
+    {
+      "name": "NeighborsInput",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping of ContextId (str) -> NeighborSet (frozenset[str]). Each key is a context ID, each value is the set of its neighbor context IDs.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Mapping from context ID to the frozenset of neighboring context IDs."
+    },
+    {
+      "name": "MergeCandidate",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "context_id_a",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ID of the first context in the merge candidate pair. Lexicographically less than or equal to context_id_b to ensure canonical ordering of the pair.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "context_id_a must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "context_id_b",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "ID of the second context in the merge candidate pair. Lexicographically greater than or equal to context_id_a to ensure canonical ordering of the pair.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "context_id_b must be a non-empty string."
+            }
+          ]
+        },
+        {
+          "name": "overlap",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Jaccard similarity of signal ID sets between the two contexts. Value in (0.7, 1.0] for candidates that passed threshold.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "overlap must be between 0.0 and 1.0 inclusive."
+            }
+          ]
+        },
+        {
+          "name": "agreement",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Assessment agreement score between the two contexts on shared signals. Value in (0.8, 1.0] for candidates that passed threshold.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "agreement must be between 0.0 and 1.0 inclusive."
+            }
+          ]
+        },
+        {
+          "name": "combined_score",
+          "type_ref": "float",
+          "required": true,
+          "default": "",
+          "description": "Product of overlap and agreement (overlap * agreement). Used for ordering candidates. Higher values indicate stronger merge signal.",
+          "validators": [
+            {
+              "kind": "range",
+              "expression": "0.0 <= value <= 1.0",
+              "error_message": "combined_score must be between 0.0 and 1.0 inclusive."
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model representing a pair of neighboring contexts that have been detected as merge candidates. Contains the two context IDs, their overlap and agreement scores, and the combined score used for ordering."
+    },
+    {
+      "name": "MergeDetectionResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "candidates",
+          "type_ref": "MergeCandidateList",
+          "required": true,
+          "default": "",
+          "description": "Tuple of MergeCandidate structs ordered by combined_score descending. Empty tuple if no merge candidates were found.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic v2 model wrapping the list of merge candidates. Uses a tuple for immutability. Candidates are ordered by combined_score descending."
+    },
+    {
+      "name": "MergeCandidateList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "MergeCandidate",
+      "variants": [],
+      "inner_types": [],
+      "description": "An ordered sequence of MergeCandidate structs. Implemented as tuple[MergeCandidate, ...] for immutability. Ordered by combined_score descending."
+    }
+  ],
+  "functions": [
+    {
+      "name": "detect_merge_candidates",
+      "description": "Primary synchronous pure function for merge trigger detection. Iterates over all neighboring context pairs (each pair checked once), computes signal overlap via Jaccard similarity and assessment agreement on shared signals, and returns all pairs exceeding both thresholds as MergeCandidates ordered by combined_score descending. Only checks pairs that are declared neighbors — does not perform all-pairs comparison. Follows the existing fork/decay pattern in core/lifecycle.py.",
+      "inputs": [
+        {
+          "name": "signal_windows",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from ContextId (str) to frozenset of SignalId (str). Each entry represents the set of signal IDs observed by a context within the rolling time window. Contexts not present in this mapping are treated as having no signals (empty set).",
+          "validators": []
+        },
+        {
+          "name": "assessments",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from ContextId (str) to Mapping[SignalId (str), AssessmentSummary]. Each entry represents the assessments a context has made. Contexts not present are treated as having no assessments.",
+          "validators": []
+        },
+        {
+          "name": "neighbors",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from ContextId (str) to frozenset of ContextId (str). Defines the neighbor topology. Only pairs (a, b) where b is in neighbors[a] OR a is in neighbors[b] are checked. Neighbor relationship is treated as symmetric.",
+          "validators": []
+        },
+        {
+          "name": "overlap_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.7",
+          "description": "Minimum Jaccard overlap required to consider a pair as a merge candidate. Strict inequality: overlap must be > overlap_threshold. Must be in [0.0, 1.0].",
+          "validators": []
+        },
+        {
+          "name": "agreement_threshold",
+          "type_ref": "float",
+          "required": false,
+          "default": "0.8",
+          "description": "Minimum assessment agreement required to consider a pair as a merge candidate. Strict inequality: agreement must be > agreement_threshold. Must be in [0.0, 1.0].",
+          "validators": []
+        }
+      ],
+      "output_type": "MergeDetectionResult",
+      "error_cases": [
+        {
+          "name": "invalid_overlap_threshold",
+          "condition": "overlap_threshold < 0.0 or overlap_threshold > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "overlap_threshold must be between 0.0 and 1.0 inclusive, got {overlap_threshold}"
+          }
+        },
+        {
+          "name": "invalid_agreement_threshold",
+          "condition": "agreement_threshold < 0.0 or agreement_threshold > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "agreement_threshold must be between 0.0 and 1.0 inclusive, got {agreement_threshold}"
+          }
+        },
+        {
+          "name": "invalid_familiarity_score",
+          "condition": "Any AssessmentSummary in assessments has familiarity_score < 0.0 or familiarity_score > 1.0",
+          "error_type": "ValueError",
+          "error_data": {
+            "message": "familiarity_score must be between 0.0 and 1.0 inclusive for signal {signal_id} in context {context_id}"
+          }
+        }
+      ],
+      "preconditions": [
+        "overlap_threshold is a float in the range [0.0, 1.0].",
+        "agreement_threshold is a float in the range [0.0, 1.0].",
+        "All familiarity_score values within assessments are floats in [0.0, 1.0].",
+        "signal_windows, assessments, and neighbors are valid Mapping types (not None)."
+      ],
+      "postconditions": [
+        "The returned MergeDetectionResult contains only pairs where overlap > overlap_threshold AND agreement > agreement_threshold (strict inequality).",
+        "Each candidate pair appears at most once with context_id_a <= context_id_b lexicographically (canonical ordering).",
+        "Candidates are sorted by combined_score descending. Ties are broken deterministically (e.g., by context_id_a then context_id_b ascending).",
+        "combined_score == overlap * agreement for every candidate.",
+        "Only neighboring pairs are evaluated — no non-neighbor pairs appear in results.",
+        "If signal_windows is empty, neighbors is empty, or no context has any neighbors, the result contains an empty candidates tuple.",
+        "The result is an immutable frozen Pydantic model."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "_compute_overlap",
+      "description": "Module-private helper function. Computes the Jaccard similarity coefficient between two frozensets of signal IDs. Jaccard similarity is defined as |intersection| / |union|. Returns 0.0 when both sets are empty (empty union).",
+      "inputs": [
+        {
+          "name": "signals_a",
+          "type_ref": "SignalIdSet",
+          "required": true,
+          "default": "",
+          "description": "Frozenset of signal IDs observed by context A in the rolling time window.",
+          "validators": []
+        },
+        {
+          "name": "signals_b",
+          "type_ref": "SignalIdSet",
+          "required": true,
+          "default": "",
+          "description": "Frozenset of signal IDs observed by context B in the rolling time window.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [],
+      "preconditions": [
+        "signals_a and signals_b are valid frozenset[str] instances (or compatible set-like types)."
+      ],
+      "postconditions": [
+        "Return value is in [0.0, 1.0].",
+        "If both signals_a and signals_b are empty, returns 0.0.",
+        "If signals_a == signals_b and both non-empty, returns 1.0.",
+        "Result equals len(signals_a & signals_b) / len(signals_a | signals_b) when union is non-empty."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "_compute_agreement",
+      "description": "Module-private helper function. Computes the assessment agreement score between two contexts based on signals both have assessed. Agreement for each shared signal is computed as: 1.0 if accepted decisions match AND familiarity scores are equal, partial agreement otherwise. Specifically: for each shared signal, agreement_i = (1.0 if accepted_a == accepted_b else 0.0) * (1.0 - abs(familiarity_a - familiarity_b)). Overall agreement is the mean of agreement_i across all shared signals. Returns 0.0 if there are no shared signals.",
+      "inputs": [
+        {
+          "name": "assessments_a",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from SignalId (str) to AssessmentSummary for context A. Contains assessments for all signals context A has evaluated.",
+          "validators": []
+        },
+        {
+          "name": "assessments_b",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from SignalId (str) to AssessmentSummary for context B. Contains assessments for all signals context B has evaluated.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [],
+      "preconditions": [
+        "assessments_a and assessments_b are valid Mapping[str, AssessmentSummary] types.",
+        "All familiarity_score values are in [0.0, 1.0]."
+      ],
+      "postconditions": [
+        "Return value is in [0.0, 1.0].",
+        "If there are no shared signal IDs between assessments_a and assessments_b, returns 0.0.",
+        "If all shared signals have identical accepted decisions and identical familiarity_scores, returns 1.0.",
+        "Agreement is the arithmetic mean over shared signals of: (1.0 if accepted matches else 0.0) * (1.0 - abs(familiarity_a - familiarity_b))."
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "All data models (AssessmentSummary, MergeCandidate, MergeDetectionResult) are frozen/immutable Pydantic v2 models.",
+    "detect_merge_candidates is a synchronous pure function with no side effects.",
+    "Neighbor relationships are treated as symmetric: if B is in neighbors[A], the pair (A, B) is checked even if A is not in neighbors[B].",
+    "Each neighbor pair is evaluated exactly once regardless of symmetry in the neighbors mapping.",
+    "MergeCandidate pairs use canonical ordering: context_id_a <= context_id_b lexicographically.",
+    "Thresholds use strict inequality: overlap > threshold and agreement > threshold. Values exactly equal to the threshold do NOT trigger a merge.",
+    "combined_score is always computed as the product overlap * agreement.",
+    "The function never raises exceptions on valid-but-edge inputs such as empty mappings, single contexts, or contexts with no neighbors.",
+    "Module-level type aliases ContextId = str and SignalId = str are defined for domain clarity.",
+    "_compute_overlap and _compute_agreement are module-private helper functions not exposed in the public API."
+  ],
+  "requires": []
+}

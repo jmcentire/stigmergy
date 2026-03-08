@@ -1,0 +1,616 @@
+{
+  "component_id": "inquiry_primitive",
+  "name": "InquiryResult Primitive",
+  "description": "Defines the InquiryResult frozen Pydantic model and supporting types in primitives/inquiry.py, following the same pattern as Assessment. InquiryResult captures the output of the active inquiry step: when a worker accepts a signal, it decomposes it into dimensions (people, projects, tickets, keywords, sentiment) and queries its context knowledge base for relevant connections. The result is an immutable (frozen=True) primitive that feeds into the downstream assessment pipeline. Parallel dicts are used for dimensions and confidence_scores with a model_validator enforcing key alignment. Temporal fields use ISO 8601 with UTC internally. Shallow-freeze semantics apply — nested mutable containers (list, dict) are not deep-frozen, so hashability is not guaranteed.",
+  "version": 1,
+  "types": [
+    {
+      "name": "InquiryDimension",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "people",
+        "projects",
+        "tickets",
+        "keywords",
+        "sentiment"
+      ],
+      "inner_types": [],
+      "description": "StrEnum defining the five inquiry dimensions used to decompose a signal. Each value serializes cleanly as a dict key string. Uses Python 3.12 StrEnum semantics."
+    },
+    {
+      "name": "DimensionConnectionsList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of discovered connection strings for a single inquiry dimension. Each entry is a string identifier referencing an entity (person name, project ID, ticket ID, keyword, or sentiment label) found in the worker's context knowledge base."
+    },
+    {
+      "name": "DimensionsMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from InquiryDimension enum value (str key) to DimensionConnectionsList. Keys must be valid InquiryDimension variants.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping each InquiryDimension to a list of discovered connection strings. Represented as dict[InquiryDimension, list[str]]. All five dimension keys need not be present — only dimensions with discovered connections are included."
+    },
+    {
+      "name": "ConfidenceScoresMap",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "entries",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "Mapping from InquiryDimension enum value (str key) to float confidence score. Every value must satisfy 0.0 <= v <= 1.0.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A dict mapping each InquiryDimension to a confidence score float in [0.0, 1.0]. Keys must be a subset of (and validated to be exactly equal to) the keys present in the sibling dimensions field."
+    },
+    {
+      "name": "InquiryResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": true,
+          "default": "uuid4()",
+          "description": "Unique identifier for this inquiry result. Generated via UUID4 default_factory (uuid.uuid4().__str__()). Immutable once set.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the originating Signal that triggered this inquiry. Must correspond to a valid Signal.id in the system. Used for merge detection via signal ID set intersection (not embedding similarity).",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "References the accepting worker's Context knowledge base that was queried during inquiry. Must correspond to a valid Context.id.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "context_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "dimensions",
+          "type_ref": "DimensionsMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension enum values to lists of discovered connection strings. Only dimensions with at least zero connections are included. Keys must be valid InquiryDimension variants. Values are lists of string identifiers found in the worker's context knowledge base.",
+          "validators": []
+        },
+        {
+          "name": "confidence_scores",
+          "type_ref": "ConfidenceScoresMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension enum values to confidence floats in [0.0, 1.0]. A model_validator(mode='after') enforces that the key set here is exactly equal to the key set in dimensions. Each value is validated to be in the closed interval [0.0, 1.0].",
+          "validators": [
+            {
+              "kind": "custom",
+              "expression": "all(0.0 <= v <= 1.0 for v in value.values())",
+              "error_message": "All confidence scores must be in the range [0.0, 1.0]"
+            }
+          ]
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "datetime.now(UTC).isoformat()",
+          "description": "ISO 8601 formatted UTC timestamp recording when this inquiry result was produced. Generated via default_factory=datetime.now(UTC).isoformat(). All temporal fields use ISO 8601 with UTC internally per engineering decisions.",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}",
+              "error_message": "timestamp must be a valid ISO 8601 datetime string"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Frozen Pydantic BaseModel (model_config = ConfigDict(frozen=True)) representing the output of the active inquiry step in the mesh routing pipeline. Produced by the single accepting worker after signal acceptance and before consensus. Immutable at the shallow level — nested mutable containers (list values in dimensions, dict itself) are not deep-frozen, so instances are NOT guaranteed hashable. Follows the same pattern as Assessment primitive. Exported from primitives/__init__.py."
+    },
+    {
+      "name": "InquiryValidationError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "field_name",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The name of the field that failed validation.",
+          "validators": []
+        },
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable description of the validation failure.",
+          "validators": []
+        },
+        {
+          "name": "invalid_value",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "String representation of the value that failed validation.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Error detail returned when InquiryResult construction or validation fails."
+    },
+    {
+      "name": "InquiryResultList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "InquiryResult",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of InquiryResult instances, typically collected from a single worker's inquiry step."
+    },
+    {
+      "name": "OptionalInquiryResult",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "InquiryResult"
+      ],
+      "description": "An optional InquiryResult — None when inquiry produced no connections."
+    }
+  ],
+  "functions": [
+    {
+      "name": "create_inquiry_result",
+      "description": "Construct and validate a new InquiryResult frozen instance. Applies all field validators (non-empty IDs, confidence range [0.0, 1.0], ISO 8601 timestamp) and the model_validator ensuring confidence_scores keys exactly equal dimensions keys. Returns the frozen, immutable InquiryResult. This is the primary factory entrypoint — callers should prefer this over direct constructor access to ensure all cross-field invariants are checked.",
+      "inputs": [
+        {
+          "name": "signal_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The originating Signal's unique identifier. Must be non-empty.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "signal_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "context_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The accepting worker's Context unique identifier. Must be non-empty.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len(value) >= 1",
+              "error_message": "context_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "dimensions",
+          "type_ref": "DimensionsMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension values to lists of discovered connection strings. Keys must be valid InquiryDimension variants.",
+          "validators": []
+        },
+        {
+          "name": "confidence_scores",
+          "type_ref": "ConfidenceScoresMap",
+          "required": true,
+          "default": "",
+          "description": "Dict mapping InquiryDimension values to confidence floats. Keys must exactly match dimensions keys. All values must be in [0.0, 1.0].",
+          "validators": []
+        },
+        {
+          "name": "id",
+          "type_ref": "str",
+          "required": false,
+          "default": "uuid4()",
+          "description": "Optional explicit UUID string. If not provided, a new UUID4 is generated via default_factory.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": false,
+          "default": "datetime.now(UTC).isoformat()",
+          "description": "Optional explicit ISO 8601 UTC timestamp. If not provided, current UTC time is used via default_factory.",
+          "validators": []
+        }
+      ],
+      "output_type": "InquiryResult",
+      "error_cases": [
+        {
+          "name": "empty_signal_id",
+          "condition": "signal_id is an empty string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "signal_id",
+            "detail": "signal_id must be a non-empty string"
+          }
+        },
+        {
+          "name": "empty_context_id",
+          "condition": "context_id is an empty string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "context_id",
+            "detail": "context_id must be a non-empty string"
+          }
+        },
+        {
+          "name": "invalid_dimension_key",
+          "condition": "A key in dimensions is not a valid InquiryDimension variant",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "dimensions",
+            "detail": "All keys must be valid InquiryDimension variants: people, projects, tickets, keywords, sentiment"
+          }
+        },
+        {
+          "name": "confidence_out_of_range",
+          "condition": "Any value in confidence_scores is less than 0.0 or greater than 1.0",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "confidence_scores",
+            "detail": "All confidence scores must be in the range [0.0, 1.0]"
+          }
+        },
+        {
+          "name": "key_mismatch",
+          "condition": "The key set of confidence_scores does not exactly equal the key set of dimensions",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "confidence_scores",
+            "detail": "confidence_scores keys must exactly equal dimensions keys"
+          }
+        },
+        {
+          "name": "invalid_timestamp_format",
+          "condition": "Explicitly provided timestamp does not match ISO 8601 format",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "timestamp",
+            "detail": "timestamp must be a valid ISO 8601 datetime string"
+          }
+        },
+        {
+          "name": "empty_id",
+          "condition": "Explicitly provided id is an empty string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "field": "id",
+            "detail": "id must be a non-empty string"
+          }
+        }
+      ],
+      "preconditions": [
+        "signal_id is a non-empty string referencing a valid Signal",
+        "context_id is a non-empty string referencing a valid Context",
+        "All keys in dimensions are valid InquiryDimension variants",
+        "All keys in confidence_scores are valid InquiryDimension variants",
+        "All confidence_scores values are floats in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "Returned InquiryResult is frozen (immutable at shallow level)",
+        "Returned InquiryResult.id is a non-empty string",
+        "Returned InquiryResult.signal_id == input signal_id",
+        "Returned InquiryResult.context_id == input context_id",
+        "set(result.confidence_scores.keys()) == set(result.dimensions.keys())",
+        "All values in result.confidence_scores satisfy 0.0 <= v <= 1.0",
+        "result.timestamp is a valid ISO 8601 UTC datetime string"
+      ],
+      "idempotent": false,
+      "side_effects": []
+    },
+    {
+      "name": "get_dimension_connections",
+      "description": "Retrieve the list of discovered connections for a specific dimension from an InquiryResult. Returns the connection list if the dimension exists, or an empty list if the dimension is not present in this result's dimensions map.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult to query.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "InquiryDimension",
+          "required": true,
+          "default": "",
+          "description": "The dimension to look up. Must be a valid InquiryDimension variant.",
+          "validators": []
+        }
+      ],
+      "output_type": "DimensionConnectionsList",
+      "error_cases": [
+        {
+          "name": "invalid_dimension",
+          "condition": "dimension is not a valid InquiryDimension variant",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "dimension must be a valid InquiryDimension variant"
+          }
+        }
+      ],
+      "preconditions": [
+        "inquiry_result is a valid InquiryResult instance",
+        "dimension is a valid InquiryDimension variant"
+      ],
+      "postconditions": [
+        "If dimension is a key in inquiry_result.dimensions, returns inquiry_result.dimensions[dimension]",
+        "If dimension is not a key in inquiry_result.dimensions, returns an empty list"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_dimension_confidence",
+      "description": "Retrieve the confidence score for a specific dimension from an InquiryResult. Returns the float confidence if the dimension exists, or 0.0 if the dimension is not present.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult to query.",
+          "validators": []
+        },
+        {
+          "name": "dimension",
+          "type_ref": "InquiryDimension",
+          "required": true,
+          "default": "",
+          "description": "The dimension whose confidence score to look up.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [
+        {
+          "name": "invalid_dimension",
+          "condition": "dimension is not a valid InquiryDimension variant",
+          "error_type": "ValueError",
+          "error_data": {
+            "detail": "dimension must be a valid InquiryDimension variant"
+          }
+        }
+      ],
+      "preconditions": [
+        "inquiry_result is a valid InquiryResult instance",
+        "dimension is a valid InquiryDimension variant"
+      ],
+      "postconditions": [
+        "If dimension is a key in inquiry_result.confidence_scores, returns inquiry_result.confidence_scores[dimension]",
+        "If dimension is not a key in inquiry_result.confidence_scores, returns 0.0",
+        "Return value satisfies 0.0 <= result <= 1.0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_active_dimensions",
+      "description": "Return the set of InquiryDimension values that have at least one connection in the InquiryResult's dimensions map. Useful for determining which dimensions the inquiry step actually populated.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult to inspect.",
+          "validators": []
+        }
+      ],
+      "output_type": "list",
+      "error_cases": [],
+      "preconditions": [
+        "inquiry_result is a valid InquiryResult instance"
+      ],
+      "postconditions": [
+        "Returned list contains only valid InquiryDimension variants",
+        "Every element in the returned list is a key in inquiry_result.dimensions where len(connections) >= 1",
+        "Dimensions with empty connection lists are excluded"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "get_overall_confidence",
+      "description": "Compute the mean confidence score across all dimensions present in the InquiryResult. Returns 0.0 if no dimensions are present. This provides a single summary confidence value for the entire inquiry result.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult whose mean confidence to compute.",
+          "validators": []
+        }
+      ],
+      "output_type": "float",
+      "error_cases": [],
+      "preconditions": [
+        "inquiry_result is a valid InquiryResult instance"
+      ],
+      "postconditions": [
+        "If inquiry_result.confidence_scores is empty, returns 0.0",
+        "Otherwise returns sum(confidence_scores.values()) / len(confidence_scores)",
+        "Return value satisfies 0.0 <= result <= 1.0"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "serialize_inquiry_result",
+      "description": "Serialize an InquiryResult to a JSON-compatible dict. InquiryDimension enum keys are serialized as their string values for clean JSON output. This uses Pydantic's model_dump() under the hood with mode='json'.",
+      "inputs": [
+        {
+          "name": "inquiry_result",
+          "type_ref": "InquiryResult",
+          "required": true,
+          "default": "",
+          "description": "The InquiryResult to serialize.",
+          "validators": []
+        }
+      ],
+      "output_type": "dict",
+      "error_cases": [],
+      "preconditions": [
+        "inquiry_result is a valid InquiryResult instance"
+      ],
+      "postconditions": [
+        "Returned dict contains keys: id, signal_id, context_id, dimensions, confidence_scores, timestamp",
+        "All InquiryDimension enum keys are serialized as plain strings",
+        "dimensions values are lists of strings",
+        "confidence_scores values are floats in [0.0, 1.0]",
+        "timestamp is an ISO 8601 UTC string",
+        "Returned dict is JSON-serializable"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "deserialize_inquiry_result",
+      "description": "Deserialize a JSON-compatible dict into a validated InquiryResult instance. Uses Pydantic's model_validate() to parse and validate all fields, including cross-field key alignment. String keys in dimensions and confidence_scores are coerced to InquiryDimension enum values.",
+      "inputs": [
+        {
+          "name": "data",
+          "type_ref": "dict",
+          "required": true,
+          "default": "",
+          "description": "A JSON-compatible dict with keys: id, signal_id, context_id, dimensions, confidence_scores, timestamp.",
+          "validators": []
+        }
+      ],
+      "output_type": "InquiryResult",
+      "error_cases": [
+        {
+          "name": "missing_required_field",
+          "condition": "data dict is missing one or more required keys (signal_id, context_id, dimensions, confidence_scores)",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Missing required field(s) in input data"
+          }
+        },
+        {
+          "name": "invalid_dimension_key_in_data",
+          "condition": "A key in dimensions or confidence_scores is not a valid InquiryDimension string",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Invalid dimension key — must be one of: people, projects, tickets, keywords, sentiment"
+          }
+        },
+        {
+          "name": "confidence_out_of_range",
+          "condition": "Any confidence_scores value is not in [0.0, 1.0]",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "All confidence scores must be in the range [0.0, 1.0]"
+          }
+        },
+        {
+          "name": "key_mismatch",
+          "condition": "confidence_scores keys do not exactly equal dimensions keys",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "confidence_scores keys must exactly equal dimensions keys"
+          }
+        },
+        {
+          "name": "invalid_data_type",
+          "condition": "data is not a dict or contains values of incorrect types",
+          "error_type": "ValidationError",
+          "error_data": {
+            "detail": "Input must be a dict with correctly-typed values"
+          }
+        }
+      ],
+      "preconditions": [
+        "data is a dict containing at minimum the required keys: signal_id, context_id, dimensions, confidence_scores",
+        "dimensions keys are valid InquiryDimension string values",
+        "confidence_scores values are numeric and in [0.0, 1.0]"
+      ],
+      "postconditions": [
+        "Returned InquiryResult passes all validation (field validators and model_validator)",
+        "Returned InquiryResult is frozen (immutable at shallow level)",
+        "set(result.confidence_scores.keys()) == set(result.dimensions.keys())"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "InquiryResult instances are always frozen (model_config = ConfigDict(frozen=True)) — field assignment after construction raises TypeError",
+    "For any valid InquiryResult r: set(r.confidence_scores.keys()) == set(r.dimensions.keys()) — enforced by @model_validator(mode='after')",
+    "For any valid InquiryResult r: all(0.0 <= v <= 1.0 for v in r.confidence_scores.values()) — enforced by @field_validator",
+    "For any valid InquiryResult r: all(isinstance(k, InquiryDimension) for k in r.dimensions.keys())",
+    "For any valid InquiryResult r: r.id is a non-empty string (typically UUID4 format)",
+    "For any valid InquiryResult r: r.signal_id is a non-empty string",
+    "For any valid InquiryResult r: r.context_id is a non-empty string",
+    "For any valid InquiryResult r: r.timestamp is a valid ISO 8601 UTC datetime string",
+    "InquiryDimension has exactly five variants: people, projects, tickets, keywords, sentiment",
+    "Shallow-freeze semantics: nested mutable containers (list values in dimensions dict, the dicts themselves) are not deep-frozen — InquiryResult is NOT guaranteed hashable",
+    "serialize_inquiry_result followed by deserialize_inquiry_result produces a value-equal InquiryResult (round-trip fidelity)",
+    "All temporal fields use ISO 8601 with UTC timezone internally"
+  ],
+  "requires": []
+}

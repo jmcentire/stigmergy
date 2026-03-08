@@ -1,0 +1,678 @@
+{
+  "component_id": "feedback_recording",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "mint_feedback_id_format",
+      "description": "mint_feedback_id returns a string matching the fb-* pattern with at least 4 trailing characters",
+      "function": "mint_feedback_id",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "A string like 'fb-abc1234' matching the required pattern",
+      "expected_error": "",
+      "assertions": [
+        "result matches regex ^fb-[a-zA-Z0-9_-]{4,}$"
+      ]
+    },
+    {
+      "id": "mint_feedback_id_uniqueness",
+      "description": "Multiple calls to mint_feedback_id produce unique values",
+      "function": "mint_feedback_id",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All 100 generated ids are unique",
+        "All match the fb-* pattern"
+      ]
+    },
+    {
+      "id": "mint_feedback_id_accepted_by_record_finding",
+      "description": "A minted feedback_id is accepted by record_finding without validation error",
+      "function": "mint_feedback_id",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "record_finding succeeds with the minted id",
+        "returned FindingRecord has the same feedback_id"
+      ]
+    },
+    {
+      "id": "store_init_empty_indexes",
+      "description": "FeedbackStore.__init__ creates empty in-memory indexes and does no file I/O",
+      "function": "FeedbackStore.__init__",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Store is created without error",
+        "No files created in data_dir"
+      ]
+    },
+    {
+      "id": "store_load_missing_files",
+      "description": "FeedbackStore.load succeeds with empty indexes when JSONL files do not exist",
+      "function": "FeedbackStore.load",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "load() completes without error",
+        "list_findings returns empty list",
+        "list_feedback returns empty list"
+      ]
+    },
+    {
+      "id": "store_load_io_error",
+      "description": "FeedbackStore.load raises FeedbackError on unrecoverable I/O error (e.g., permission denied)",
+      "function": "FeedbackStore.load",
+      "category": "error_case",
+      "setup_description": "Create findings.jsonl as a directory to trigger I/O error",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "FeedbackError is raised with appropriate message"
+      ]
+    },
+    {
+      "id": "record_finding_happy_path",
+      "description": "record_finding creates and returns a FindingRecord with correct fields",
+      "function": "FeedbackStore.record_finding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "fb-test1234",
+        "signal_id": "sig-001",
+        "context_id": "ctx-001",
+        "agent_id": "agent-alpha",
+        "timestamp": "2024-01-15T10:30:00Z",
+        "content_summary": "Found unused import in main.py"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned record.feedback_id == 'fb-test1234'",
+        "Returned record.signal_id == 'sig-001'",
+        "Returned record.context_id == 'ctx-001'",
+        "Returned record.agent_id == 'agent-alpha'",
+        "Returned record.content_summary == 'Found unused import in main.py'",
+        "Returned record.schema_version == 1"
+      ]
+    },
+    {
+      "id": "record_finding_rated_false_initially",
+      "description": "A newly recorded finding has rated=False",
+      "function": "FeedbackStore.record_finding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned FindingRecord.rated is False"
+      ]
+    },
+    {
+      "id": "record_finding_persists_to_file",
+      "description": "record_finding appends a JSON line to findings.jsonl and creates the data directory",
+      "function": "FeedbackStore.record_finding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "findings.jsonl file exists after call",
+        "File contains exactly one JSON line",
+        "JSON line contains the feedback_id"
+      ]
+    },
+    {
+      "id": "record_finding_duplicate_error",
+      "description": "record_finding raises DuplicateFeedbackError when feedback_id already exists",
+      "function": "FeedbackStore.record_finding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "DuplicateFeedbackError",
+      "assertions": [
+        "DuplicateFeedbackError is raised",
+        "Error has the duplicate feedback_id"
+      ]
+    },
+    {
+      "id": "record_finding_invalid_feedback_id",
+      "description": "record_finding raises FeedbackError when feedback_id does not match fb-* pattern",
+      "function": "FeedbackStore.record_finding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "invalid-id"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "FeedbackError (or ValidationError) is raised for invalid feedback_id format"
+      ]
+    },
+    {
+      "id": "record_finding_content_summary_too_long",
+      "description": "record_finding raises error when content_summary exceeds 500 characters",
+      "function": "FeedbackStore.record_finding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "Error is raised for content_summary > 500 chars"
+      ]
+    },
+    {
+      "id": "record_finding_content_summary_empty",
+      "description": "record_finding raises error when content_summary is empty string",
+      "function": "FeedbackStore.record_finding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "Error is raised for empty content_summary"
+      ]
+    },
+    {
+      "id": "record_feedback_happy_path",
+      "description": "record_feedback creates a FeedbackRecord with correct denormalized fields and rating",
+      "function": "FeedbackStore.record_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned FeedbackRecord.rating == 'helpful'",
+        "FeedbackRecord.feedback_id matches the finding's feedback_id",
+        "FeedbackRecord.signal_id matches the finding's signal_id",
+        "FeedbackRecord.feedback_timestamp is set"
+      ]
+    },
+    {
+      "id": "record_feedback_finding_rated_true",
+      "description": "After recording feedback, the finding's rated status is True",
+      "function": "FeedbackStore.record_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "get_finding returns a record where rated info is available",
+        "Finding is marked as rated in the store"
+      ]
+    },
+    {
+      "id": "record_feedback_feedback_timestamp_gte_finding_timestamp",
+      "description": "FeedbackRecord.feedback_timestamp is >= the FindingRecord.timestamp",
+      "function": "FeedbackStore.record_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "feedback_timestamp >= finding.timestamp"
+      ]
+    },
+    {
+      "id": "record_feedback_finding_not_found",
+      "description": "record_feedback raises FeedbackNotFoundError when feedback_id does not exist",
+      "function": "FeedbackStore.record_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "fb-nonexistent0",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackNotFoundError",
+      "assertions": [
+        "FeedbackNotFoundError is raised",
+        "Error contains the missing feedback_id"
+      ]
+    },
+    {
+      "id": "record_feedback_invalid_rating",
+      "description": "record_feedback raises error when rating is not a valid Rating value",
+      "function": "FeedbackStore.record_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating": "fantastic"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "Error is raised for invalid rating value"
+      ]
+    },
+    {
+      "id": "record_feedback_re_rating",
+      "description": "Re-rating a finding with a different rating replaces the in-memory entry; get_feedback returns latest",
+      "function": "FeedbackStore.record_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "First rating is 'helpful'",
+        "After re-rating with 'wrong', get_feedback returns 'wrong'",
+        "Both lines appended to feedback.jsonl (append-only)"
+      ]
+    },
+    {
+      "id": "get_finding_success",
+      "description": "get_finding retrieves a previously recorded FindingRecord by feedback_id",
+      "function": "FeedbackStore.get_finding",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned FindingRecord matches the recorded data",
+        "Record is frozen/immutable"
+      ]
+    },
+    {
+      "id": "get_finding_not_found",
+      "description": "get_finding raises FeedbackNotFoundError for nonexistent feedback_id",
+      "function": "FeedbackStore.get_finding",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "fb-doesnotexist"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackNotFoundError",
+      "assertions": [
+        "FeedbackNotFoundError is raised with the correct feedback_id"
+      ]
+    },
+    {
+      "id": "get_feedback_success",
+      "description": "get_feedback retrieves the latest FeedbackRecord for a rated finding",
+      "function": "FeedbackStore.get_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned FeedbackRecord has correct rating",
+        "Record is frozen/immutable"
+      ]
+    },
+    {
+      "id": "get_feedback_not_found_unrated",
+      "description": "get_feedback raises FeedbackNotFoundError for a finding that exists but has not been rated",
+      "function": "FeedbackStore.get_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackNotFoundError",
+      "assertions": [
+        "FeedbackNotFoundError is raised"
+      ]
+    },
+    {
+      "id": "list_findings_all",
+      "description": "list_findings with no filters returns all findings ordered by timestamp descending",
+      "function": "FeedbackStore.list_findings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All recorded findings are returned",
+        "Results ordered by timestamp descending"
+      ]
+    },
+    {
+      "id": "list_findings_rated_only",
+      "description": "list_findings with rated_only=True returns only rated findings",
+      "function": "FeedbackStore.list_findings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Only findings that have been rated are returned"
+      ]
+    },
+    {
+      "id": "list_findings_unrated_only",
+      "description": "list_findings with unrated_only=True returns only unrated findings",
+      "function": "FeedbackStore.list_findings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Only findings that have NOT been rated are returned"
+      ]
+    },
+    {
+      "id": "list_findings_conflicting_filters_error",
+      "description": "list_findings raises FeedbackError when both rated_only and unrated_only are True",
+      "function": "FeedbackStore.list_findings",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "FeedbackError is raised with message about mutual exclusivity"
+      ]
+    },
+    {
+      "id": "list_findings_limit",
+      "description": "list_findings respects the limit parameter",
+      "function": "FeedbackStore.list_findings",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Returned list has at most 'limit' entries"
+      ]
+    },
+    {
+      "id": "list_findings_agent_filter",
+      "description": "list_findings filtered by agent_id returns only that agent's findings",
+      "function": "FeedbackStore.list_findings",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All returned findings have the specified agent_id"
+      ]
+    },
+    {
+      "id": "list_feedback_by_agent",
+      "description": "list_feedback filtered by agent_id returns only feedback for that agent's findings",
+      "function": "FeedbackStore.list_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All returned FeedbackRecords have the specified agent_id"
+      ]
+    },
+    {
+      "id": "list_feedback_by_rating",
+      "description": "list_feedback filtered by rating returns only matching feedback",
+      "function": "FeedbackStore.list_feedback",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All returned FeedbackRecords have the specified rating"
+      ]
+    },
+    {
+      "id": "list_feedback_by_since",
+      "description": "list_feedback filtered by since returns only feedback with feedback_timestamp >= since",
+      "function": "FeedbackStore.list_feedback",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "All returned records have feedback_timestamp >= the since value"
+      ]
+    },
+    {
+      "id": "list_feedback_ordered_descending",
+      "description": "list_feedback returns results ordered by feedback_timestamp descending",
+      "function": "FeedbackStore.list_feedback",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Each successive feedback_timestamp is <= the previous one"
+      ]
+    },
+    {
+      "id": "get_summary_empty_store",
+      "description": "get_summary on empty store returns all zeros",
+      "function": "FeedbackStore.get_summary",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_findings == 0",
+        "total_rated == 0",
+        "helpful_count == 0",
+        "already_knew_count == 0",
+        "wrong_count == 0",
+        "irrelevant_count == 0"
+      ]
+    },
+    {
+      "id": "get_summary_findings_only",
+      "description": "get_summary with findings but no feedback shows total_findings > 0 and total_rated == 0",
+      "function": "FeedbackStore.get_summary",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_findings > 0",
+        "total_rated == 0"
+      ]
+    },
+    {
+      "id": "get_summary_mixed_ratings",
+      "description": "get_summary correctly counts each rating category",
+      "function": "FeedbackStore.get_summary",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Rating counts match expected values",
+        "total_rated == sum of all rating counts"
+      ]
+    },
+    {
+      "id": "get_summary_agent_scoped",
+      "description": "get_summary filtered by agent_id only counts that agent's findings and feedback",
+      "function": "FeedbackStore.get_summary",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Counts only reflect the specified agent's data"
+      ]
+    },
+    {
+      "id": "get_summary_invariant_total_rated_eq_sum",
+      "description": "total_rated always equals helpful_count + already_knew_count + wrong_count + irrelevant_count",
+      "function": "FeedbackStore.get_summary",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "total_rated == helpful_count + already_knew_count + wrong_count + irrelevant_count",
+        "total_findings >= total_rated",
+        "All counts >= 0"
+      ]
+    },
+    {
+      "id": "persistence_reload",
+      "description": "Data persisted by one FeedbackStore instance is correctly loaded by a new instance",
+      "function": "FeedbackStore.load",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "New store instance loads all findings from disk",
+        "New store instance loads all feedback from disk",
+        "Re-rated findings show latest rating after reload"
+      ]
+    },
+    {
+      "id": "persistence_malformed_lines_skipped",
+      "description": "Malformed and blank lines in JSONL files are skipped during load without errors",
+      "function": "FeedbackStore.load",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Valid records are loaded successfully",
+        "Malformed lines do not cause crashes",
+        "Blank lines do not cause crashes"
+      ]
+    },
+    {
+      "id": "immutability_frozen_records",
+      "description": "FindingRecord and FeedbackRecord are frozen and cannot be mutated after creation",
+      "function": "FeedbackStore.record_finding",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "",
+      "assertions": [
+        "Attempting to set an attribute on FindingRecord raises an error",
+        "Attempting to set an attribute on FeedbackRecord raises an error"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for Feedback Recording & Storage component.\n\nTests verify the feedback_recording component against its contract:\n- mint_feedback_id: unique ID generation with fb-* prefix\n- FeedbackStore: async CRUD for findings and feedback with JSONL persistence\n- FindingRecord / FeedbackRecord: frozen Pydantic v2 models\n- Error handling: DuplicateFeedbackError, FeedbackNotFoundError, FeedbackError\n\nRun with: pytest tests/test_feedback_recording.py -v --asyncio-mode=auto\n\"\"\"\n\nimport asyncio\nimport json\nimport os\nimport re\nimport warnings\nfrom datetime import datetime, timezone\nfrom pathlib import Path\nfrom unittest.mock import AsyncMock, MagicMock, patch\n\nimport pytest\nimport pytest_asyncio\n\n# Import component under test\n# Adjust import paths based on actual project structure\nfrom primitives.feedback import (\n    DuplicateFeedbackError,\n    FeedbackError,\n    FeedbackNotFoundError,\n    FeedbackRecord,\n    FindingRecord,\n    Rating,\n    mint_feedback_id,\n)\nfrom attention.feedback_store import FeedbackStore\n\n# Try importing config/filter types - they may live in either module\ntry:\n    from attention.feedback_store import FeedbackListFilter, FeedbackStoreConfig\nexcept ImportError:\n    try:\n        from primitives.feedback import FeedbackListFilter, FeedbackStoreConfig\n    except ImportError:\n        # Fallback: they might be in a combined module\n        pass\n\n\n# ---------------------------------------------------------------------------\n# Fixtures\n# ---------------------------------------------------------------------------\n\n@pytest.fixture\ndef feedback_config(tmp_path):\n    \"\"\"Create a FeedbackStoreConfig pointing at a temporary directory.\"\"\"\n    return FeedbackStoreConfig(\n        data_dir=str(tmp_path / \".stigmergy\"),\n        findings_filename=\"findings.jsonl\",\n        feedback_filename=\"feedback.jsonl\",\n    )\n\n\n@pytest_asyncio.fixture\nasync def store(feedback_config):\n    \"\"\"Create a fresh FeedbackStore and call load() (no files on disk yet).\"\"\"\n    s = FeedbackStore(config=feedback_config)\n    await s.load()\n    return s\n\n\n@pytest_asyncio.fixture\nasync def populated_store(store):\n    \"\"\"\n    A FeedbackStore pre-populated with 4 findings across 2 agents,\n    with 2 findings rated.\n\n    Findings layout:\n        fb-pop-0001 agent-alpha  2024-01-10T08:00:00Z  (rated helpful)\n        fb-pop-0002 agent-alpha  2024-01-11T09:00:00Z  (rated wrong)\n        fb-pop-0003 agent-beta   2024-01-12T10:00:00Z  (unrated)\n        fb-pop-0004 agent-beta   2024-01-13T11:00:00Z  (unrated)\n    \"\"\"\n    findings = [\n        dict(feedback_id=\"fb-pop-0001\", signal_id=\"sig-1\", context_id=\"ctx-1\",\n             agent_id=\"agent-alpha\", timestamp=\"2024-01-10T08:00:00Z\",\n             content_summary=\"Finding one from alpha\"),\n        dict(feedback_id=\"fb-pop-0002\", signal_id=\"sig-2\", context_id=\"ctx-1\",\n             agent_id=\"agent-alpha\", timestamp=\"2024-01-11T09:00:00Z\",\n             content_summary=\"Finding two from alpha\"),\n        dict(feedback_id=\"fb-pop-0003\", signal_id=\"sig-3\", context_id=\"ctx-2\",\n             agent_id=\"agent-beta\", timestamp=\"2024-01-12T10:00:00Z\",\n             content_summary=\"Finding three from beta\"),\n        dict(feedback_id=\"fb-pop-0004\", signal_id=\"sig-4\", context_id=\"ctx-2\",\n             agent_id=\"agent-beta\", timestamp=\"2024-01-13T11:00:00Z\",\n             content_summary=\"Finding four from beta\"),\n    ]\n    for f in findings:\n        await store.record_finding(**f)\n\n    # Rate the first two\n    await store.record_feedback(feedback_id=\"fb-pop-0001\", rating=\"helpful\")\n    await store.record_feedback(feedback_id=\"fb-pop-0002\", rating=\"wrong\")\n\n    return store\n\n\n@pytest.fixture\ndef make_finding():\n    \"\"\"Factory that returns a dict of valid kwargs for record_finding().\"\"\"\n    _counter = 0\n\n    def _factory(**overrides):\n        nonlocal _counter\n        _counter += 1\n        fid = mint_feedback_id()\n        defaults = dict(\n            feedback_id=fid,\n            signal_id=f\"sig-{_counter:04d}\",\n            context_id=f\"ctx-{_counter:04d}\",\n            agent_id=\"agent-default\",\n            timestamp=datetime.now(timezone.utc).isoformat(),\n            content_summary=f\"Test finding #{_counter}\",\n        )\n        defaults.update(overrides)\n        return defaults\n\n    return _factory\n\n\n# ---------------------------------------------------------------------------\n# Helpers\n# ---------------------------------------------------------------------------\n\nFEEDBACK_ID_PATTERN = re.compile(r\"^fb-[a-zA-Z0-9_-]{4,}$\")\n\n\ndef _findings_path(config):\n    return Path(config.data_dir) / config.findings_filename\n\n\ndef _feedback_path(config):\n    return Path(config.data_dir) / config.feedback_filename\n\n\n# ---------------------------------------------------------------------------\n# 1. mint_feedback_id tests\n# ---------------------------------------------------------------------------\n\nclass TestMintFeedbackId:\n    \"\"\"Tests for the mint_feedback_id utility function.\"\"\"\n\n    def test_mint_feedback_id_format(self):\n        \"\"\"mint_feedback_id returns a string matching ^fb-[a-zA-Z0-9_-]{4,}$.\"\"\"\n        fid = mint_feedback_id()\n        assert isinstance(fid, str), \"mint_feedback_id must return a string\"\n        assert FEEDBACK_ID_PATTERN.match(fid), (\n            f\"feedback_id '{fid}' does not match required pattern ^fb-[a-zA-Z0-9_-]{{4,}}$\"\n        )\n\n    def test_mint_feedback_id_uniqueness(self):\n        \"\"\"100 consecutive calls produce 100 unique IDs.\"\"\"\n        ids = [mint_feedback_id() for _ in range(100)]\n        assert len(set(ids)) == 100, (\n            f\"Expected 100 unique IDs but got {len(set(ids))} unique out of 100\"\n        )\n        for fid in ids:\n            assert FEEDBACK_ID_PATTERN.match(fid), (\n                f\"Generated id '{fid}' does not match the fb-* pattern\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_mint_feedback_id_accepted_by_record_finding(self, store, make_finding):\n        \"\"\"A minted feedback_id is accepted by record_finding without error.\"\"\"\n        fid = mint_feedback_id()\n        kwargs = make_finding(feedback_id=fid)\n        result = await store.record_finding(**kwargs)\n        assert result.feedback_id == fid, (\n            f\"Returned feedback_id '{result.feedback_id}' != minted '{fid}'\"\n        )\n\n\n# ---------------------------------------------------------------------------\n# 2. FeedbackStore initialization & load\n# ---------------------------------------------------------------------------\n\nclass TestStoreInitAndLoad:\n    \"\"\"Tests for FeedbackStore construction and load().\"\"\"\n\n    def test_store_init_no_file_io(self, feedback_config):\n        \"\"\"__init__ creates the store without touching the filesystem.\"\"\"\n        data_dir = Path(feedback_config.data_dir)\n        # data_dir should not be created by __init__\n        store = FeedbackStore(config=feedback_config)\n        assert not data_dir.exists(), (\n            \"FeedbackStore.__init__ should NOT create the data directory\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_store_load_missing_files(self, feedback_config):\n        \"\"\"load() with no JSONL files results in empty indexes, no error.\"\"\"\n        store = FeedbackStore(config=feedback_config)\n        await store.load()  # Should not raise\n        findings = await store.list_findings()\n        assert findings == [] or len(findings) == 0, (\n            \"Expected empty findings list after loading with no files on disk\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_store_load_io_error(self, feedback_config):\n        \"\"\"load() raises FeedbackError on unrecoverable I/O error.\"\"\"\n        data_dir = Path(feedback_config.data_dir)\n        data_dir.mkdir(parents=True, exist_ok=True)\n        # Create findings.jsonl as a *directory* to provoke an I/O error\n        findings_path = data_dir / feedback_config.findings_filename\n        findings_path.mkdir(parents=True, exist_ok=True)\n\n        store = FeedbackStore(config=feedback_config)\n        with pytest.raises((FeedbackError, OSError, IsADirectoryError)):\n            await store.load()\n\n\n# ---------------------------------------------------------------------------\n# 3. record_finding happy path\n# ---------------------------------------------------------------------------\n\nclass TestRecordFindingHappy:\n    \"\"\"Happy-path tests for FeedbackStore.record_finding.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_record_finding_returns_correct_fields(self, store):\n        \"\"\"record_finding returns a FindingRecord with all provided fields.\"\"\"\n        result = await store.record_finding(\n            feedback_id=\"fb-test1234\",\n            signal_id=\"sig-001\",\n            context_id=\"ctx-001\",\n            agent_id=\"agent-alpha\",\n            timestamp=\"2024-01-15T10:30:00Z\",\n            content_summary=\"Found unused import in main.py\",\n        )\n        assert result.feedback_id == \"fb-test1234\"\n        assert result.signal_id == \"sig-001\"\n        assert result.context_id == \"ctx-001\"\n        assert result.agent_id == \"agent-alpha\"\n        assert result.content_summary == \"Found unused import in main.py\"\n        assert result.schema_version == 1\n\n    @pytest.mark.asyncio\n    async def test_record_finding_rated_false_initially(self, store, make_finding):\n        \"\"\"A newly recorded finding has rated=False.\"\"\"\n        kwargs = make_finding()\n        result = await store.record_finding(**kwargs)\n        assert result.rated is False, \"Newly recorded finding should have rated=False\"\n\n    @pytest.mark.asyncio\n    async def test_record_finding_persists_to_file(self, store, feedback_config, make_finding):\n        \"\"\"record_finding appends a JSON line to findings.jsonl.\"\"\"\n        kwargs = make_finding()\n        await store.record_finding(**kwargs)\n\n        fp = _findings_path(feedback_config)\n        assert fp.exists(), \"findings.jsonl should exist after record_finding\"\n\n        lines = [l for l in fp.read_text().strip().split(\"\\n\") if l.strip()]\n        assert len(lines) == 1, f\"Expected 1 line in findings.jsonl, got {len(lines)}\"\n\n        data = json.loads(lines[0])\n        assert data[\"feedback_id\"] == kwargs[\"feedback_id\"], (\n            \"Persisted feedback_id should match the recorded one\"\n        )\n\n\n# ---------------------------------------------------------------------------\n# 4. record_finding error cases\n# ---------------------------------------------------------------------------\n\nclass TestRecordFindingErrors:\n    \"\"\"Error-case tests for FeedbackStore.record_finding.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_record_finding_duplicate_error(self, store, make_finding):\n        \"\"\"Recording a finding with a duplicate feedback_id raises DuplicateFeedbackError.\"\"\"\n        kwargs = make_finding()\n        await store.record_finding(**kwargs)\n\n        with pytest.raises(DuplicateFeedbackError) as exc_info:\n            await store.record_finding(**kwargs)\n        assert kwargs[\"feedback_id\"] in str(exc_info.value) or \\\n               getattr(exc_info.value, \"feedback_id\", None) == kwargs[\"feedback_id\"], (\n            \"DuplicateFeedbackError should reference the duplicate feedback_id\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_record_finding_invalid_feedback_id(self, store, make_finding):\n        \"\"\"record_finding rejects a feedback_id that doesn't match the fb-* pattern.\"\"\"\n        kwargs = make_finding(feedback_id=\"invalid-id\")\n        with pytest.raises((FeedbackError, ValueError, Exception)):\n            await store.record_finding(**kwargs)\n\n    @pytest.mark.asyncio\n    async def test_record_finding_invalid_feedback_id_short(self, store, make_finding):\n        \"\"\"record_finding rejects a feedback_id with fewer than 4 trailing characters.\"\"\"\n        kwargs = make_finding(feedback_id=\"fb-ab\")\n        with pytest.raises((FeedbackError, ValueError, Exception)):\n            await store.record_finding(**kwargs)\n\n    @pytest.mark.asyncio\n    async def test_record_finding_content_summary_too_long(self, store, make_finding):\n        \"\"\"record_finding rejects content_summary exceeding 500 characters.\"\"\"\n        kwargs = make_finding(content_summary=\"x\" * 501)\n        with pytest.raises((FeedbackError, ValueError, Exception)):\n            await store.record_finding(**kwargs)\n\n    @pytest.mark.asyncio\n    async def test_record_finding_content_summary_empty(self, store, make_finding):\n        \"\"\"record_finding rejects an empty content_summary.\"\"\"\n        kwargs = make_finding(content_summary=\"\")\n        with pytest.raises((FeedbackError, ValueError, Exception)):\n            await store.record_finding(**kwargs)\n\n\n# ---------------------------------------------------------------------------\n# 5. record_feedback happy path\n# ---------------------------------------------------------------------------\n\nclass TestRecordFeedbackHappy:\n    \"\"\"Happy-path tests for FeedbackStore.record_feedback.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_returns_correct_fields(self, store, make_finding):\n        \"\"\"record_feedback returns a FeedbackRecord with denormalized fields and rating.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n        fb = await store.record_feedback(feedback_id=finding.feedback_id, rating=\"helpful\")\n\n        assert fb.feedback_id == finding.feedback_id\n        assert fb.signal_id == finding.signal_id\n        assert fb.context_id == finding.context_id\n        assert fb.agent_id == finding.agent_id\n        assert fb.rating == \"helpful\"\n        assert fb.feedback_timestamp is not None and fb.feedback_timestamp != \"\"\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_finding_marked_rated(self, store, make_finding):\n        \"\"\"After recording feedback, the corresponding finding is marked as rated.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"already_knew\")\n\n        # Verify via list_findings with rated_only\n        rated = await store.list_findings(rated_only=True)\n        rated_ids = [f.feedback_id for f in rated]\n        assert finding.feedback_id in rated_ids, (\n            \"Finding should appear in rated_only list after receiving feedback\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_timestamp_gte_finding(self, store, make_finding):\n        \"\"\"FeedbackRecord.feedback_timestamp >= FindingRecord.timestamp.\"\"\"\n        kwargs = make_finding(timestamp=\"2024-01-01T00:00:00Z\")\n        finding = await store.record_finding(**kwargs)\n        fb = await store.record_feedback(feedback_id=finding.feedback_id, rating=\"irrelevant\")\n\n        # Parse timestamps for comparison\n        finding_ts_str = finding.timestamp if isinstance(finding.timestamp, str) else finding.timestamp.isoformat()\n        fb_ts_str = fb.feedback_timestamp if isinstance(fb.feedback_timestamp, str) else fb.feedback_timestamp.isoformat()\n        assert fb_ts_str >= finding_ts_str, (\n            f\"feedback_timestamp '{fb_ts_str}' should be >= finding timestamp '{finding_ts_str}'\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_re_rating_latest_wins(self, store, make_finding):\n        \"\"\"Re-rating a finding updates the in-memory index to the latest rating.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n\n        fb1 = await store.record_feedback(feedback_id=finding.feedback_id, rating=\"helpful\")\n        assert fb1.rating == \"helpful\"\n\n        fb2 = await store.record_feedback(feedback_id=finding.feedback_id, rating=\"wrong\")\n        assert fb2.rating == \"wrong\"\n\n        # get_feedback should return latest\n        latest = await store.get_feedback(finding.feedback_id)\n        assert latest.rating == \"wrong\", (\n            f\"Expected latest rating 'wrong' but got '{latest.rating}'\"\n        )\n\n\n# ---------------------------------------------------------------------------\n# 6. record_feedback error cases\n# ---------------------------------------------------------------------------\n\nclass TestRecordFeedbackErrors:\n    \"\"\"Error-case tests for FeedbackStore.record_feedback.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_finding_not_found(self, store):\n        \"\"\"record_feedback raises FeedbackNotFoundError for nonexistent feedback_id.\"\"\"\n        with pytest.raises(FeedbackNotFoundError) as exc_info:\n            await store.record_feedback(feedback_id=\"fb-nonexistent0\", rating=\"helpful\")\n        assert \"fb-nonexistent0\" in str(exc_info.value) or \\\n               getattr(exc_info.value, \"feedback_id\", None) == \"fb-nonexistent0\"\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_invalid_rating(self, store, make_finding):\n        \"\"\"record_feedback raises error for an invalid rating value.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n\n        with pytest.raises((FeedbackError, ValueError, Exception)):\n            await store.record_feedback(feedback_id=finding.feedback_id, rating=\"fantastic\")\n\n    @pytest.mark.asyncio\n    async def test_record_feedback_all_valid_ratings(self, store, make_finding):\n        \"\"\"record_feedback accepts all four valid rating values.\"\"\"\n        valid_ratings = [\"helpful\", \"already_knew\", \"wrong\", \"irrelevant\"]\n        for rating in valid_ratings:\n            kwargs = make_finding()\n            finding = await store.record_finding(**kwargs)\n            fb = await store.record_feedback(feedback_id=finding.feedback_id, rating=rating)\n            assert fb.rating == rating, f\"Expected rating '{rating}' but got '{fb.rating}'\"\n\n\n# ---------------------------------------------------------------------------\n# 7. get_finding / get_feedback\n# ---------------------------------------------------------------------------\n\nclass TestGetFindingAndFeedback:\n    \"\"\"Tests for get_finding and get_feedback retrieval methods.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_get_finding_success(self, store, make_finding):\n        \"\"\"get_finding retrieves a recorded finding by feedback_id.\"\"\"\n        kwargs = make_finding()\n        original = await store.record_finding(**kwargs)\n        retrieved = await store.get_finding(original.feedback_id)\n        assert retrieved.feedback_id == original.feedback_id\n        assert retrieved.signal_id == original.signal_id\n        assert retrieved.content_summary == original.content_summary\n\n    @pytest.mark.asyncio\n    async def test_get_finding_not_found(self, store):\n        \"\"\"get_finding raises FeedbackNotFoundError for unknown feedback_id.\"\"\"\n        with pytest.raises(FeedbackNotFoundError) as exc_info:\n            await store.get_finding(\"fb-doesnotexist\")\n        err = exc_info.value\n        assert getattr(err, \"feedback_id\", None) == \"fb-doesnotexist\" or \\\n               \"fb-doesnotexist\" in str(err)\n\n    @pytest.mark.asyncio\n    async def test_get_feedback_success(self, store, make_finding):\n        \"\"\"get_feedback retrieves the latest FeedbackRecord.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"helpful\")\n\n        fb = await store.get_feedback(finding.feedback_id)\n        assert fb.rating == \"helpful\"\n        assert fb.feedback_id == finding.feedback_id\n\n    @pytest.mark.asyncio\n    async def test_get_feedback_not_found_unrated(self, store, make_finding):\n        \"\"\"get_feedback raises FeedbackNotFoundError for an unrated finding.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n\n        with pytest.raises(FeedbackNotFoundError):\n            await store.get_feedback(finding.feedback_id)\n\n\n# ---------------------------------------------------------------------------\n# 8. list_findings\n# ---------------------------------------------------------------------------\n\nclass TestListFindings:\n    \"\"\"Tests for FeedbackStore.list_findings.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_list_findings_all(self, populated_store):\n        \"\"\"list_findings with no filters returns all 4 findings.\"\"\"\n        findings = await populated_store.list_findings(limit=0)\n        assert len(findings) == 4, f\"Expected 4 findings, got {len(findings)}\"\n\n    @pytest.mark.asyncio\n    async def test_list_findings_ordered_descending(self, populated_store):\n        \"\"\"list_findings returns results ordered by timestamp descending.\"\"\"\n        findings = await populated_store.list_findings(limit=0)\n        timestamps = []\n        for f in findings:\n            ts = f.timestamp if isinstance(f.timestamp, str) else f.timestamp.isoformat()\n            timestamps.append(ts)\n        for i in range(len(timestamps) - 1):\n            assert timestamps[i] >= timestamps[i + 1], (\n                f\"Findings not in descending order: {timestamps[i]} < {timestamps[i+1]}\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_list_findings_rated_only(self, populated_store):\n        \"\"\"list_findings with rated_only=True returns only the 2 rated findings.\"\"\"\n        rated = await populated_store.list_findings(rated_only=True, limit=0)\n        assert len(rated) == 2, f\"Expected 2 rated findings, got {len(rated)}\"\n        rated_ids = {f.feedback_id for f in rated}\n        assert \"fb-pop-0001\" in rated_ids\n        assert \"fb-pop-0002\" in rated_ids\n\n    @pytest.mark.asyncio\n    async def test_list_findings_unrated_only(self, populated_store):\n        \"\"\"list_findings with unrated_only=True returns only the 2 unrated findings.\"\"\"\n        unrated = await populated_store.list_findings(unrated_only=True, limit=0)\n        assert len(unrated) == 2, f\"Expected 2 unrated findings, got {len(unrated)}\"\n        unrated_ids = {f.feedback_id for f in unrated}\n        assert \"fb-pop-0003\" in unrated_ids\n        assert \"fb-pop-0004\" in unrated_ids\n\n    @pytest.mark.asyncio\n    async def test_list_findings_conflicting_filters_error(self, populated_store):\n        \"\"\"rated_only and unrated_only both True raises FeedbackError.\"\"\"\n        with pytest.raises(FeedbackError):\n            await populated_store.list_findings(rated_only=True, unrated_only=True)\n\n    @pytest.mark.asyncio\n    async def test_list_findings_limit(self, populated_store):\n        \"\"\"list_findings respects the limit parameter.\"\"\"\n        limited = await populated_store.list_findings(limit=2)\n        assert len(limited) <= 2, f\"Expected at most 2 findings, got {len(limited)}\"\n\n    @pytest.mark.asyncio\n    async def test_list_findings_agent_filter(self, populated_store):\n        \"\"\"list_findings filtered by agent_id returns only that agent's findings.\"\"\"\n        alpha_findings = await populated_store.list_findings(\n            agent_id=\"agent-alpha\", limit=0\n        )\n        assert len(alpha_findings) == 2, (\n            f\"Expected 2 findings for agent-alpha, got {len(alpha_findings)}\"\n        )\n        for f in alpha_findings:\n            assert f.agent_id == \"agent-alpha\"\n\n\n# ---------------------------------------------------------------------------\n# 9. list_feedback with filters\n# ---------------------------------------------------------------------------\n\nclass TestListFeedback:\n    \"\"\"Tests for FeedbackStore.list_feedback with FeedbackListFilter.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_list_feedback_by_agent(self, populated_store):\n        \"\"\"list_feedback filtered by agent_id returns only that agent's feedback.\"\"\"\n        filt = FeedbackListFilter(agent_id=\"agent-alpha\", limit=0)\n        results = await populated_store.list_feedback(filter=filt)\n        assert len(results) == 2, (\n            f\"Expected 2 feedback records for agent-alpha, got {len(results)}\"\n        )\n        for fb in results:\n            assert fb.agent_id == \"agent-alpha\"\n\n    @pytest.mark.asyncio\n    async def test_list_feedback_by_rating(self, populated_store):\n        \"\"\"list_feedback filtered by rating returns only matching feedback.\"\"\"\n        filt = FeedbackListFilter(rating=\"helpful\", limit=0)\n        results = await populated_store.list_feedback(filter=filt)\n        assert len(results) == 1\n        assert results[0].rating == \"helpful\"\n        assert results[0].feedback_id == \"fb-pop-0001\"\n\n    @pytest.mark.asyncio\n    async def test_list_feedback_by_since(self, populated_store):\n        \"\"\"list_feedback with since filter returns only recent feedback.\"\"\"\n        # Get all feedback to find timestamps\n        all_fb = await populated_store.list_feedback(\n            filter=FeedbackListFilter(limit=0)\n        )\n        assert len(all_fb) >= 1, \"Should have at least 1 feedback record\"\n\n        # Use a since value that's far in the past — should return all\n        filt = FeedbackListFilter(since=\"2020-01-01T00:00:00Z\", limit=0)\n        results = await populated_store.list_feedback(filter=filt)\n        assert len(results) == len(all_fb), (\n            \"Since far in past should return all feedback\"\n        )\n\n        # Use a since value far in the future — should return none\n        filt_future = FeedbackListFilter(since=\"2099-01-01T00:00:00Z\", limit=0)\n        results_future = await populated_store.list_feedback(filter=filt_future)\n        assert len(results_future) == 0, (\n            \"Since far in future should return no feedback\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_list_feedback_ordered_descending(self, populated_store):\n        \"\"\"list_feedback returns results ordered by feedback_timestamp descending.\"\"\"\n        filt = FeedbackListFilter(limit=0)\n        results = await populated_store.list_feedback(filter=filt)\n        timestamps = []\n        for fb in results:\n            ts = fb.feedback_timestamp if isinstance(fb.feedback_timestamp, str) else fb.feedback_timestamp.isoformat()\n            timestamps.append(ts)\n        for i in range(len(timestamps) - 1):\n            assert timestamps[i] >= timestamps[i + 1], (\n                f\"Feedback not in descending order: {timestamps[i]} < {timestamps[i+1]}\"\n            )\n\n\n# ---------------------------------------------------------------------------\n# 10. get_summary\n# ---------------------------------------------------------------------------\n\nclass TestGetSummary:\n    \"\"\"Tests for FeedbackStore.get_summary.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_get_summary_empty_store(self, store):\n        \"\"\"get_summary on empty store returns all zeros.\"\"\"\n        summary = await store.get_summary()\n        assert summary.total_findings == 0\n        assert summary.total_rated == 0\n        assert summary.helpful_count == 0\n        assert summary.already_knew_count == 0\n        assert summary.wrong_count == 0\n        assert summary.irrelevant_count == 0\n\n    @pytest.mark.asyncio\n    async def test_get_summary_findings_only(self, store, make_finding):\n        \"\"\"Findings with no feedback: total_findings > 0, total_rated == 0.\"\"\"\n        await store.record_finding(**make_finding())\n        await store.record_finding(**make_finding())\n\n        summary = await store.get_summary()\n        assert summary.total_findings == 2\n        assert summary.total_rated == 0\n\n    @pytest.mark.asyncio\n    async def test_get_summary_mixed_ratings(self, populated_store):\n        \"\"\"get_summary correctly counts each rating category.\"\"\"\n        summary = await populated_store.get_summary()\n        assert summary.total_findings == 4\n        assert summary.total_rated == 2\n        assert summary.helpful_count == 1\n        assert summary.wrong_count == 1\n        assert summary.already_knew_count == 0\n        assert summary.irrelevant_count == 0\n\n    @pytest.mark.asyncio\n    async def test_get_summary_agent_scoped(self, populated_store):\n        \"\"\"get_summary filtered by agent_id only counts that agent's data.\"\"\"\n        summary_alpha = await populated_store.get_summary(agent_id=\"agent-alpha\")\n        assert summary_alpha.total_findings == 2\n        assert summary_alpha.total_rated == 2\n        assert summary_alpha.helpful_count == 1\n        assert summary_alpha.wrong_count == 1\n\n        summary_beta = await populated_store.get_summary(agent_id=\"agent-beta\")\n        assert summary_beta.total_findings == 2\n        assert summary_beta.total_rated == 0\n\n    @pytest.mark.asyncio\n    async def test_get_summary_invariant_total_rated_eq_sum(self, populated_store):\n        \"\"\"total_rated == helpful + already_knew + wrong + irrelevant, and counts >= 0.\"\"\"\n        summary = await populated_store.get_summary()\n        rating_sum = (\n            summary.helpful_count\n            + summary.already_knew_count\n            + summary.wrong_count\n            + summary.irrelevant_count\n        )\n        assert summary.total_rated == rating_sum, (\n            f\"total_rated ({summary.total_rated}) != sum of rating counts ({rating_sum})\"\n        )\n        assert summary.total_findings >= summary.total_rated, (\n            f\"total_findings ({summary.total_findings}) < total_rated ({summary.total_rated})\"\n        )\n        assert summary.total_findings >= 0\n        assert summary.total_rated >= 0\n        assert summary.helpful_count >= 0\n        assert summary.already_knew_count >= 0\n        assert summary.wrong_count >= 0\n        assert summary.irrelevant_count >= 0\n\n\n# ---------------------------------------------------------------------------\n# 11. Persistence\n# ---------------------------------------------------------------------------\n\nclass TestPersistence:\n    \"\"\"Tests for JSONL persistence and reload behavior.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_persistence_reload(self, feedback_config, make_finding):\n        \"\"\"Data from one FeedbackStore is loadable by a new instance.\"\"\"\n        # First store: record findings and feedback\n        store1 = FeedbackStore(config=feedback_config)\n        await store1.load()\n\n        kwargs1 = make_finding(feedback_id=\"fb-persist001\")\n        await store1.record_finding(**kwargs1)\n\n        kwargs2 = make_finding(feedback_id=\"fb-persist002\")\n        await store1.record_finding(**kwargs2)\n\n        await store1.record_feedback(feedback_id=\"fb-persist001\", rating=\"helpful\")\n        # Re-rate to test latest-wins\n        await store1.record_feedback(feedback_id=\"fb-persist001\", rating=\"wrong\")\n\n        # Second store: reload from same files\n        store2 = FeedbackStore(config=feedback_config)\n        await store2.load()\n\n        # Verify findings\n        f1 = await store2.get_finding(\"fb-persist001\")\n        assert f1.feedback_id == \"fb-persist001\"\n        assert f1.signal_id == kwargs1[\"signal_id\"]\n\n        f2 = await store2.get_finding(\"fb-persist002\")\n        assert f2.feedback_id == \"fb-persist002\"\n\n        # Verify latest feedback (re-rating: latest should be 'wrong')\n        fb = await store2.get_feedback(\"fb-persist001\")\n        assert fb.rating == \"wrong\", (\n            f\"Expected latest rating 'wrong' after reload, got '{fb.rating}'\"\n        )\n\n        # fb-persist002 should not have feedback\n        with pytest.raises(FeedbackNotFoundError):\n            await store2.get_feedback(\"fb-persist002\")\n\n    @pytest.mark.asyncio\n    async def test_persistence_malformed_lines_skipped(self, feedback_config, make_finding):\n        \"\"\"Malformed and blank lines in JSONL files are skipped during load.\"\"\"\n        # First, write a valid record\n        store1 = FeedbackStore(config=feedback_config)\n        await store1.load()\n        kwargs = make_finding(feedback_id=\"fb-valid0001\")\n        await store1.record_finding(**kwargs)\n\n        # Manually inject malformed lines into the findings file\n        fp = _findings_path(feedback_config)\n        original = fp.read_text()\n        malformed_content = (\n            original.rstrip(\"\\n\")\n            + \"\\n\"\n            + \"\\n\"                           # blank line\n            + \"this is not json\\n\"           # malformed line\n            + '{\"incomplete\": true\\n'        # incomplete JSON\n            + \"\\n\"                           # another blank line\n        )\n        fp.write_text(malformed_content)\n\n        # Load a new store — should succeed, loading only the valid record\n        store2 = FeedbackStore(config=feedback_config)\n        await store2.load()\n\n        finding = await store2.get_finding(\"fb-valid0001\")\n        assert finding.feedback_id == \"fb-valid0001\", (\n            \"Valid record should be loaded despite malformed lines\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_persistence_schema_version_present(self, store, make_finding, feedback_config):\n        \"\"\"Persisted records include schema_version field.\"\"\"\n        kwargs = make_finding()\n        await store.record_finding(**kwargs)\n\n        fp = _findings_path(feedback_config)\n        line = fp.read_text().strip().split(\"\\n\")[0]\n        data = json.loads(line)\n        assert \"schema_version\" in data, \"Persisted record should include schema_version\"\n        assert data[\"schema_version\"] == 1\n\n\n# ---------------------------------------------------------------------------\n# 12. Immutability\n# ---------------------------------------------------------------------------\n\nclass TestImmutability:\n    \"\"\"Tests for frozen/immutable records.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_finding_record_frozen(self, store, make_finding):\n        \"\"\"FindingRecord is frozen — attribute assignment raises an error.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            finding.content_summary = \"modified\"\n\n    @pytest.mark.asyncio\n    async def test_feedback_record_frozen(self, store, make_finding):\n        \"\"\"FeedbackRecord is frozen — attribute assignment raises an error.\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n        fb = await store.record_feedback(feedback_id=finding.feedback_id, rating=\"helpful\")\n\n        with pytest.raises((AttributeError, TypeError, Exception)):\n            fb.rating = \"wrong\"\n\n\n# ---------------------------------------------------------------------------\n# 13. Additional invariant / edge-case tests\n# ---------------------------------------------------------------------------\n\nclass TestInvariantsAndEdgeCases:\n    \"\"\"Additional invariant and edge-case verifications.\"\"\"\n\n    @pytest.mark.asyncio\n    async def test_feedback_id_prefix_invariant(self, store, make_finding):\n        \"\"\"Every stored record's feedback_id starts with 'fb-'.\"\"\"\n        for _ in range(5):\n            kwargs = make_finding()\n            await store.record_finding(**kwargs)\n\n        findings = await store.list_findings(limit=0)\n        for f in findings:\n            assert f.feedback_id.startswith(\"fb-\"), (\n                f\"feedback_id '{f.feedback_id}' does not start with 'fb-'\"\n            )\n\n    @pytest.mark.asyncio\n    async def test_feedback_requires_existing_finding(self, store):\n        \"\"\"A FeedbackRecord can only be created for an existing FindingRecord.\"\"\"\n        with pytest.raises(FeedbackNotFoundError):\n            await store.record_feedback(feedback_id=\"fb-orphan0001\", rating=\"helpful\")\n\n    @pytest.mark.asyncio\n    async def test_content_summary_max_boundary(self, store, make_finding):\n        \"\"\"content_summary at exactly 500 characters is accepted.\"\"\"\n        kwargs = make_finding(content_summary=\"a\" * 500)\n        result = await store.record_finding(**kwargs)\n        assert len(result.content_summary) == 500\n\n    @pytest.mark.asyncio\n    async def test_content_summary_min_boundary(self, store, make_finding):\n        \"\"\"content_summary at exactly 1 character is accepted.\"\"\"\n        kwargs = make_finding(content_summary=\"x\")\n        result = await store.record_finding(**kwargs)\n        assert result.content_summary == \"x\"\n\n    @pytest.mark.asyncio\n    async def test_list_findings_limit_zero_means_no_limit(self, populated_store):\n        \"\"\"list_findings with limit=0 returns all findings.\"\"\"\n        all_findings = await populated_store.list_findings(limit=0)\n        assert len(all_findings) == 4, (\n            f\"limit=0 should return all 4 findings, got {len(all_findings)}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_re_rating_appends_to_file(self, store, make_finding, feedback_config):\n        \"\"\"Re-rating appends a new line to feedback.jsonl (append-only semantics).\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"helpful\")\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"wrong\")\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"irrelevant\")\n\n        fp = _feedback_path(feedback_config)\n        lines = [l for l in fp.read_text().strip().split(\"\\n\") if l.strip()]\n        assert len(lines) == 3, (\n            f\"Expected 3 append-only lines in feedback.jsonl, got {len(lines)}\"\n        )\n\n    @pytest.mark.asyncio\n    async def test_get_summary_after_re_rating(self, store, make_finding):\n        \"\"\"Re-rating updates summary counts (latest rating wins).\"\"\"\n        kwargs = make_finding()\n        finding = await store.record_finding(**kwargs)\n\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"helpful\")\n        summary1 = await store.get_summary()\n        assert summary1.helpful_count == 1\n        assert summary1.wrong_count == 0\n\n        # Re-rate from helpful to wrong\n        await store.record_feedback(feedback_id=finding.feedback_id, rating=\"wrong\")\n        summary2 = await store.get_summary()\n        assert summary2.helpful_count == 0, (\n            \"After re-rating to 'wrong', helpful_count should be 0\"\n        )\n        assert summary2.wrong_count == 1, (\n            \"After re-rating to 'wrong', wrong_count should be 1\"\n        )\n        assert summary2.total_rated == 1, (\n            \"Re-rating should not increase total_rated count\"\n        )\n"
+}

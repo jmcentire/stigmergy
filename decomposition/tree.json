@@ -1,0 +1,336 @@
+{
+  "root_id": "root",
+  "nodes": {
+    "active_inquiry": {
+      "component_id": "active_inquiry",
+      "name": "Active Inquiry (Feature 1)",
+      "description": "Implement the active inquiry step in the mesh routing pipeline. When a worker accepts a signal (scores above threshold), it decomposes the signal into dimensions (people, projects, tickets, keywords, sentiment) and queries the worker's context knowledge base for relevant connections. Produces InquiryResult frozen Pydantic models that feed into assessment. Runs ONLY on the single accepting worker (after accept, before consensus). Uses LLM when available, falls back to embedding similarity + keyword overlap. Includes: defining InquiryResult primitive in primitives/, adding inquire() method to WorkerNode, wiring into mesh routing pipeline, and tests.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "inquiry_primitive",
+        "inquiry_engine",
+        "inquiry_pipeline_integration"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "inquiry_primitive": {
+      "component_id": "inquiry_primitive",
+      "name": "InquiryResult Primitive",
+      "description": "Define the InquiryResult frozen Pydantic model in primitives/ following the same pattern as Assessment. Fields include: signal_id, context_id, dimensions (dict mapping dimension name to list of discovered connections), confidence scores per dimension, timestamp. Also define supporting types like InquiryDimension enum (people, projects, tickets, keywords, sentiment). Must be immutable (frozen=True).",
+      "depth": 2,
+      "parent_id": "active_inquiry",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "inquiry_engine": {
+      "component_id": "inquiry_engine",
+      "name": "Inquiry Engine",
+      "description": "Implement the inquire() method on WorkerNode (or as a composable function called by WorkerNode). Decomposes an accepted signal into dimensions (people, projects, tickets, keywords, sentiment). For each dimension, queries the worker's context terms/embeddings/vector store for relevant connections. LLM path: use LLM to extract structured dimensions from signal content. Fallback path: use embedding similarity for semantic matching and keyword overlap for lexical matching. Returns an InquiryResult. All async.",
+      "depth": 2,
+      "parent_id": "active_inquiry",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "inquiry_pipeline_integration": {
+      "component_id": "inquiry_pipeline_integration",
+      "name": "Inquiry Pipeline Integration",
+      "description": "Wire the inquiry step into the mesh routing pipeline in mesh/mesh.py. After a worker accepts a signal (stop-on-first-accept) and before consensus, call inquire() on the accepting worker. Thread the InquiryResult through to wherever assessment/consensus uses it. Ensure existing routing behavior is unchanged when inquiry produces no results. All existing tests must continue to pass.",
+      "depth": 2,
+      "parent_id": "active_inquiry",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "context_merge": {
+      "component_id": "context_merge",
+      "name": "Context Merge (Feature 2)",
+      "description": "Implement context merge lifecycle operation. When two neighboring contexts have >70% signal ID overlap (rolling time window) and >80% assessment agreement (accept/reject decisions and familiarity scores on shared signals), they merge. Merge unions vector stores, deduplicates agents, takes max energy, updates neighbor topology. Also handles decay-to-fork handoff: when a decaying context's neighbor is about to fork into its territory, fold the decaying context into the new partition. Wired into lifecycle check in mesh/mesh.py at same cadence as fork/decay.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "merge_detection",
+        "merge_operation",
+        "merge_lifecycle_integration"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "merge_detection": {
+      "component_id": "merge_detection",
+      "name": "Merge Trigger Detection",
+      "description": "Implement merge trigger detection in core/lifecycle.py. Track signal ID sets per context over a rolling time window. Compute signal overlap as set intersection / set union between neighboring context pairs. Compute assessment agreement by comparing accept/reject decisions and familiarity scores on signals both contexts have seen. Trigger merge when overlap > 0.7 AND agreement > 0.8. Only check neighboring contexts (not all pairs). Return merge candidates as ordered list.",
+      "depth": 2,
+      "parent_id": "context_merge",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "merge_operation": {
+      "component_id": "merge_operation",
+      "name": "Merge Execution",
+      "description": "Implement merge(context_a, context_b) in core/lifecycle.py. Union vector stores from both contexts. Deduplicate agents (by identity/role). Take max energy from the two contexts. Update neighbor topology: merged context inherits all neighbors of both, remove the old contexts from neighbor lists. Handle decay-to-fork handoff: detect when a decaying context's neighbor is about to fork into its territory and fold the decaying context into the new partition instead of creating a new fork. Return the merged context.",
+      "depth": 2,
+      "parent_id": "context_merge",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "merge_lifecycle_integration": {
+      "component_id": "merge_lifecycle_integration",
+      "name": "Merge Lifecycle Integration",
+      "description": "Wire merge detection and execution into the existing lifecycle check loop in mesh/mesh.py, alongside fork and decay. Merge checks run at the same cadence as fork/decay. Handle in-flight signals gracefully (signals routed to a context being merged should be re-routed to the merged context). Ensure fork, decay, and merge don't conflict (e.g., don't merge a context that's simultaneously forking). All existing lifecycle tests must pass.",
+      "depth": 2,
+      "parent_id": "context_merge",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "multi_strategy_embeddings": {
+      "component_id": "multi_strategy_embeddings",
+      "name": "Multi-Strategy Embeddings (Feature 3)",
+      "description": "Extend the embedding system to support multiple named strategies that populate Signal.embeddings dict. Define EmbeddingStrategy protocol. Implement at least 3 strategies: semantic (general LLM, fallback to keyword vectors), technical (code-aware keyword extraction + TF-IDF), social (author/mention graph embedding). All strategies produce same fixed dimensionality. Each context learns which dimensions are most predictive via feedback. Familiarity score uses per-context dimension weights.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "embedding_strategy_protocol",
+        "embedding_strategy_implementations",
+        "embedding_context_weights"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "embedding_strategy_protocol": {
+      "component_id": "embedding_strategy_protocol",
+      "name": "Embedding Strategy Protocol & Registry",
+      "description": "Define EmbeddingStrategy protocol in services/embedding.py with async embed(signal) -> numpy vector method. All strategies must produce vectors of the same fixed dimensionality (e.g., 128 or 256) using projection/padding as needed. Create a strategy registry that manages available strategies and runs them to populate Signal.embeddings dict (keyed by strategy name). Ensure the existing single-strategy behavior is preserved as the 'semantic' strategy.",
+      "depth": 2,
+      "parent_id": "multi_strategy_embeddings",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "embedding_strategy_implementations": {
+      "component_id": "embedding_strategy_implementations",
+      "name": "Embedding Strategy Implementations",
+      "description": "Implement 3 concrete embedding strategies: (1) SemanticStrategy - uses LLM for general semantic embedding, falls back to keyword-based vector when no LLM available. (2) TechnicalStrategy - code-aware keyword extraction + TF-IDF, identifies code patterns, API references, technical terms. (3) SocialStrategy - builds author/mention graph embedding from signal metadata (authors, @mentions, channel participation). Each returns a fixed-dimensionality numpy vector. All must work without external services (heuristic fallbacks).",
+      "depth": 2,
+      "parent_id": "multi_strategy_embeddings",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "embedding_context_weights": {
+      "component_id": "embedding_context_weights",
+      "name": "Per-Context Embedding Dimension Weights",
+      "description": "Each context learns which embedding dimensions (semantic, technical, social) are most predictive for its domain via feedback. Store per-context weight vector over strategies. Update weights when signals are accepted (match-based learning). Modify familiarity score calculation in core/familiarity.py to use these per-context dimension weights when computing the embedding component of familiarity. Default to equal weights for new contexts.",
+      "depth": 2,
+      "parent_id": "multi_strategy_embeddings",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "business_weight": {
+      "component_id": "business_weight",
+      "name": "Business Weight (Feature 4)",
+      "description": "Add business_weight float to Context/WorkerNode. Compute from signal frequency, author seniority (from identity resolver), channel gravity (learned from response patterns), engagement velocity. Use for token budget allocation per context and routing priority. Default 0.5, floor 0.1, range [0.0, 1.0].",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "business_weight_model",
+        "business_weight_computation",
+        "business_weight_routing"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "business_weight_model": {
+      "component_id": "business_weight_model",
+      "name": "Business Weight Data Model",
+      "description": "Add business_weight: float field to Context (or WorkerNode) with default 0.5 and floor 0.1. Define the component metrics that feed into business weight: signal_frequency, author_seniority, channel_gravity, engagement_velocity. Store these as trackable metrics per context. Ensure backward compatibility with existing contexts that don't have business_weight set.",
+      "depth": 2,
+      "parent_id": "business_weight",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "business_weight_computation": {
+      "component_id": "business_weight_computation",
+      "name": "Business Weight Computation",
+      "description": "Implement business weight calculation from its component metrics. Signal frequency: count of signals accepted per time window. Author seniority: average seniority score of signal authors (from identity resolver). Channel gravity: learned weight per source channel based on response patterns. Engagement velocity: rate of change of signal volume. Combine into a single [0.0, 1.0] score with floor of 0.1. Update periodically (during lifecycle checks). Async where identity resolver is needed.",
+      "depth": 2,
+      "parent_id": "business_weight",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "business_weight_routing": {
+      "component_id": "business_weight_routing",
+      "name": "Business Weight Routing & Budget Integration",
+      "description": "Use business weight for two purposes: (1) Token budget allocation - higher-weight contexts get proportionally larger share of the token budget from services/token_budget. (2) Routing priority - in the BFS routing queue in mesh/mesh.py, order contexts by business weight so higher-weight contexts are evaluated first. Ensure this doesn't break stop-on-first-accept semantics (it changes evaluation ORDER, not acceptance criteria).",
+      "depth": 2,
+      "parent_id": "business_weight",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "identity_prompting": {
+      "component_id": "identity_prompting",
+      "name": "Identity Prompting (Feature 5)",
+      "description": "When the identity resolver encounters unknown identifiers, surface them for resolution. After each run, collect unknown_identifiers from resolver, run suggest_match() for candidates, present to user in interactive mode or log in non-interactive mode. Persist confirmed mappings to AliasStore. Add --resolve-identities CLI flag. Default to non-interactive (log-and-skip) to avoid blocking CI.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "identity_collection",
+        "identity_cli_integration"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "identity_collection": {
+      "component_id": "identity_collection",
+      "name": "Identity Unknown Collection & Matching",
+      "description": "After each run, collect the _unknown set from the identity resolver. For each unknown identifier, call suggest_match() to find fuzzy match candidates with confidence scores. Package results into a structured format (unknown_id, candidates with scores). Provide API for confirming a match (writes to AliasStore in identity/store.py). Handle the case where suggest_match returns no candidates. All async.",
+      "depth": 2,
+      "parent_id": "identity_prompting",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "identity_cli_integration": {
+      "component_id": "identity_cli_integration",
+      "name": "Identity Prompting CLI Integration",
+      "description": "Add --resolve-identities flag to the CLI (cli/ entry point). When flag is passed and unknowns exist, present interactive prompts: 'Who is @handle? Best match: john.smith (0.87). Confirm? [y/n/other]'. Process user responses and persist confirmed mappings via AliasStore. In non-interactive mode (default, or CI): log unknowns and suggestions as warnings, write to a file for later resolution. Auto-prompt when unknowns exceed a configurable threshold.",
+      "depth": 2,
+      "parent_id": "identity_prompting",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "temporal_filtering": {
+      "component_id": "temporal_filtering",
+      "name": "Temporal Filtering / --since Flag (Feature 6)",
+      "description": "Add --since DATETIME flag to stigmergy run CLI. Pass to all adapters to filter signals by timestamp. Store last-run timestamp in .stigmergy/state.yaml. Default: use last-run timestamp if state exists. --since all forces full reprocessing. ISO 8601 input, UTC internally, adapters convert to native format.",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "temporal_state_management",
+        "temporal_adapter_integration"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "temporal_state_management": {
+      "component_id": "temporal_state_management",
+      "name": "Temporal State Management",
+      "description": "Manage last-run timestamps in .stigmergy/state.yaml. Read/write last_run_timestamp. CLI flag parsing: --since accepts ISO 8601 strings, '--since all' for full reprocess, omitted means use stored timestamp (or process all if no state). Convert all timestamps to UTC datetime objects. Update state.yaml after successful run completion. Handle missing/corrupt state file gracefully.",
+      "depth": 2,
+      "parent_id": "temporal_filtering",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "temporal_adapter_integration": {
+      "component_id": "temporal_adapter_integration",
+      "name": "Temporal Adapter Integration",
+      "description": "Pass the resolved 'since' datetime to all adapters (GitHub, Linear, Slack — both mock and live). Each adapter filters signals to only return those after the given timestamp. Adapters are responsible for converting UTC datetime to their native format (ISO 8601 for GitHub, Unix timestamps for Slack, etc.). Mock adapters must also respect the since parameter for testing. Add since parameter to adapter fetch interfaces without breaking existing callers (default None = fetch all).",
+      "depth": 2,
+      "parent_id": "temporal_filtering",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "feedback_loop": {
+      "component_id": "feedback_loop",
+      "name": "Feedback Loop (Feature 7)",
+      "description": "Allow users to rate findings and use feedback to adjust system behavior. Record findings with feedback_ids. Add 'stigmergy feedback <id> [helpful|already_knew|wrong|irrelevant]' CLI command. Store feedback in .stigmergy/feedback.jsonl. Initially adjust only agent confidence scores via attention/calibration.py (calibration_lr_up/down). 'already_knew' = mild positive (correct but low novelty, slightly decrease surfacing priority).",
+      "depth": 1,
+      "parent_id": "root",
+      "children": [
+        "feedback_recording",
+        "feedback_cli",
+        "feedback_calibration"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "feedback_recording": {
+      "component_id": "feedback_recording",
+      "name": "Feedback Recording & Storage",
+      "description": "When insights/findings are surfaced, assign each a unique feedback_id and record it with metadata (signal_id, context_id, agent_id, timestamp, content summary). Store the finding record so it can be looked up later. Implement feedback storage in .stigmergy/feedback.jsonl: each line is a JSON object with feedback_id, rating (helpful|already_knew|wrong|irrelevant), timestamp, and the original finding metadata. Provide read/write APIs for feedback data.",
+      "depth": 2,
+      "parent_id": "feedback_loop",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "feedback_cli": {
+      "component_id": "feedback_cli",
+      "name": "Feedback CLI Command",
+      "description": "Add 'stigmergy feedback <id> [helpful|already_knew|wrong|irrelevant]' command to the CLI. Validate the feedback_id exists in recorded findings. Validate the rating is one of the allowed values. Write the feedback entry to .stigmergy/feedback.jsonl. Print confirmation. Handle errors (unknown id, invalid rating) with clear messages.",
+      "depth": 2,
+      "parent_id": "feedback_loop",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "feedback_calibration": {
+      "component_id": "feedback_calibration",
+      "name": "Feedback Calibration Integration",
+      "description": "Wire feedback ratings into the existing attention/calibration.py module. Map ratings to calibration actions: 'helpful' -> calibration_lr_up on the producing agent's confidence, 'wrong' -> calibration_lr_down, 'irrelevant' -> calibration_lr_down (smaller), 'already_knew' -> mild positive on confidence but slight decrease on surfacing priority (correct but low novelty). Process feedback entries and apply adjustments. Initially only adjust agent confidence scores; business weight and familiarity weight adjustments are deferred until Features 3 and 4 land.",
+      "depth": 2,
+      "parent_id": "feedback_loop",
+      "children": [],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    },
+    "root": {
+      "component_id": "root",
+      "name": "Root",
+      "description": "# Task: Complete the Stigmergy Architecture\n\nImplement the remaining features from the stigmergic mesh architecture specification\nto bring the existing codebase to full spec compliance. The codebase i",
+      "depth": 0,
+      "parent_id": "",
+      "children": [
+        "active_inquiry",
+        "business_weight",
+        "context_merge",
+        "feedback_loop",
+        "identity_prompting",
+        "multi_strategy_embeddings",
+        "temporal_filtering"
+      ],
+      "contract": null,
+      "implementation_status": "pending",
+      "test_results": null
+    }
+  }
+}

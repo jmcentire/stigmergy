@@ -1,0 +1,600 @@
+{
+  "component_id": "feedback_cli",
+  "name": "Feedback CLI Command",
+  "description": "Add 'stigmergy feedback <id> [helpful|already_knew|wrong|irrelevant]' command to the CLI. Validates feedback_id exists in recorded findings, validates rating is an allowed value, writes the feedback entry to .stigmergy/feedback.jsonl, prints confirmation, and handles errors with clear messages. Three-layer architecture: data models (primitives/feedback.py), domain functions (cli/feedback_cmd.py), and thin CLI layer. Duplicate policy: append-only, downstream consumers (calibration.py) take the latest entry per feedback_id. Rating input is case-insensitive.",
+  "version": 1,
+  "types": [
+    {
+      "name": "FeedbackRating",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "helpful",
+        "already_knew",
+        "wrong",
+        "irrelevant"
+      ],
+      "inner_types": [],
+      "description": "Allowed feedback rating values. Implemented as StrEnum so each variant serializes to its lowercase string value. Rating input from CLI is normalized to lowercase before matching."
+    },
+    {
+      "name": "FeedbackEntry",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The unique identifier of the finding being rated. Must correspond to an existing finding in the stigmergy findings store.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len >= 1",
+              "error_message": "feedback_id must be a non-empty string"
+            }
+          ]
+        },
+        {
+          "name": "rating",
+          "type_ref": "FeedbackRating",
+          "required": true,
+          "default": "",
+          "description": "The user's rating of the finding.",
+          "validators": []
+        },
+        {
+          "name": "timestamp",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "UTC-aware ISO 8601 timestamp of when the feedback was recorded. Represented as datetime internally but serialized as ISO 8601 string in the JSONL output. Must include timezone info (always UTC).",
+          "validators": [
+            {
+              "kind": "regex",
+              "expression": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(\\+00:00|Z)$",
+              "error_message": "timestamp must be a UTC-aware ISO 8601 datetime string"
+            }
+          ]
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "A single feedback record to be appended to feedback.jsonl. Frozen (immutable) Pydantic v2 BaseModel with ConfigDict(frozen=True). Serialized as a single JSON line when written to the JSONL file."
+    },
+    {
+      "name": "FeedbackError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message suitable for display to the user.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Base error type for all feedback-related errors. Serves as the root of the error hierarchy. CLI layer catches this type to handle all feedback errors uniformly."
+    },
+    {
+      "name": "FeedbackIdNotFoundError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including the unrecognized feedback_id.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that was not found.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when the given feedback_id does not correspond to any recorded finding in the stigmergy findings store. Subtype of FeedbackError."
+    },
+    {
+      "name": "InvalidFeedbackRatingError",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "message",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Human-readable error message including the invalid rating and the list of allowed values.",
+          "validators": []
+        },
+        {
+          "name": "rating_given",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw rating string that was rejected.",
+          "validators": []
+        },
+        {
+          "name": "allowed_ratings",
+          "type_ref": "FeedbackRatingList",
+          "required": true,
+          "default": "",
+          "description": "The list of valid FeedbackRating values.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Raised when the rating string does not match any variant of FeedbackRating (after case-insensitive normalization). Subtype of FeedbackError."
+    },
+    {
+      "name": "FeedbackRatingList",
+      "kind": "list",
+      "fields": [],
+      "item_type": "str",
+      "variants": [],
+      "inner_types": [],
+      "description": "A list of FeedbackRating string values."
+    },
+    {
+      "name": "FindingsStore",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "stigmergy_dir",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "Filesystem path to the .stigmergy directory containing findings data. Represented as pathlib.Path internally.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Protocol (structural typing interface) for looking up whether a finding exists by its ID. Default implementation reads from .stigmergy/findings.jsonl. Implementations must be async-compatible. This enables testing with in-memory stores."
+    },
+    {
+      "name": "ValidationResult",
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "found",
+          "type_ref": "bool",
+          "required": true,
+          "default": "",
+          "description": "Whether the feedback_id was found in the findings store.",
+          "validators": []
+        },
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The feedback_id that was checked.",
+          "validators": []
+        }
+      ],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [],
+      "description": "Result of feedback_id validation. Used internally; not persisted."
+    },
+    {
+      "name": "CLIExitCode",
+      "kind": "enum",
+      "fields": [],
+      "item_type": "",
+      "variants": [
+        "SUCCESS_0",
+        "FEEDBACK_ID_NOT_FOUND_1",
+        "INVALID_RATING_2",
+        "IO_ERROR_3",
+        "UNEXPECTED_ERROR_4"
+      ],
+      "inner_types": [],
+      "description": "Exit codes used by the CLI layer when handling feedback commands. Maps error types to numeric exit codes for scripting/automation compatibility."
+    },
+    {
+      "name": "OptionalStr",
+      "kind": "optional",
+      "fields": [],
+      "item_type": "",
+      "variants": [],
+      "inner_types": [
+        "str"
+      ],
+      "description": "An optional string value."
+    }
+  ],
+  "functions": [
+    {
+      "name": "validate_feedback_id",
+      "description": "Checks whether the given feedback_id exists in the recorded findings store (default: .stigmergy/findings.jsonl). Reads the findings file using asyncio.to_thread for non-blocking I/O. Raises FeedbackIdNotFoundError if the ID is not found. Returns None on success (validation passed).",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The finding identifier to validate.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len >= 1",
+              "error_message": "feedback_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "stigmergy_dir",
+          "type_ref": "str",
+          "required": true,
+          "default": ".stigmergy",
+          "description": "Path to the .stigmergy directory. Must exist and contain findings.jsonl.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [
+        {
+          "name": "id_not_found",
+          "condition": "No finding with the given feedback_id exists in findings.jsonl",
+          "error_type": "FeedbackIdNotFoundError",
+          "error_data": {
+            "feedback_id": "The feedback_id that was not found"
+          }
+        },
+        {
+          "name": "findings_file_missing",
+          "condition": "The findings.jsonl file does not exist at the expected path within stigmergy_dir",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Findings file not found at {stigmergy_dir}/findings.jsonl"
+          }
+        },
+        {
+          "name": "findings_file_unreadable",
+          "condition": "The findings.jsonl file exists but cannot be read (permissions, corruption, etc.)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Unable to read findings file"
+          }
+        }
+      ],
+      "preconditions": [
+        "feedback_id is a non-empty string",
+        "stigmergy_dir points to an existing directory",
+        "stigmergy_dir contains a findings.jsonl file"
+      ],
+      "postconditions": [
+        "If the function returns without error, the feedback_id exists in the findings store",
+        "No mutations are made to the findings store or filesystem"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "parse_feedback_rating",
+      "description": "Parses and validates a raw rating string into a FeedbackRating enum value. Performs case-insensitive matching (e.g., 'Helpful' -> 'helpful'). Raises InvalidFeedbackRatingError if the string does not match any variant.",
+      "inputs": [
+        {
+          "name": "rating_str",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw rating string from CLI input.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackRating",
+      "error_cases": [
+        {
+          "name": "invalid_rating",
+          "condition": "rating_str (lowercased) does not match any FeedbackRating variant",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "rating_given": "The raw string that was provided",
+            "allowed_ratings": "helpful, already_knew, wrong, irrelevant"
+          }
+        }
+      ],
+      "preconditions": [
+        "rating_str is a non-empty string"
+      ],
+      "postconditions": [
+        "Return value is one of: helpful, already_knew, wrong, irrelevant",
+        "No side effects"
+      ],
+      "idempotent": true,
+      "side_effects": []
+    },
+    {
+      "name": "record_feedback",
+      "description": "Appends a FeedbackEntry as a single JSON line to .stigmergy/feedback.jsonl. Uses asyncio.to_thread wrapping synchronous file I/O (stdlib preference, no aiofiles dependency). Creates the feedback.jsonl file if it does not exist. Creates intermediate directories if stigmergy_dir does not exist. Returns the absolute path of the file written to.",
+      "inputs": [
+        {
+          "name": "entry",
+          "type_ref": "FeedbackEntry",
+          "required": true,
+          "default": "",
+          "description": "The feedback entry to persist.",
+          "validators": []
+        },
+        {
+          "name": "stigmergy_dir",
+          "type_ref": "str",
+          "required": true,
+          "default": ".stigmergy",
+          "description": "Path to the .stigmergy directory.",
+          "validators": []
+        }
+      ],
+      "output_type": "str",
+      "error_cases": [
+        {
+          "name": "write_permission_denied",
+          "condition": "The process lacks write permissions to stigmergy_dir or feedback.jsonl",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Permission denied writing to feedback.jsonl"
+          }
+        },
+        {
+          "name": "disk_full",
+          "condition": "The filesystem has insufficient space to append the entry",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Failed to write feedback entry: disk full or I/O error"
+          }
+        }
+      ],
+      "preconditions": [
+        "entry is a valid FeedbackEntry (all fields populated, timestamp is UTC)",
+        "The process has write permissions to stigmergy_dir or its parent"
+      ],
+      "postconditions": [
+        "feedback.jsonl exists at stigmergy_dir/feedback.jsonl",
+        "The last line of feedback.jsonl is the JSON serialization of entry",
+        "The file ends with a newline character",
+        "Return value is the absolute path to feedback.jsonl",
+        "Pre-existing content of feedback.jsonl is preserved (append-only)",
+        "No other files are created or modified"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to {stigmergy_dir}/feedback.jsonl",
+        "May create {stigmergy_dir} directory if it does not exist",
+        "May create feedback.jsonl file if it does not exist"
+      ]
+    },
+    {
+      "name": "handle_feedback",
+      "description": "Top-level orchestrator for the feedback workflow. Validates the feedback_id against recorded findings, parses and validates the rating string (case-insensitive), creates a FeedbackEntry with a UTC timestamp, writes it to feedback.jsonl, and returns the created entry. This is the primary entry point called by the CLI layer.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The finding identifier to provide feedback on.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len >= 1",
+              "error_message": "feedback_id must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "rating",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The raw rating string from user input. Will be normalized to lowercase for matching.",
+          "validators": [
+            {
+              "kind": "length",
+              "expression": "len >= 1",
+              "error_message": "rating must be non-empty"
+            }
+          ]
+        },
+        {
+          "name": "stigmergy_dir",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy",
+          "description": "Path to the .stigmergy directory. Defaults to '.stigmergy' relative to CWD.",
+          "validators": []
+        }
+      ],
+      "output_type": "FeedbackEntry",
+      "error_cases": [
+        {
+          "name": "id_not_found",
+          "condition": "feedback_id does not match any recorded finding",
+          "error_type": "FeedbackIdNotFoundError",
+          "error_data": {
+            "feedback_id": "The unrecognized feedback_id"
+          }
+        },
+        {
+          "name": "invalid_rating",
+          "condition": "rating string does not match any FeedbackRating variant after case normalization",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "rating_given": "The raw invalid rating string",
+            "allowed_ratings": "helpful, already_knew, wrong, irrelevant"
+          }
+        },
+        {
+          "name": "io_error",
+          "condition": "File I/O fails during validation or recording (missing findings file, permissions, disk full)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "message": "Descriptive I/O error message"
+          }
+        }
+      ],
+      "preconditions": [
+        "feedback_id is a non-empty string",
+        "rating is a non-empty string",
+        "stigmergy_dir contains a valid findings.jsonl with recorded findings",
+        "The process has read permissions on findings.jsonl and write permissions on stigmergy_dir"
+      ],
+      "postconditions": [
+        "A new FeedbackEntry has been appended to {stigmergy_dir}/feedback.jsonl",
+        "The returned FeedbackEntry has feedback_id matching the input",
+        "The returned FeedbackEntry has a rating that is a valid FeedbackRating",
+        "The returned FeedbackEntry has a UTC-aware timestamp no earlier than invocation time",
+        "Duplicate feedback for the same feedback_id is allowed (append-only policy)"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Appends one JSON line to {stigmergy_dir}/feedback.jsonl",
+        "May create {stigmergy_dir} directory and/or feedback.jsonl file"
+      ]
+    },
+    {
+      "name": "register_feedback_command",
+      "description": "Registers the 'feedback' subcommand with the CLI argument parser. Configures two positional arguments: <id> (feedback_id) and <rating>. Binds the subcommand handler to invoke handle_feedback, catch FeedbackError subtypes, print user-friendly messages to stderr, and return the appropriate CLIExitCode. This is the thin CLI layer that contains no business logic.",
+      "inputs": [
+        {
+          "name": "parser",
+          "type_ref": "any",
+          "required": true,
+          "default": "",
+          "description": "The CLI subparsers object (argparse._SubParsersAction or equivalent) to register the feedback subcommand on.",
+          "validators": []
+        }
+      ],
+      "output_type": "None",
+      "error_cases": [],
+      "preconditions": [
+        "parser is a valid argparse subparsers action object",
+        "No 'feedback' subcommand is already registered on this parser"
+      ],
+      "postconditions": [
+        "A 'feedback' subcommand is registered on the parser",
+        "The subcommand accepts two positional arguments: id (str) and rating (str)",
+        "The subcommand handler calls handle_feedback and maps errors to exit codes"
+      ],
+      "idempotent": true,
+      "side_effects": [
+        "Mutates the parser object by adding a 'feedback' subcommand"
+      ]
+    },
+    {
+      "name": "run_feedback_command",
+      "description": "CLI entry point handler invoked when 'stigmergy feedback <id> <rating>' is executed. Calls handle_feedback, prints a human-readable confirmation on success (to stdout), catches FeedbackError subtypes and prints formatted error messages to stderr, and returns the appropriate CLIExitCode integer value. This is the async-to-sync bridge for the CLI layer.",
+      "inputs": [
+        {
+          "name": "feedback_id",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The finding ID argument from the CLI.",
+          "validators": []
+        },
+        {
+          "name": "rating",
+          "type_ref": "str",
+          "required": true,
+          "default": "",
+          "description": "The rating argument from the CLI.",
+          "validators": []
+        },
+        {
+          "name": "stigmergy_dir",
+          "type_ref": "str",
+          "required": false,
+          "default": ".stigmergy",
+          "description": "Path to .stigmergy directory. Defaults to '.stigmergy'.",
+          "validators": []
+        }
+      ],
+      "output_type": "int",
+      "error_cases": [
+        {
+          "name": "id_not_found",
+          "condition": "handle_feedback raises FeedbackIdNotFoundError",
+          "error_type": "FeedbackIdNotFoundError",
+          "error_data": {
+            "exit_code": "1"
+          }
+        },
+        {
+          "name": "invalid_rating",
+          "condition": "handle_feedback raises InvalidFeedbackRatingError",
+          "error_type": "InvalidFeedbackRatingError",
+          "error_data": {
+            "exit_code": "2"
+          }
+        },
+        {
+          "name": "io_error",
+          "condition": "handle_feedback raises FeedbackError (non-specific I/O error)",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "exit_code": "3"
+          }
+        },
+        {
+          "name": "unexpected_error",
+          "condition": "An unexpected exception occurs outside the FeedbackError hierarchy",
+          "error_type": "FeedbackError",
+          "error_data": {
+            "exit_code": "4",
+            "message": "Unexpected error: <original exception message>"
+          }
+        }
+      ],
+      "preconditions": [
+        "Called from CLI argument dispatch with parsed positional arguments"
+      ],
+      "postconditions": [
+        "Return value is 0 on success, 1 for FeedbackIdNotFoundError, 2 for InvalidFeedbackRatingError, 3 for I/O FeedbackError, 4 for unexpected errors",
+        "On success: confirmation message printed to stdout including feedback_id and rating",
+        "On error: error message printed to stderr"
+      ],
+      "idempotent": false,
+      "side_effects": [
+        "Prints to stdout on success",
+        "Prints to stderr on error",
+        "Delegates to handle_feedback which appends to feedback.jsonl"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "dependency_contracts": {},
+  "invariants": [
+    "FeedbackRating has exactly four variants: helpful, already_knew, wrong, irrelevant",
+    "FeedbackEntry is immutable (frozen Pydantic model) once created",
+    "FeedbackEntry.timestamp is always UTC-aware (timezone-aware with UTC offset)",
+    "feedback.jsonl is append-only; entries are never modified or deleted",
+    "Multiple feedback entries for the same feedback_id are allowed; downstream consumers (calibration.py) take the latest entry per feedback_id",
+    "Rating input from CLI is matched case-insensitively (normalized to lowercase before comparison)",
+    "All file I/O is performed via asyncio.to_thread wrapping synchronous stdlib I/O (no aiofiles dependency)",
+    "FeedbackError is the base exception type; FeedbackIdNotFoundError and InvalidFeedbackRatingError are subtypes",
+    "CLI exit codes: 0=success, 1=id_not_found, 2=invalid_rating, 3=io_error, 4=unexpected",
+    "The CLI layer contains no business logic; all validation and persistence logic resides in domain functions",
+    "Each line in feedback.jsonl is a complete, self-contained JSON object (FeedbackEntry serialization)"
+  ],
+  "requires": []
+}

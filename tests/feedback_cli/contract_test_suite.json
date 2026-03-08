@@ -1,0 +1,706 @@
+{
+  "component_id": "feedback_cli",
+  "contract_version": 1,
+  "test_cases": [
+    {
+      "id": "parse_rating_helpful",
+      "description": "parse_feedback_rating returns FeedbackRating.helpful for 'helpful'",
+      "function": "parse_feedback_rating",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackRating with value 'helpful'",
+      "expected_error": "",
+      "assertions": [
+        "result == FeedbackRating('helpful')",
+        "result.value == 'helpful'"
+      ]
+    },
+    {
+      "id": "parse_rating_already_knew",
+      "description": "parse_feedback_rating returns FeedbackRating.already_knew for 'already_knew'",
+      "function": "parse_feedback_rating",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "already_knew"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackRating with value 'already_knew'",
+      "expected_error": "",
+      "assertions": [
+        "result == FeedbackRating('already_knew')"
+      ]
+    },
+    {
+      "id": "parse_rating_wrong",
+      "description": "parse_feedback_rating returns FeedbackRating.wrong for 'wrong'",
+      "function": "parse_feedback_rating",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "wrong"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackRating with value 'wrong'",
+      "expected_error": "",
+      "assertions": [
+        "result == FeedbackRating('wrong')"
+      ]
+    },
+    {
+      "id": "parse_rating_irrelevant",
+      "description": "parse_feedback_rating returns FeedbackRating.irrelevant for 'irrelevant'",
+      "function": "parse_feedback_rating",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "irrelevant"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackRating with value 'irrelevant'",
+      "expected_error": "",
+      "assertions": [
+        "result == FeedbackRating('irrelevant')"
+      ]
+    },
+    {
+      "id": "parse_rating_case_insensitive_upper",
+      "description": "parse_feedback_rating handles uppercase input 'HELPFUL'",
+      "function": "parse_feedback_rating",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "HELPFUL"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackRating with value 'helpful'",
+      "expected_error": "",
+      "assertions": [
+        "result == FeedbackRating('helpful')"
+      ]
+    },
+    {
+      "id": "parse_rating_case_insensitive_mixed",
+      "description": "parse_feedback_rating handles mixed case input 'Already_Knew'",
+      "function": "parse_feedback_rating",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "Already_Knew"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackRating with value 'already_knew'",
+      "expected_error": "",
+      "assertions": [
+        "result == FeedbackRating('already_knew')"
+      ]
+    },
+    {
+      "id": "parse_rating_invalid_string",
+      "description": "parse_feedback_rating raises InvalidFeedbackRatingError for unrecognized string 'great'",
+      "function": "parse_feedback_rating",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "great"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "InvalidFeedbackRatingError",
+      "assertions": [
+        "error.rating_given == 'great'",
+        "len(error.allowed_ratings) == 4"
+      ]
+    },
+    {
+      "id": "parse_rating_empty_string",
+      "description": "parse_feedback_rating raises InvalidFeedbackRatingError for empty string",
+      "function": "parse_feedback_rating",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": ""
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "InvalidFeedbackRatingError",
+      "assertions": [
+        "error.rating_given == ''"
+      ]
+    },
+    {
+      "id": "parse_rating_whitespace_only",
+      "description": "parse_feedback_rating raises InvalidFeedbackRatingError for whitespace-only input",
+      "function": "parse_feedback_rating",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "  "
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "InvalidFeedbackRatingError",
+      "assertions": [
+        "error.rating_given == '  '"
+      ]
+    },
+    {
+      "id": "parse_rating_with_extra_whitespace",
+      "description": "parse_feedback_rating raises InvalidFeedbackRatingError for 'helpful ' (trailing space)",
+      "function": "parse_feedback_rating",
+      "category": "edge_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "rating_str": "helpful "
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "InvalidFeedbackRatingError",
+      "assertions": [
+        "error.rating_given == 'helpful '"
+      ]
+    },
+    {
+      "id": "validate_id_found",
+      "description": "validate_feedback_id returns None when feedback_id exists in findings.jsonl",
+      "function": "validate_feedback_id",
+      "category": "happy_path",
+      "setup_description": "Create .stigmergy/findings.jsonl with a line containing finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001"
+      },
+      "input_description": "",
+      "expected_output_description": "None (no exception)",
+      "expected_error": "",
+      "assertions": [
+        "result is None"
+      ]
+    },
+    {
+      "id": "validate_id_not_found",
+      "description": "validate_feedback_id raises FeedbackIdNotFoundError when feedback_id not in findings",
+      "function": "validate_feedback_id",
+      "category": "error_case",
+      "setup_description": "Create .stigmergy/findings.jsonl with only finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "nonexistent-id"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackIdNotFoundError",
+      "assertions": [
+        "error.feedback_id == 'nonexistent-id'"
+      ]
+    },
+    {
+      "id": "validate_id_findings_file_missing",
+      "description": "validate_feedback_id raises FeedbackError when findings.jsonl does not exist",
+      "function": "validate_feedback_id",
+      "category": "error_case",
+      "setup_description": "Create .stigmergy dir but do not create findings.jsonl",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "'not found' in error.message.lower() or 'findings' in error.message.lower()"
+      ]
+    },
+    {
+      "id": "validate_id_findings_file_unreadable",
+      "description": "validate_feedback_id raises FeedbackError when findings.jsonl cannot be read",
+      "function": "validate_feedback_id",
+      "category": "error_case",
+      "setup_description": "Create findings.jsonl with mode 0o000 (no read permissions)",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "isinstance(error, FeedbackError)"
+      ]
+    },
+    {
+      "id": "record_feedback_success",
+      "description": "record_feedback appends a valid FeedbackEntry to feedback.jsonl and returns file path",
+      "function": "record_feedback",
+      "category": "happy_path",
+      "setup_description": "Create tmp .stigmergy dir, construct a valid FeedbackEntry",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Absolute path string to feedback.jsonl",
+      "expected_error": "",
+      "assertions": [
+        "Path(result).exists()",
+        "Path(result).name == 'feedback.jsonl'"
+      ]
+    },
+    {
+      "id": "record_feedback_creates_file",
+      "description": "record_feedback creates feedback.jsonl if it does not exist",
+      "function": "record_feedback",
+      "category": "happy_path",
+      "setup_description": "Create .stigmergy dir without feedback.jsonl",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Path to newly created feedback.jsonl",
+      "expected_error": "",
+      "assertions": [
+        "Path(result).exists()"
+      ]
+    },
+    {
+      "id": "record_feedback_append_only",
+      "description": "record_feedback preserves existing content and appends new entry",
+      "function": "record_feedback",
+      "category": "invariant",
+      "setup_description": "Create feedback.jsonl with one existing line, then record a new entry",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "File now has two lines",
+      "expected_error": "",
+      "assertions": [
+        "line_count == 2"
+      ]
+    },
+    {
+      "id": "record_feedback_creates_directory",
+      "description": "record_feedback creates intermediate directories if stigmergy_dir does not exist",
+      "function": "record_feedback",
+      "category": "edge_case",
+      "setup_description": "Use a non-existent subdirectory path as stigmergy_dir",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Path to feedback.jsonl in newly created directory",
+      "expected_error": "",
+      "assertions": [
+        "Path(result).exists()"
+      ]
+    },
+    {
+      "id": "record_feedback_permission_denied",
+      "description": "record_feedback raises FeedbackError on write permission denied",
+      "function": "record_feedback",
+      "category": "error_case",
+      "setup_description": "Create read-only .stigmergy directory",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackError",
+      "assertions": [
+        "isinstance(error, FeedbackError)"
+      ]
+    },
+    {
+      "id": "handle_feedback_success",
+      "description": "handle_feedback validates, parses, records, and returns a FeedbackEntry",
+      "function": "handle_feedback",
+      "category": "happy_path",
+      "setup_description": "Set up findings.jsonl with finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackEntry with matching feedback_id, rating=helpful, UTC timestamp",
+      "expected_error": "",
+      "assertions": [
+        "result.feedback_id == 'finding-001'",
+        "result.rating == FeedbackRating('helpful')"
+      ]
+    },
+    {
+      "id": "handle_feedback_case_insensitive_rating",
+      "description": "handle_feedback accepts rating in any case",
+      "function": "handle_feedback",
+      "category": "edge_case",
+      "setup_description": "Set up findings.jsonl with finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "WRONG"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackEntry with rating=wrong",
+      "expected_error": "",
+      "assertions": [
+        "result.rating == FeedbackRating('wrong')"
+      ]
+    },
+    {
+      "id": "handle_feedback_id_not_found_propagation",
+      "description": "handle_feedback raises FeedbackIdNotFoundError when validate_feedback_id fails",
+      "function": "handle_feedback",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "nonexistent",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "FeedbackIdNotFoundError",
+      "assertions": [
+        "error.feedback_id == 'nonexistent'"
+      ]
+    },
+    {
+      "id": "handle_feedback_invalid_rating_propagation",
+      "description": "handle_feedback raises InvalidFeedbackRatingError for invalid rating",
+      "function": "handle_feedback",
+      "category": "error_case",
+      "setup_description": "Set up findings.jsonl with finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "awesome"
+      },
+      "input_description": "",
+      "expected_output_description": "",
+      "expected_error": "InvalidFeedbackRatingError",
+      "assertions": [
+        "error.rating_given == 'awesome'"
+      ]
+    },
+    {
+      "id": "handle_feedback_duplicate_allowed",
+      "description": "handle_feedback allows duplicate feedback for the same feedback_id (append-only)",
+      "function": "handle_feedback",
+      "category": "invariant",
+      "setup_description": "Set up findings.jsonl with finding-001 and existing feedback for finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Second FeedbackEntry appended successfully",
+      "expected_error": "",
+      "assertions": [
+        "result.feedback_id == 'finding-001'"
+      ]
+    },
+    {
+      "id": "handle_feedback_timestamp_utc",
+      "description": "handle_feedback creates a FeedbackEntry with a UTC-aware timestamp",
+      "function": "handle_feedback",
+      "category": "invariant",
+      "setup_description": "Set up findings.jsonl with finding-001",
+      "mock_dependencies": {},
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "FeedbackEntry.timestamp ends with +00:00 or Z",
+      "expected_error": "",
+      "assertions": [
+        "'+00:00' in result_timestamp or result_timestamp.endswith('Z')"
+      ]
+    },
+    {
+      "id": "run_feedback_success_exit_0",
+      "description": "run_feedback_command returns exit code 0 on success",
+      "function": "run_feedback_command",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "returns valid FeedbackEntry"
+      },
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Integer 0",
+      "expected_error": "",
+      "assertions": [
+        "result == 0"
+      ]
+    },
+    {
+      "id": "run_feedback_id_not_found_exit_1",
+      "description": "run_feedback_command returns exit code 1 when FeedbackIdNotFoundError raised",
+      "function": "run_feedback_command",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "raises FeedbackIdNotFoundError"
+      },
+      "input_values": {
+        "feedback_id": "missing-id",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Integer 1",
+      "expected_error": "",
+      "assertions": [
+        "result == 1"
+      ]
+    },
+    {
+      "id": "run_feedback_invalid_rating_exit_2",
+      "description": "run_feedback_command returns exit code 2 when InvalidFeedbackRatingError raised",
+      "function": "run_feedback_command",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "raises InvalidFeedbackRatingError"
+      },
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "bad"
+      },
+      "input_description": "",
+      "expected_output_description": "Integer 2",
+      "expected_error": "",
+      "assertions": [
+        "result == 2"
+      ]
+    },
+    {
+      "id": "run_feedback_io_error_exit_3",
+      "description": "run_feedback_command returns exit code 3 when FeedbackError (I/O) raised",
+      "function": "run_feedback_command",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "raises FeedbackError (I/O error)"
+      },
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Integer 3",
+      "expected_error": "",
+      "assertions": [
+        "result == 3"
+      ]
+    },
+    {
+      "id": "run_feedback_unexpected_exit_4",
+      "description": "run_feedback_command returns exit code 4 for unexpected exceptions",
+      "function": "run_feedback_command",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "raises RuntimeError"
+      },
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Integer 4",
+      "expected_error": "",
+      "assertions": [
+        "result == 4"
+      ]
+    },
+    {
+      "id": "run_feedback_success_prints_confirmation",
+      "description": "run_feedback_command prints confirmation to stdout on success",
+      "function": "run_feedback_command",
+      "category": "happy_path",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "returns valid FeedbackEntry"
+      },
+      "input_values": {
+        "feedback_id": "finding-001",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Stdout contains feedback_id and rating",
+      "expected_error": "",
+      "assertions": [
+        "'finding-001' in captured_stdout",
+        "'helpful' in captured_stdout"
+      ]
+    },
+    {
+      "id": "run_feedback_error_prints_to_stderr",
+      "description": "run_feedback_command prints error message to stderr, not stdout",
+      "function": "run_feedback_command",
+      "category": "error_case",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "raises FeedbackIdNotFoundError"
+      },
+      "input_values": {
+        "feedback_id": "missing",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "Stderr contains error message, stdout is empty or no traceback",
+      "expected_error": "",
+      "assertions": [
+        "len(captured_stderr) > 0"
+      ]
+    },
+    {
+      "id": "run_feedback_no_stacktrace_on_handled_error",
+      "description": "run_feedback_command does not leak stack traces for handled FeedbackError subtypes",
+      "function": "run_feedback_command",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {
+        "handle_feedback": "raises FeedbackIdNotFoundError"
+      },
+      "input_values": {
+        "feedback_id": "missing",
+        "rating": "helpful"
+      },
+      "input_description": "",
+      "expected_output_description": "No 'Traceback' in stderr",
+      "expected_error": "",
+      "assertions": [
+        "'Traceback' not in captured_stderr"
+      ]
+    },
+    {
+      "id": "register_feedback_command_adds_subparser",
+      "description": "register_feedback_command adds a 'feedback' subcommand to the parser",
+      "function": "register_feedback_command",
+      "category": "happy_path",
+      "setup_description": "Create argparse.ArgumentParser with subparsers",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Parser can parse 'feedback finding-001 helpful' without error",
+      "expected_error": "",
+      "assertions": [
+        "parsed_args is not None"
+      ]
+    },
+    {
+      "id": "register_feedback_command_two_positional_args",
+      "description": "register_feedback_command configures two positional arguments (id, rating)",
+      "function": "register_feedback_command",
+      "category": "invariant",
+      "setup_description": "Create argparse parser, register command, parse 'feedback finding-001 helpful'",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Parsed namespace has id and rating attributes",
+      "expected_error": "",
+      "assertions": [
+        "hasattr(parsed_args, 'id') or hasattr(parsed_args, 'feedback_id')",
+        "hasattr(parsed_args, 'rating')"
+      ]
+    },
+    {
+      "id": "feedback_rating_enum_exactly_four_variants",
+      "description": "FeedbackRating has exactly four variants: helpful, already_knew, wrong, irrelevant",
+      "function": "parse_feedback_rating",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "FeedbackRating members count is 4",
+      "expected_error": "",
+      "assertions": [
+        "len(FeedbackRating) == 4",
+        "'helpful' in [r.value for r in FeedbackRating]",
+        "'already_knew' in [r.value for r in FeedbackRating]",
+        "'wrong' in [r.value for r in FeedbackRating]",
+        "'irrelevant' in [r.value for r in FeedbackRating]"
+      ]
+    },
+    {
+      "id": "feedback_entry_immutable",
+      "description": "FeedbackEntry is frozen (immutable) and raises on attribute assignment",
+      "function": "record_feedback",
+      "category": "invariant",
+      "setup_description": "Create a FeedbackEntry and attempt to modify a field",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Raises an error on attribute assignment",
+      "expected_error": "",
+      "assertions": [
+        "assignment_raises_error is True"
+      ]
+    },
+    {
+      "id": "feedback_entry_jsonl_valid_json",
+      "description": "Each line written to feedback.jsonl is valid JSON representing a FeedbackEntry",
+      "function": "record_feedback",
+      "category": "invariant",
+      "setup_description": "Record a feedback entry and read back the file",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "Each line parses as valid JSON with feedback_id, rating, timestamp keys",
+      "expected_error": "",
+      "assertions": [
+        "'feedback_id' in parsed_line",
+        "'rating' in parsed_line",
+        "'timestamp' in parsed_line"
+      ]
+    },
+    {
+      "id": "feedback_entry_file_ends_with_newline",
+      "description": "feedback.jsonl ends with a newline character after record_feedback",
+      "function": "record_feedback",
+      "category": "invariant",
+      "setup_description": "Record a feedback entry and read the raw file content",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "File content ends with newline",
+      "expected_error": "",
+      "assertions": [
+        "raw_content.endswith('\\n')"
+      ]
+    },
+    {
+      "id": "hypothesis_parse_rating_never_crashes",
+      "description": "Property test: parse_feedback_rating either returns valid FeedbackRating or raises InvalidFeedbackRatingError for any string input",
+      "function": "parse_feedback_rating",
+      "category": "invariant",
+      "setup_description": "",
+      "mock_dependencies": {},
+      "input_values": {},
+      "input_description": "",
+      "expected_output_description": "For any string, either a valid FeedbackRating is returned or InvalidFeedbackRatingError is raised (never any other exception)",
+      "expected_error": "",
+      "assertions": [
+        "no_unexpected_exceptions"
+      ]
+    }
+  ],
+  "test_language": "python",
+  "generated_code": "\"\"\"\nContract tests for feedback_cli component.\n\nTests the three-layer feedback CLI architecture:\n  Layer 1 (pure units): parse_feedback_rating, validate_feedback_id\n  Layer 2 (integration): record_feedback, handle_feedback\n  Layer 3 (CLI entry point): run_feedback_command, register_feedback_command\n\nRun with: pytest tests/test_feedback_cli.py -v\n\"\"\"\nfrom __future__ import annotations\n\nimport asyncio\nimport json\nimport os\nimport platform\nimport stat\nimport sys\nfrom datetime import datetime, timezone\nfrom pathlib import Path\nfrom unittest.mock import AsyncMock, MagicMock, patch\n\nimport pytest\n\n# ---------------------------------------------------------------------------\n# Attempt to import hypothesis for property-based tests; skip if unavailable\n# ---------------------------------------------------------------------------\ntry:\n    from hypothesis import given, settings\n    from hypothesis import strategies as st\n    HAS_HYPOTHESIS = True\nexcept ImportError:\n    HAS_HYPOTHESIS = False\n\n# ---------------------------------------------------------------------------\n# Import the component under test\n# ---------------------------------------------------------------------------\nfrom stigmergy.primitives.feedback import (\n    FeedbackEntry,\n    FeedbackRating,\n)\nfrom stigmergy.cli.feedback_cmd import (\n    parse_feedback_rating,\n    validate_feedback_id,\n    record_feedback,\n    handle_feedback,\n)\nfrom stigmergy.cli.feedback_cli import (\n    register_feedback_command,\n    run_feedback_command,\n)\nfrom stigmergy.primitives.feedback import (\n    FeedbackError,\n    FeedbackIdNotFoundError,\n    InvalidFeedbackRatingError,\n)\n\n\n# ===========================================================================\n# Helpers – run async functions from sync test bodies\n# ===========================================================================\n\ndef _run(coro):\n    \"\"\"Run an async coroutine synchronously for test purposes.\"\"\"\n    try:\n        loop = asyncio.get_running_loop()\n    except RuntimeError:\n        loop = None\n    if loop and loop.is_running():\n        import concurrent.futures\n        with concurrent.futures.ThreadPoolExecutor() as pool:\n            return pool.submit(asyncio.run, coro).result()\n    return asyncio.run(coro)\n\n\n# ===========================================================================\n# Fixtures\n# ===========================================================================\n\n@pytest.fixture\ndef valid_stigmergy_dir(tmp_path: Path) -> Path:\n    \"\"\"Create a .stigmergy dir with a findings.jsonl containing known IDs.\"\"\"\n    stig = tmp_path / \".stigmergy\"\n    stig.mkdir()\n    findings_file = stig / \"findings.jsonl\"\n    findings = [\n        {\"id\": \"finding-001\", \"message\": \"First finding\"},\n        {\"id\": \"finding-002\", \"message\": \"Second finding\"},\n        {\"id\": \"finding-003\", \"message\": \"Third finding\"},\n    ]\n    findings_file.write_text(\n        \"\\n\".join(json.dumps(f) for f in findings) + \"\\n\",\n        encoding=\"utf-8\",\n    )\n    return stig\n\n\n@pytest.fixture\ndef empty_stigmergy_dir(tmp_path: Path) -> Path:\n    \"\"\"Create a .stigmergy dir without findings.jsonl.\"\"\"\n    stig = tmp_path / \".stigmergy\"\n    stig.mkdir()\n    return stig\n\n\n@pytest.fixture\ndef readonly_stigmergy_dir(tmp_path: Path) -> Path:\n    \"\"\"Create a .stigmergy dir with restricted write permissions.\"\"\"\n    stig = tmp_path / \".stigmergy\"\n    stig.mkdir()\n    findings_file = stig / \"findings.jsonl\"\n    findings_file.write_text(\n        json.dumps({\"id\": \"finding-001\", \"message\": \"ok\"}) + \"\\n\",\n        encoding=\"utf-8\",\n    )\n    # Make directory read-only (skip on Windows where chmod behaves differently)\n    if platform.system() != \"Windows\":\n        stig.chmod(stat.S_IRUSR | stat.S_IXUSR)\n    return stig\n\n\n@pytest.fixture\ndef sample_feedback_entry() -> FeedbackEntry:\n    \"\"\"Return a known-good FeedbackEntry instance.\"\"\"\n    return FeedbackEntry(\n        feedback_id=\"finding-001\",\n        rating=FeedbackRating(\"helpful\"),\n        timestamp=datetime.now(timezone.utc).isoformat(),\n    )\n\n\n# ===========================================================================\n# Layer 1 — Pure Unit Tests: parse_feedback_rating\n# ===========================================================================\n\nclass TestParseFeedbackRating:\n    \"\"\"Tests for the parse_feedback_rating function.\"\"\"\n\n    # -- Happy paths: all four valid ratings ---------------------------------\n\n    def test_parse_helpful(self):\n        result = parse_feedback_rating(\"helpful\")\n        assert result == FeedbackRating(\"helpful\"), (\n            f\"Expected FeedbackRating.helpful, got {result}\"\n        )\n        assert result.value == \"helpful\"\n\n    def test_parse_already_knew(self):\n        result = parse_feedback_rating(\"already_knew\")\n        assert result == FeedbackRating(\"already_knew\"), (\n            f\"Expected FeedbackRating.already_knew, got {result}\"\n        )\n\n    def test_parse_wrong(self):\n        result = parse_feedback_rating(\"wrong\")\n        assert result == FeedbackRating(\"wrong\"), (\n            f\"Expected FeedbackRating.wrong, got {result}\"\n        )\n\n    def test_parse_irrelevant(self):\n        result = parse_feedback_rating(\"irrelevant\")\n        assert result == FeedbackRating(\"irrelevant\"), (\n            f\"Expected FeedbackRating.irrelevant, got {result}\"\n        )\n\n    # -- Case-insensitive edge cases -----------------------------------------\n\n    def test_parse_uppercase_helpful(self):\n        result = parse_feedback_rating(\"HELPFUL\")\n        assert result == FeedbackRating(\"helpful\"), (\n            \"Case-insensitive: 'HELPFUL' should map to 'helpful'\"\n        )\n\n    def test_parse_mixed_case_already_knew(self):\n        result = parse_feedback_rating(\"Already_Knew\")\n        assert result == FeedbackRating(\"already_knew\"), (\n            \"Case-insensitive: 'Already_Knew' should map to 'already_knew'\"\n        )\n\n    def test_parse_all_caps_wrong(self):\n        result = parse_feedback_rating(\"WRONG\")\n        assert result == FeedbackRating(\"wrong\")\n\n    def test_parse_title_case_irrelevant(self):\n        result = parse_feedback_rating(\"Irrelevant\")\n        assert result == FeedbackRating(\"irrelevant\")\n\n    # -- Error cases ---------------------------------------------------------\n\n    def test_parse_invalid_string_raises(self):\n        with pytest.raises(InvalidFeedbackRatingError) as exc_info:\n            parse_feedback_rating(\"great\")\n        error = exc_info.value\n        assert error.rating_given == \"great\", (\n            f\"Expected rating_given='great', got '{error.rating_given}'\"\n        )\n        assert len(error.allowed_ratings) == 4, (\n            f\"Expected 4 allowed ratings, got {len(error.allowed_ratings)}\"\n        )\n\n    def test_parse_empty_string_raises(self):\n        with pytest.raises(InvalidFeedbackRatingError) as exc_info:\n            parse_feedback_rating(\"\")\n        assert exc_info.value.rating_given == \"\"\n\n    def test_parse_whitespace_only_raises(self):\n        with pytest.raises(InvalidFeedbackRatingError) as exc_info:\n            parse_feedback_rating(\"  \")\n        assert exc_info.value.rating_given == \"  \"\n\n    def test_parse_trailing_space_raises(self):\n        \"\"\"'helpful ' (with trailing space) is not a valid variant.\"\"\"\n        with pytest.raises(InvalidFeedbackRatingError) as exc_info:\n            parse_feedback_rating(\"helpful \")\n        assert exc_info.value.rating_given == \"helpful \"\n\n    def test_parse_numeric_raises(self):\n        with pytest.raises(InvalidFeedbackRatingError):\n            parse_feedback_rating(\"42\")\n\n    def test_parse_partial_match_raises(self):\n        \"\"\"'help' is not 'helpful'.\"\"\"\n        with pytest.raises(InvalidFeedbackRatingError):\n            parse_feedback_rating(\"help\")\n\n    # -- Invariant: exactly four variants ------------------------------------\n\n    def test_feedback_rating_has_exactly_four_variants(self):\n        members = list(FeedbackRating)\n        assert len(members) == 4, (\n            f\"FeedbackRating should have exactly 4 variants, got {len(members)}\"\n        )\n        values = {r.value for r in members}\n        assert values == {\"helpful\", \"already_knew\", \"wrong\", \"irrelevant\"}, (\n            f\"Unexpected FeedbackRating values: {values}\"\n        )\n\n    # -- Hypothesis property test --------------------------------------------\n\n    @pytest.mark.skipif(not HAS_HYPOTHESIS, reason=\"hypothesis not installed\")\n    @given(s=st.text())\n    @settings(max_examples=200)\n    def test_parse_rating_never_raises_unexpected(self, s: str):\n        \"\"\"For any string input, parse_feedback_rating either returns a valid\n        FeedbackRating or raises InvalidFeedbackRatingError — never anything else.\"\"\"\n        try:\n            result = parse_feedback_rating(s)\n            assert isinstance(result, FeedbackRating), (\n                f\"Expected FeedbackRating instance, got {type(result)}\"\n            )\n        except InvalidFeedbackRatingError:\n            pass  # expected for invalid inputs\n        except Exception as exc:\n            pytest.fail(\n                f\"parse_feedback_rating raised unexpected {type(exc).__name__}: {exc}\"\n            )\n\n\n# ===========================================================================\n# Layer 1 — Pure Unit Tests: validate_feedback_id\n# ===========================================================================\n\nclass TestValidateFeedbackId:\n    \"\"\"Tests for the validate_feedback_id function (uses real filesystem via tmp_path).\"\"\"\n\n    def test_validate_existing_id_returns_none(self, valid_stigmergy_dir: Path):\n        result = _run(validate_feedback_id(\"finding-001\", str(valid_stigmergy_dir)))\n        assert result is None, (\n            \"validate_feedback_id should return None when the ID exists\"\n        )\n\n    def test_validate_second_existing_id(self, valid_stigmergy_dir: Path):\n        result = _run(validate_feedback_id(\"finding-002\", str(valid_stigmergy_dir)))\n        assert result is None\n\n    def test_validate_nonexistent_id_raises(self, valid_stigmergy_dir: Path):\n        with pytest.raises(FeedbackIdNotFoundError) as exc_info:\n            _run(validate_feedback_id(\"nonexistent-id\", str(valid_stigmergy_dir)))\n        error = exc_info.value\n        assert error.feedback_id == \"nonexistent-id\", (\n            f\"Expected feedback_id='nonexistent-id', got '{error.feedback_id}'\"\n        )\n\n    def test_validate_findings_file_missing_raises(self, empty_stigmergy_dir: Path):\n        with pytest.raises(FeedbackError) as exc_info:\n            _run(validate_feedback_id(\"finding-001\", str(empty_stigmergy_dir)))\n        error = exc_info.value\n        assert \"findings\" in error.message.lower() or \"not found\" in error.message.lower(), (\n            f\"Error message should mention 'findings' or 'not found', got: {error.message}\"\n        )\n\n    @pytest.mark.skipif(\n        platform.system() == \"Windows\",\n        reason=\"chmod-based permission tests not reliable on Windows\",\n    )\n    def test_validate_findings_file_unreadable_raises(self, valid_stigmergy_dir: Path):\n        findings_file = valid_stigmergy_dir / \"findings.jsonl\"\n        findings_file.chmod(0o000)\n        try:\n            with pytest.raises(FeedbackError):\n                _run(validate_feedback_id(\"finding-001\", str(valid_stigmergy_dir)))\n        finally:\n            findings_file.chmod(stat.S_IRUSR | stat.S_IWUSR)\n\n\n# ===========================================================================\n# Layer 2 — Integration Tests: record_feedback\n# ===========================================================================\n\nclass TestRecordFeedback:\n    \"\"\"Tests for the record_feedback function (real filesystem).\"\"\"\n\n    def test_record_creates_file_and_returns_path(\n        self, valid_stigmergy_dir: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        result = _run(record_feedback(sample_feedback_entry, str(valid_stigmergy_dir)))\n        result_path = Path(result)\n        assert result_path.exists(), \"feedback.jsonl should be created\"\n        assert result_path.name == \"feedback.jsonl\"\n\n    def test_record_file_did_not_exist_before(\n        self, valid_stigmergy_dir: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        fb_file = valid_stigmergy_dir / \"feedback.jsonl\"\n        assert not fb_file.exists(), \"Precondition: file should not exist yet\"\n        _run(record_feedback(sample_feedback_entry, str(valid_stigmergy_dir)))\n        assert fb_file.exists(), \"feedback.jsonl should now exist\"\n\n    def test_record_append_only_preserves_existing(\n        self, valid_stigmergy_dir: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        fb_file = valid_stigmergy_dir / \"feedback.jsonl\"\n        existing_line = json.dumps({\"feedback_id\": \"old\", \"rating\": \"wrong\", \"timestamp\": \"2024-01-01T00:00:00+00:00\"})\n        fb_file.write_text(existing_line + \"\\n\", encoding=\"utf-8\")\n\n        _run(record_feedback(sample_feedback_entry, str(valid_stigmergy_dir)))\n\n        lines = fb_file.read_text(encoding=\"utf-8\").strip().split(\"\\n\")\n        line_count = len(lines)\n        assert line_count == 2, (\n            f\"Expected 2 lines (1 existing + 1 new), got {line_count}\"\n        )\n\n    def test_record_creates_directories_if_missing(\n        self, tmp_path: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        new_dir = tmp_path / \"deep\" / \"nested\" / \".stigmergy\"\n        result = _run(record_feedback(sample_feedback_entry, str(new_dir)))\n        assert Path(result).exists(), (\n            \"record_feedback should create intermediate directories\"\n        )\n\n    def test_record_file_ends_with_newline(\n        self, valid_stigmergy_dir: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        _run(record_feedback(sample_feedback_entry, str(valid_stigmergy_dir)))\n        fb_file = valid_stigmergy_dir / \"feedback.jsonl\"\n        raw_content = fb_file.read_text(encoding=\"utf-8\")\n        assert raw_content.endswith(\"\\n\"), (\n            \"feedback.jsonl must end with a newline character\"\n        )\n\n    def test_record_each_line_is_valid_json(\n        self, valid_stigmergy_dir: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        _run(record_feedback(sample_feedback_entry, str(valid_stigmergy_dir)))\n        fb_file = valid_stigmergy_dir / \"feedback.jsonl\"\n        for line in fb_file.read_text(encoding=\"utf-8\").strip().split(\"\\n\"):\n            parsed_line = json.loads(line)\n            assert \"feedback_id\" in parsed_line, \"JSON line must have 'feedback_id'\"\n            assert \"rating\" in parsed_line, \"JSON line must have 'rating'\"\n            assert \"timestamp\" in parsed_line, \"JSON line must have 'timestamp'\"\n\n    @pytest.mark.skipif(\n        platform.system() == \"Windows\",\n        reason=\"chmod-based permission tests not reliable on Windows\",\n    )\n    def test_record_permission_denied_raises(\n        self, readonly_stigmergy_dir: Path, sample_feedback_entry: FeedbackEntry\n    ):\n        with pytest.raises(FeedbackError):\n            _run(record_feedback(sample_feedback_entry, str(readonly_stigmergy_dir)))\n        # Restore permissions for cleanup\n        readonly_stigmergy_dir.chmod(stat.S_IRWXU)\n\n\n# ===========================================================================\n# Layer 2 — Integration Tests: handle_feedback\n# ===========================================================================\n\nclass TestHandleFeedback:\n    \"\"\"Tests for the handle_feedback orchestrator function.\"\"\"\n\n    def test_handle_success(self, valid_stigmergy_dir: Path):\n        result = _run(handle_feedback(\n            \"finding-001\", \"helpful\", stigmergy_dir=str(valid_stigmergy_dir)\n        ))\n        assert result.feedback_id == \"finding-001\", (\n            f\"Expected feedback_id='finding-001', got '{result.feedback_id}'\"\n        )\n        assert result.rating == FeedbackRating(\"helpful\"), (\n            f\"Expected rating='helpful', got '{result.rating}'\"\n        )\n\n    def test_handle_case_insensitive_rating(self, valid_stigmergy_dir: Path):\n        result = _run(handle_feedback(\n            \"finding-001\", \"WRONG\", stigmergy_dir=str(valid_stigmergy_dir)\n        ))\n        assert result.rating == FeedbackRating(\"wrong\"), (\n            \"Rating should be case-insensitive\"\n        )\n\n    def test_handle_id_not_found_raises(self, valid_stigmergy_dir: Path):\n        with pytest.raises(FeedbackIdNotFoundError) as exc_info:\n            _run(handle_feedback(\n                \"nonexistent\", \"helpful\", stigmergy_dir=str(valid_stigmergy_dir)\n            ))\n        assert exc_info.value.feedback_id == \"nonexistent\"\n\n    def test_handle_invalid_rating_raises(self, valid_stigmergy_dir: Path):\n        with pytest.raises(InvalidFeedbackRatingError) as exc_info:\n            _run(handle_feedback(\n                \"finding-001\", \"awesome\", stigmergy_dir=str(valid_stigmergy_dir)\n            ))\n        assert exc_info.value.rating_given == \"awesome\"\n\n    def test_handle_duplicate_feedback_allowed(self, valid_stigmergy_dir: Path):\n        \"\"\"Append-only policy: duplicate feedback for the same ID is allowed.\"\"\"\n        result1 = _run(handle_feedback(\n            \"finding-001\", \"helpful\", stigmergy_dir=str(valid_stigmergy_dir)\n        ))\n        result2 = _run(handle_feedback(\n            \"finding-001\", \"wrong\", stigmergy_dir=str(valid_stigmergy_dir)\n        ))\n        assert result1.feedback_id == result2.feedback_id == \"finding-001\"\n        # Verify both entries are in the file\n        fb_file = valid_stigmergy_dir / \"feedback.jsonl\"\n        lines = fb_file.read_text(encoding=\"utf-8\").strip().split(\"\\n\")\n        assert len(lines) == 2, \"Duplicate feedback should result in two lines\"\n\n    def test_handle_timestamp_is_utc(self, valid_stigmergy_dir: Path):\n        before = datetime.now(timezone.utc)\n        result = _run(handle_feedback(\n            \"finding-001\", \"helpful\", stigmergy_dir=str(valid_stigmergy_dir)\n        ))\n        # The timestamp should be a string; check UTC marker\n        result_timestamp = result.timestamp\n        if isinstance(result_timestamp, datetime):\n            result_timestamp = result_timestamp.isoformat()\n        assert \"+00:00\" in result_timestamp or result_timestamp.endswith(\"Z\"), (\n            f\"Timestamp must be UTC-aware, got: {result_timestamp}\"\n        )\n\n    def test_handle_io_error_propagated(self, empty_stigmergy_dir: Path):\n        \"\"\"If findings.jsonl is missing, FeedbackError propagates.\"\"\"\n        with pytest.raises(FeedbackError):\n            _run(handle_feedback(\n                \"finding-001\", \"helpful\", stigmergy_dir=str(empty_stigmergy_dir)\n            ))\n\n\n# ===========================================================================\n# Layer 3 — CLI Entry Point Tests: run_feedback_command\n# ===========================================================================\n\nclass TestRunFeedbackCommand:\n    \"\"\"Tests for the run_feedback_command CLI handler.\"\"\"\n\n    def _make_entry(self) -> FeedbackEntry:\n        return FeedbackEntry(\n            feedback_id=\"finding-001\",\n            rating=FeedbackRating(\"helpful\"),\n            timestamp=datetime.now(timezone.utc).isoformat(),\n        )\n\n    def test_success_returns_exit_code_0(self):\n        entry = self._make_entry()\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.return_value = entry\n            result = _run(run_feedback_command(\"finding-001\", \"helpful\"))\n        assert result == 0, f\"Expected exit code 0, got {result}\"\n\n    def test_success_prints_confirmation_to_stdout(self, capsys):\n        entry = self._make_entry()\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.return_value = entry\n            _run(run_feedback_command(\"finding-001\", \"helpful\"))\n        captured = capsys.readouterr()\n        captured_stdout = captured.out\n        assert \"finding-001\" in captured_stdout, (\n            f\"Confirmation should include feedback_id, stdout was: {captured_stdout!r}\"\n        )\n        assert \"helpful\" in captured_stdout, (\n            f\"Confirmation should include rating, stdout was: {captured_stdout!r}\"\n        )\n\n    def test_id_not_found_returns_exit_code_1(self):\n        err = FeedbackIdNotFoundError(\n            message=\"Finding 'missing-id' not found\",\n            feedback_id=\"missing-id\",\n        )\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.side_effect = err\n            result = _run(run_feedback_command(\"missing-id\", \"helpful\"))\n        assert result == 1, f\"Expected exit code 1 for id_not_found, got {result}\"\n\n    def test_invalid_rating_returns_exit_code_2(self):\n        err = InvalidFeedbackRatingError(\n            message=\"Invalid rating 'bad'\",\n            rating_given=\"bad\",\n            allowed_ratings=[\"helpful\", \"already_knew\", \"wrong\", \"irrelevant\"],\n        )\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.side_effect = err\n            result = _run(run_feedback_command(\"finding-001\", \"bad\"))\n        assert result == 2, f\"Expected exit code 2 for invalid_rating, got {result}\"\n\n    def test_io_error_returns_exit_code_3(self):\n        err = FeedbackError(message=\"Permission denied writing to feedback.jsonl\")\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.side_effect = err\n            result = _run(run_feedback_command(\"finding-001\", \"helpful\"))\n        assert result == 3, f\"Expected exit code 3 for io_error, got {result}\"\n\n    def test_unexpected_error_returns_exit_code_4(self):\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.side_effect = RuntimeError(\"something broke\")\n            result = _run(run_feedback_command(\"finding-001\", \"helpful\"))\n        assert result == 4, f\"Expected exit code 4 for unexpected error, got {result}\"\n\n    def test_error_prints_to_stderr(self, capsys):\n        err = FeedbackIdNotFoundError(\n            message=\"Finding 'missing' not found\",\n            feedback_id=\"missing\",\n        )\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.side_effect = err\n            _run(run_feedback_command(\"missing\", \"helpful\"))\n        captured = capsys.readouterr()\n        captured_stderr = captured.err\n        assert len(captured_stderr) > 0, (\n            \"Error messages should be printed to stderr\"\n        )\n\n    def test_no_stacktrace_on_handled_error(self, capsys):\n        err = FeedbackIdNotFoundError(\n            message=\"Finding 'missing' not found\",\n            feedback_id=\"missing\",\n        )\n        with patch(\"stigmergy.cli.feedback_cli.handle_feedback\", new_callable=AsyncMock) as mock_hf:\n            mock_hf.side_effect = err\n            _run(run_feedback_command(\"missing\", \"helpful\"))\n        captured = capsys.readouterr()\n        captured_stderr = captured.err\n        assert \"Traceback\" not in captured_stderr, (\n            f\"Handled errors should not leak stack traces. stderr: {captured_stderr!r}\"\n        )\n\n\n# ===========================================================================\n# Layer 3 — CLI Entry Point Tests: register_feedback_command\n# ===========================================================================\n\nclass TestRegisterFeedbackCommand:\n    \"\"\"Tests for the register_feedback_command function.\"\"\"\n\n    def test_adds_feedback_subcommand(self):\n        import argparse\n        parser = argparse.ArgumentParser()\n        subparsers = parser.add_subparsers()\n        register_feedback_command(subparsers)\n\n        # Should be able to parse 'feedback finding-001 helpful' without error\n        parsed_args = parser.parse_args([\"feedback\", \"finding-001\", \"helpful\"])\n        assert parsed_args is not None, (\n            \"Parser should successfully parse 'feedback finding-001 helpful'\"\n        )\n\n    def test_has_two_positional_arguments(self):\n        import argparse\n        parser = argparse.ArgumentParser()\n        subparsers = parser.add_subparsers()\n        register_feedback_command(subparsers)\n\n        parsed_args = parser.parse_args([\"feedback\", \"finding-001\", \"helpful\"])\n        # The positional args may be named 'id'/'feedback_id' and 'rating'\n        has_id = hasattr(parsed_args, \"id\") or hasattr(parsed_args, \"feedback_id\")\n        has_rating = hasattr(parsed_args, \"rating\")\n        assert has_id, (\n            f\"Parsed namespace should have 'id' or 'feedback_id' attribute. \"\n            f\"Attrs: {vars(parsed_args)}\"\n        )\n        assert has_rating, (\n            f\"Parsed namespace should have 'rating' attribute. \"\n            f\"Attrs: {vars(parsed_args)}\"\n        )\n\n\n# ===========================================================================\n# Invariant Tests: FeedbackEntry model constraints\n# ===========================================================================\n\nclass TestFeedbackEntryInvariants:\n    \"\"\"Tests for FeedbackEntry model invariants.\"\"\"\n\n    def test_feedback_entry_is_immutable(self):\n        entry = FeedbackEntry(\n            feedback_id=\"finding-001\",\n            rating=FeedbackRating(\"helpful\"),\n            timestamp=datetime.now(timezone.utc).isoformat(),\n        )\n        assignment_raises_error = False\n        try:\n            entry.feedback_id = \"modified\"  # type: ignore[misc]\n        except (AttributeError, TypeError, Exception):\n            assignment_raises_error = True\n        assert assignment_raises_error is True, (\n            \"FeedbackEntry should be frozen/immutable\"\n        )\n\n    def test_feedback_entry_requires_non_empty_feedback_id(self):\n        with pytest.raises((ValueError, Exception)):\n            FeedbackEntry(\n                feedback_id=\"\",\n                rating=FeedbackRating(\"helpful\"),\n                timestamp=datetime.now(timezone.utc).isoformat(),\n            )\n\n    def test_feedback_entry_timestamp_must_be_utc(self):\n        \"\"\"Timestamps without UTC offset should be rejected.\"\"\"\n        with pytest.raises((ValueError, Exception)):\n            FeedbackEntry(\n                feedback_id=\"finding-001\",\n                rating=FeedbackRating(\"helpful\"),\n                timestamp=\"2024-01-01T12:00:00\",  # no timezone\n            )\n\n    def test_feedback_entry_valid_timestamp_accepted(self):\n        entry = FeedbackEntry(\n            feedback_id=\"finding-001\",\n            rating=FeedbackRating(\"helpful\"),\n            timestamp=\"2024-06-15T10:30:00+00:00\",\n        )\n        ts = entry.timestamp\n        if isinstance(ts, datetime):\n            ts = ts.isoformat()\n        assert \"+00:00\" in ts or ts.endswith(\"Z\")\n\n    def test_feedback_entry_timestamp_with_z_accepted(self):\n        \"\"\"Timestamps ending with 'Z' (Zulu time) should also be accepted.\"\"\"\n        entry = FeedbackEntry(\n            feedback_id=\"finding-001\",\n            rating=FeedbackRating(\"helpful\"),\n            timestamp=\"2024-06-15T10:30:00Z\",\n        )\n        assert entry.feedback_id == \"finding-001\"\n\n    def test_feedback_entry_serializes_to_json(self):\n        entry = FeedbackEntry(\n            feedback_id=\"finding-001\",\n            rating=FeedbackRating(\"helpful\"),\n            timestamp=\"2024-06-15T10:30:00+00:00\",\n        )\n        # Pydantic v2 models have model_dump_json or json\n        if hasattr(entry, \"model_dump_json\"):\n            json_str = entry.model_dump_json()\n        else:\n            json_str = entry.json()\n        parsed = json.loads(json_str)\n        assert parsed[\"feedback_id\"] == \"finding-001\"\n        assert parsed[\"rating\"] == \"helpful\"\n        assert \"timestamp\" in parsed\n\n\n# ===========================================================================\n# Error hierarchy invariant tests\n# ===========================================================================\n\nclass TestErrorHierarchy:\n    \"\"\"Verify the exception hierarchy invariants.\"\"\"\n\n    def test_feedback_id_not_found_is_feedback_error(self):\n        err = FeedbackIdNotFoundError(\n            message=\"Not found\", feedback_id=\"abc\"\n        )\n        assert isinstance(err, FeedbackError), (\n            \"FeedbackIdNotFoundError must be a subtype of FeedbackError\"\n        )\n\n    def test_invalid_feedback_rating_is_feedback_error(self):\n        err = InvalidFeedbackRatingError(\n            message=\"Invalid\",\n            rating_given=\"bad\",\n            allowed_ratings=[\"helpful\", \"already_knew\", \"wrong\", \"irrelevant\"],\n        )\n        assert isinstance(err, FeedbackError), (\n            \"InvalidFeedbackRatingError must be a subtype of FeedbackError\"\n        )\n\n    def test_feedback_error_has_message(self):\n        err = FeedbackError(message=\"Something went wrong\")\n        assert err.message == \"Something went wrong\"\n"
+}

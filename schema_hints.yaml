@@ -1,0 +1,27 @@
+version: "1"
+project: stigmergy
+storage_backends:
+  - type: filesystem
+    purpose: state_persistence
+    path: .stigmergy/
+    format: mixed
+    fields:
+      - name: mesh_state
+        file: mesh_state.json
+        classification: PUBLIC
+      - name: unity_state
+        file: unity_state.json
+        classification: PUBLIC
+      - name: field_state
+        file: field_state.jsonl
+        classification: PUBLIC
+        annotation: append_only
+      - name: state_metadata
+        file: state.yaml
+        classification: PUBLIC
+      - name: config
+        file: config.yaml
+        classification: PUBLIC
+      - name: annotations
+        file: annotations.json
+        classification: PII

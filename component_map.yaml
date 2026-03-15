@@ -1,0 +1,111 @@
+version: "1"
+project: stigmergy
+components:
+  - id: cli
+    role: ingress
+    protocol: cli
+    authority: user_commands
+    data_access:
+      PUBLIC: read_write
+
+  - id: pipeline
+    role: library
+    authority: signal_flow
+    data_access:
+      PUBLIC: read_write
+
+  - id: mesh
+    role: library
+    authority: topology_routing
+    data_access:
+      PUBLIC: read_write
+
+  - id: core
+    role: library
+    authority: art_algorithms
+    data_access:
+      PUBLIC: read_write
+
+  - id: adapters
+    role: library
+    authority: source_ingestion
+    data_access:
+      PUBLIC: read
+      PII: read
+
+  - id: attention
+    role: library
+    authority: surfacing_decisions
+    data_access:
+      PUBLIC: read
+
+  - id: identity
+    role: library
+    authority: person_resolution
+    data_access:
+      PII: read_write
+
+  - id: unity
+    role: library
+    authority: field_dynamics
+    data_access:
+      PUBLIC: read_write
+
+  - id: policy
+    role: library
+    authority: mechanical_detection
+    data_access:
+      PUBLIC: read
+
+  - id: constraints_filter
+    role: library
+    authority: output_filtering
+    data_access:
+      PII: read
+
+  - id: structures
+    role: library
+    authority: data_structures
+    data_access:
+      PUBLIC: read_write
+
+  - id: services
+    role: library
+    authority: llm_interface
+    data_access:
+      PUBLIC: read_write
+
+edges:
+  - from: cli
+    to: pipeline
+    tier: internal
+  - from: pipeline
+    to: adapters
+    tier: cross_boundary
+  - from: pipeline
+    to: mesh
+    tier: internal
+  - from: mesh
+    to: core
+    tier: internal
+  - from: mesh
+    to: structures
+    tier: internal
+  - from: mesh
+    to: services
+    tier: cross_boundary
+  - from: core
+    to: attention
+    tier: internal
+  - from: pipeline
+    to: identity
+    tier: internal
+  - from: pipeline
+    to: constraints_filter
+    tier: internal
+  - from: mesh
+    to: unity
+    tier: internal
+  - from: pipeline
+    to: policy
+    tier: internal

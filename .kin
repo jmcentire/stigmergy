@@ -1,0 +1,45 @@
+name: stigmergy
+audience: public
+description: >
+  Stigmergic signal processing for organizational awareness. An Adaptive
+  Resonance Theory (ART) network that processes multi-source signals
+  (GitHub, Linear, Slack) to detect cross-team coupling, hidden
+  dependencies, normalized deviance, and communication patterns.
+
+domains:
+  - signal-processing
+  - organizational-awareness
+  - adaptive-resonance-theory
+  - normalized-deviance
+  - identity-resolution
+  - communication-graph
+
+voice:
+  tone: precise, analytical, emergence-aware
+  principles:
+    - Signals are immutable once ingested
+    - Workers compete via local resonance, not global coordination
+    - Normalized deviance is detected by language compression, not keyword matching
+    - Identity resolution tolerates ambiguity (91% is acceptable)
+    - Mechanical fallback when LLM budget exhausted
+  anti-patterns:
+    - Modifying signals after ingestion
+    - Using a global coordinator instead of ART competition
+    - Regex-based deviance detection (requires LLM context)
+    - Ignoring caucus phase (causes mesh collapse to single-pipe)
+
+standards:
+  code_review:
+    - Frozen Pydantic models for all primitives (Signal, Assessment, Feedback)
+    - Self-describing strings (no enums for domains, competencies, actions)
+    - CountingBloomFilter for O(1) term overlap
+    - SimHash for pre-LLM deduplication
+  documentation:
+    - ART theory mapped to implementation decisions
+    - Caucus phase design decisions documented with iteration history
+  communication:
+    - Lead with mesh topology changes and signal patterns
+
+connects_to:
+  - pact
+  - kindex

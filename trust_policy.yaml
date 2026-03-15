@@ -1,0 +1,28 @@
+version: "1"
+project: stigmergy
+classification_tiers:
+  - name: PUBLIC
+    soak_duration_hours: 0
+    human_gate: false
+  - name: PII
+    soak_duration_hours: 24
+    human_gate: true
+
+authority_map:
+  mesh:
+    domain: topology_routing
+    trust_score: 0.9
+  adapters:
+    domain: source_ingestion
+    trust_score: 0.7
+  identity:
+    domain: person_resolution
+    trust_score: 0.8
+  services:
+    domain: llm_interface
+    trust_score: 0.6
+  constraints_filter:
+    domain: output_filtering
+    trust_score: 0.95
+
+canary_eligible: [adapters]

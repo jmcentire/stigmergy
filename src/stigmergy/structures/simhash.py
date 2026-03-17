@@ -159,3 +159,36 @@ class SimHashIndex:
 
     def __len__(self) -> int:
         return len(self._fingerprints)
+
+    def save(self, path) -> None:
+        """Persist fingerprints to a JSON file for cross-run dedup."""
+        import json
+        from pathlib import Path
+        data = {
+            "num_blocks": self._num_blocks,
+            "distance_threshold": self._distance_threshold,
+            "fingerprints": self._fingerprints,
+        }
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    def load(self, path) -> bool:
+        """Restore fingerprints from a JSON file. Returns True if loaded."""
+        import json
+        from pathlib import Path
+        p = Path(path)
+        if not p.exists():
+            return False
+        try:
+            with open(p) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return False
+        if data.get("num_blocks") != self._num_blocks:
+            return False
+        if data.get("distance_threshold") != self._distance_threshold:
+            return False
+        for id_str, fp in data.get("fingerprints", {}).items():
+            self.add(id_str, fp)
+        return True

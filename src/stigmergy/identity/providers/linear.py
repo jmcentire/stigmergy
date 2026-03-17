@@ -43,7 +43,7 @@ class LinearUsersProvider:
     """
 
     def __init__(self, api_key: str | None = None) -> None:
-        self._api_key = api_key or os.environ.get("LINEAR_API_KEY", "")
+        self._api_key = api_key if api_key is not None else os.environ.get("LINEAR_API_KEY", "")
 
     def source_name(self) -> str:
         return "linear-users"

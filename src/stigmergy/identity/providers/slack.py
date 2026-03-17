@@ -24,7 +24,7 @@ class SlackUsersProvider:
     """
 
     def __init__(self, bot_token: str | None = None) -> None:
-        self._token = bot_token or os.environ.get("SLACK_BOT_TOKEN", "")
+        self._token = bot_token if bot_token is not None else os.environ.get("SLACK_BOT_TOKEN", "")
 
     def source_name(self) -> str:
         return "slack-users"

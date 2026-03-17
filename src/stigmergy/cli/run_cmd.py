@@ -70,6 +70,7 @@ from stigmergy.tracing.trace import TraceLog
 
 CONFIG_PATH = Path(".stigmergy") / "config.yaml"
 STATE_PATH = Path(".stigmergy") / "state.yaml"
+DEDUP_INDEX_PATH = Path(".stigmergy") / "dedup_index.json"
 
 # Approximate tokens per word (GPT/Claude tokenizers average ~1.3 tokens/word)
 _TOKENS_PER_WORD = 1.3
@@ -133,7 +134,12 @@ def _save_checkpoint(
     if attention_model is not None:
         attention_model.save(Path(".stigmergy/attention.json"))
 
-    # Save checkpoint in state
+    # Save dedup index so resumed runs skip already-processed signals
+    if hasattr(mesh, '_dedup_index'):
+        mesh._dedup_index.save(DEDUP_INDEX_PATH)
+
+    # Save checkpoint in state — also advance last_run so even a hard kill
+    # (SIGKILL, OOM) doesn't lose all progress
     state = _load_state()
     state["checkpoint"] = {
         "timestamp": last_signal_ts.isoformat(),
@@ -141,6 +147,7 @@ def _save_checkpoint(
         "total_signals": total_signals,
         "spend_usd": round(budget.daily_spend, 4),
     }
+    state["last_run"] = last_signal_ts.isoformat()
     _save_state(state)
 
 
@@ -1194,6 +1201,12 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
         llm=mesh_llm,
     )
 
+    # Warm-start dedup index from previous run
+    if DEDUP_INDEX_PATH.exists() and config.pipeline.dedup_enabled:
+        loaded = mesh._dedup_index.load(DEDUP_INDEX_PATH)
+        if loaded:
+            info(f"  Loaded dedup index: {len(mesh._dedup_index)} fingerprints from previous run")
+
     # Pre-seed workers from configured contexts
     for name, ctx_cfg in config.contexts.items():
         ctx_id = UUID(ctx_map[name]) if name in ctx_map else _stable_uuid(name)
@@ -1447,6 +1460,19 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     """Single-pass mesh mode: backfill sources, route through mesh, print results."""
     from stigmergy.mesh.temporal import TemporalScanner
 
+    # Handle SIGTERM (from timeout(1)) — set a flag instead of raising,
+    # so the signal routing loop can break cooperatively and save state.
+    # Raising KeyboardInterrupt from a signal handler inside asyncio.run()
+    # cancels all tasks before the inner except block can save checkpoints.
+    _sigterm_received = False
+    _original_sigterm = signal_mod.getsignal(signal_mod.SIGTERM)
+
+    def _sigterm_handler(signum, frame):
+        nonlocal _sigterm_received
+        _sigterm_received = True
+
+    signal_mod.signal(signal_mod.SIGTERM, _sigterm_handler)
+
     heading("stigmergy run --once (mesh)")
     print()
 
@@ -1482,6 +1508,15 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
             since = resume_ts
     elif since_days is not None:
         since = datetime.now(timezone.utc) - timedelta(days=since_days)
+    elif checkpoint:
+        # No --since flag but checkpoint exists from an interrupted run.
+        # Resume from checkpoint timestamp so we don't re-fetch/re-process
+        # signals that were already handled. The persisted dedup index
+        # provides a second layer of protection for any overlap.
+        resume_ts = datetime.fromisoformat(checkpoint["timestamp"])
+        info(f"Resuming from checkpoint: {checkpoint['signals_processed']}/{checkpoint['total_signals']} "
+             f"signals processed (${checkpoint.get('spend_usd', 0):.2f} spent)")
+        since = resume_ts
     else:
         last_run = state.get("last_run")
         if last_run:
@@ -1577,6 +1612,11 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     stopped_reason = "complete"
     try:
       for sig_idx, sig in enumerate(all_signals, 1):
+        if _sigterm_received:
+            warn("SIGTERM received (timeout). Saving progress...")
+            stopped_reason = "sigterm"
+            break
+
         if not budget.can_spend():
             warn("Budget exhausted. Stopping.")
             stopped_reason = "budget_exhausted"
@@ -1747,6 +1787,15 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
             error(str(exc))
         else:
             print()  # Clean line after ^C
+
+    # Save checkpoint for non-exception early exits (sigterm, budget_exhausted)
+    if stopped_reason not in ("complete", "interrupted", "circuit_breaker") and _last_processed_ts is not None:
+        _save_checkpoint(
+            mesh, ctx_map, annotation_store, comm_graph,
+            policy_engine, _last_processed_ts, sig_idx, total_signals,
+            budget, alias_store=alias_store, stability_tracker=stability_tracker,
+            attention_model=attention_model,
+        )
 
     tracker.flush()
     insight_dedup.flush()
@@ -2223,6 +2272,9 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
         field_engine.save_state()
     if attention_model is not None:
         attention_model.save(Path(".stigmergy/attention.json"))
+    # Persist dedup index for cross-run duplicate detection
+    if hasattr(mesh, '_dedup_index'):
+        mesh._dedup_index.save(DEDUP_INDEX_PATH)
     # Save Slack user cache for next run
     for _src_name, _src_adapter, _src_live in sources:
         if _src_name == "slack" and hasattr(_src_adapter, "save_user_cache"):
@@ -3344,6 +3396,9 @@ async def _run_loop_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     if hasattr(mesh, '_llm') and mesh._llm is not None and hasattr(mesh._llm, 'close'):
         await mesh._llm.close()
 
+    # Restore original SIGTERM handler
+    signal_mod.signal(signal_mod.SIGTERM, _original_sigterm)
+
     return 0
 
 
@@ -3352,7 +3407,8 @@ def _clean_state() -> None:
     import os
     state_dir = STATE_PATH.parent
     for name in ("state.yaml", "budgets.json", "traces.jsonl", "graph.json",
-                  "run.log", "insights.jsonl", "finding_registry.json"):
+                  "run.log", "insights.jsonl", "finding_registry.json",
+                  "dedup_index.json"):
         path = state_dir / name
         if path.exists():
             os.remove(path)

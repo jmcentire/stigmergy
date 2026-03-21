@@ -1,27 +1,65 @@
-version: "1"
-project: stigmergy
-storage_backends:
-  - type: filesystem
-    purpose: state_persistence
-    path: .stigmergy/
-    format: mixed
-    fields:
-      - name: mesh_state
-        file: mesh_state.json
-        classification: PUBLIC
-      - name: unity_state
-        file: unity_state.json
-        classification: PUBLIC
-      - name: field_state
-        file: field_state.jsonl
-        classification: PUBLIC
-        annotation: append_only
-      - name: state_metadata
-        file: state.yaml
-        classification: PUBLIC
-      - name: config
-        file: config.yaml
-        classification: PUBLIC
-      - name: annotations
-        file: annotations.json
-        classification: PII
+familiarity_weights_schema:
+  type: object
+  properties:
+    content_similarity:
+      type: number
+      default: 1.0
+    temporal_proximity:
+      type: number
+      default: 0.8
+    source_affinity:
+      type: number
+      default: 0.6
+    topic_overlap:
+      type: number
+      default: 0.7
+    context_alignment:
+      type: number
+      default: 0.5
+    interaction_history:
+      type: number
+      default: 0.4
+    sequence_similarity:  # NEW
+      type: number
+      default: 0.0
+      description: "Weight for step sequence similarity in story signals"
+
+signal_metadata_schema:
+  type: object
+  properties:
+    steps:
+      type: array
+      items:
+        type: string
+      description: "Sequential step types for story signals from Chronicler"
+      example: ["login", "cart_view", "payment", "confirmation"]
+
+context_sequence_schema:
+  type: object
+  properties:
+    sequence_patterns:
+      type: array
+      items:
+        type: object
+        properties:
+          pattern:
+            type: array
+            items:
+              type: string
+          frequency:
+            type: integer
+          anonymized_id:
+            type: string
+      description: "Learned sequence patterns for familiarity calculation"
+
+sequence_similarity_output:
+  type: number
+  minimum: 0.0
+  maximum: 1.0
+  description: "Similarity score between step sequences, 0.0 for non-story signals"
+
+performance_expectations:
+  sequence_comparison:
+    time_complexity: "O(n) or better"
+    space_complexity: "O(n) for pattern storage"
+    typical_sequence_length: "3-8 steps"

@@ -11,6 +11,7 @@ RingBuffer for bounded recent signal history.
 from __future__ import annotations
 
 import math
+from collections import Counter
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -58,6 +59,10 @@ class Context:
         self.author_counts: dict[str, int] = {}
         self.signal_count: int = 0
 
+        # Sequence tracking for story-signal familiarity
+        self.step_sequences: list[list[str]] = []
+        self.sequence_ngrams: Counter = Counter()
+
     @property
     def fullness(self) -> float:
         """How full this context is. signal_count / capacity, clamped [0, 1]."""
@@ -101,6 +106,19 @@ class Context:
         if self.signal_count == 0:
             return 0.0
         return self.author_counts.get(author, 0) / self.signal_count
+
+    def update_sequences(self, steps: list[str], max_n: int = 3) -> None:
+        """Update sequence representation after a story-signal is accepted.
+
+        Appends the step sequence and incrementally updates the n-gram
+        counter. Called only at rag_indexed acceptance level.
+        """
+        self.step_sequences.append(list(steps))
+        # Incrementally add n-grams from the new sequence
+        n = len(steps)
+        for size in range(1, min(max_n, n) + 1):
+            for i in range(n - size + 1):
+                self.sequence_ngrams[tuple(steps[i:i + size])] += 1
 
     @property
     def business_weight_metrics(self):

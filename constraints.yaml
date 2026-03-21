@@ -1,72 +1,21 @@
-version: "1"
-project: stigmergy
-constraints:
-  - id: C001
-    name: signal_immutability
-    description: Signals are immutable once ingested — never modified after creation
-    severity: must
-    classification: null
-    rationale: Derived state lives in Context, not Signal; mutations break dedup and tracing
+system_constraints:
+  backward_compatibility: true
+  immutable_signals: true
+  performance_limit: "O(n) where n = sequence length"
+  test_preservation: "All 1200+ existing tests must pass"
 
-  - id: C002
-    name: no_global_coordinator
-    description: Workers compete via local ART resonance checks — no global coordinator
-    severity: must
-    classification: null
-    rationale: Global coordination creates bottleneck and single point of failure
+implementation_constraints:
+  pure_functions: true
+  no_randomness: true
+  no_llm_calls: true
+  default_weight_zero: true
 
-  - id: C003
-    name: caucus_seeding
-    description: Cold-start must use caucus phase (buffer N signals, score all workers, seed by affinity)
-    severity: must
-    classification: null
-    rationale: Without caucus, mesh collapses to single-pipe classifier
+data_constraints:
+  privacy_compliant: true
+  metadata_dict_structure: "Signal.metadata['steps'] as list of strings"
+  context_extensible: true
 
-  - id: C004
-    name: mechanical_fallback
-    description: When LLM budget exhausted, system must continue in heuristic-only mode
-    severity: must
-    classification: FINANCIAL
-    rationale: Budget exhaustion must not stop signal processing
-
-  - id: C005
-    name: pii_filtering
-    description: Output must filter PII, credentials, and sensitive data per constraint rules
-    severity: must
-    classification: PII
-    rationale: Organizational signals may contain personally identifiable information
-
-  - id: C006
-    name: simhash_dedup
-    description: Near-duplicate signals must be rejected via SimHash before LLM processing
-    severity: must
-    classification: null
-    rationale: Duplicate processing wastes LLM budget
-
-  - id: C007
-    name: frozen_primitives
-    description: All primitive types (Signal, Assessment, Feedback) must be frozen Pydantic models
-    severity: must
-    classification: null
-    rationale: Mutable primitives enable accidental corruption of shared state
-
-  - id: C008
-    name: self_describing_strings
-    description: Actions, domains, competencies must be self-describing strings — no enums
-    severity: should
-    classification: null
-    rationale: Enums prevent the system from handling novel categories
-
-  - id: C009
-    name: state_persistence
-    description: Worker routing stats, agent competencies, and CERTX state must persist across restarts
-    severity: must
-    classification: null
-    rationale: Loss of state forces full cold-start, degrading quality
-
-  - id: C010
-    name: budget_tracking
-    description: Token spending must be tracked per-hour and per-day with configurable caps
-    severity: must
-    classification: FINANCIAL
-    rationale: LLM API costs must be bounded and observable
+algorithmic_constraints:
+  sequence_similarity_metric: "Required for step sequence comparison"
+  familiarity_components: 7
+  non_story_signals_return: 0.0

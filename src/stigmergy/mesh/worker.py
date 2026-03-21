@@ -44,7 +44,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from stigmergy.core.familiarity import FamiliarityWeights, familiarity
+from stigmergy.core.familiarity import FamiliarityWeights, extract_step_sequence, familiarity
 from stigmergy.mesh.topology import WorkerPosition, bloom_digest
 from stigmergy.primitives.context import Context
 from stigmergy.primitives.signal import Signal
@@ -280,6 +280,10 @@ class WorkerNode:
                 metadata=dict(signal.metadata),
                 signal_timestamp=signal.timestamp,
             )
+            # Update sequence representation for story signals
+            steps = extract_step_sequence(signal)
+            if steps is not None:
+                self.context.update_sequences(steps)
             return ReceiveResult(
                 accepted=True,
                 worker_id=self.id,

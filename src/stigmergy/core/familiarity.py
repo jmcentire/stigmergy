@@ -30,6 +30,7 @@ Components (the generalized match function):
 from __future__ import annotations
 
 import math
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -59,6 +60,7 @@ class FamiliarityWeights:
     temporal_proximity: float = 0.1
     author_affinity: float = 0.1
     signal_credibility: float = 0.1
+    sequence_similarity: float = 0.0
 
     def as_dict(self) -> dict[str, float]:
         return {
@@ -68,6 +70,7 @@ class FamiliarityWeights:
             "temporal_proximity": self.temporal_proximity,
             "author_affinity": self.author_affinity,
             "signal_credibility": self.signal_credibility,
+            "sequence_similarity": self.sequence_similarity,
         }
 
 
@@ -163,6 +166,80 @@ def _signal_credibility(signal: Signal) -> float:
     return base
 
 
+# ── Sequence similarity ────────────────────────────────────────
+
+def extract_step_sequence(signal: Signal) -> list[str] | None:
+    """Defensively extract a step sequence from signal metadata.
+
+    Returns None if steps key is missing, not a list, or contains
+    non-string/empty elements. Never raises on malformed metadata.
+    """
+    metadata = signal.metadata
+    if not isinstance(metadata, dict):
+        return None
+    steps = metadata.get("steps")
+    if not isinstance(steps, list):
+        return None
+    if not steps:
+        return None
+    for s in steps:
+        if not isinstance(s, str) or not s:
+            return None
+    return steps
+
+
+def extract_ngrams(steps: list[str], max_n: int = 3) -> Counter:
+    """Extract all n-grams of size 1..max_n from a step sequence.
+
+    O(n * max_n) where n = len(steps).
+    """
+    ngrams: Counter = Counter()
+    n = len(steps)
+    for size in range(1, min(max_n, n) + 1):
+        for i in range(n - size + 1):
+            ngrams[tuple(steps[i:i + size])] += 1
+    return ngrams
+
+
+def compute_sequence_similarity(
+    signal_ngrams: Counter, context_ngrams: Counter
+) -> float:
+    """Multiset Jaccard similarity between two n-gram counters.
+
+    sum(min(A[k], B[k])) / sum(max(A[k], B[k])) over all keys.
+    Returns 0.0 when both are empty (division-by-zero guard).
+    Pure, deterministic, symmetric.
+    """
+    all_keys = set(signal_ngrams) | set(context_ngrams)
+    if not all_keys:
+        return 0.0
+    min_sum = 0
+    max_sum = 0
+    for k in all_keys:
+        a = signal_ngrams.get(k, 0)
+        b = context_ngrams.get(k, 0)
+        min_sum += min(a, b)
+        max_sum += max(a, b)
+    if max_sum == 0:
+        return 0.0
+    return min_sum / max_sum
+
+
+def _sequence_similarity(signal: Signal, context: Context, max_n: int = 3) -> float:
+    """Score sequence similarity between a signal and a context.
+
+    Returns 0.0 for signals without steps (backward compat).
+    Pure function — does not mutate context.
+    """
+    steps = extract_step_sequence(signal)
+    if steps is None:
+        return 0.0
+    if not context.sequence_ngrams:
+        return 0.0
+    signal_ngrams = extract_ngrams(steps, max_n)
+    return compute_sequence_similarity(signal_ngrams, context.sequence_ngrams)
+
+
 def familiarity(signal: Signal, context: Context,
                 weights: FamiliarityWeights | None = None,
                 centroid: list[float] | None = None,
@@ -206,6 +283,7 @@ def familiarity(signal: Signal, context: Context,
         "temporal_proximity": _temporal_proximity(signal.timestamp, context.last_signal),
         "author_affinity": context.author_affinity(signal.author),
         "signal_credibility": _signal_credibility(signal),
+        "sequence_similarity": _sequence_similarity(signal, context),
     }
 
     w_dict = w.as_dict()

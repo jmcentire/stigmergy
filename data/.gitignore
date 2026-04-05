@@ -1,0 +1,10 @@
+# Downloaded datasets — too large for git
+*.json
+*.csv
+*.parquet
+*.sqlite
+*.pkl
+*.zip
+*.gz
+*.dump
+!.gitignore

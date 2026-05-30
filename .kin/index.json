@@ -1,0 +1,4600 @@
+{
+  "domains": [
+    "code",
+    "python",
+    "sh"
+  ],
+  "node_count": 417,
+  "nodes": [
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-014adaf86039",
+      "title": "src/stigmergy/core/lifecycle.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-039c2ec3444a",
+      "title": "src/stigmergy/ownership/entity_resolution.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-03d6b74adab7",
+      "title": "scripts/run_structural_experiment.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-04bf2229ea8b",
+      "title": "src/stigmergy/core/business_weight.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-06748edea0ba",
+      "title": "src/stigmergy/connectors/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-08fac41c7bbc",
+      "title": "src/stigmergy/attention/surfacing.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-117c4e7ce382",
+      "title": "src/stigmergy/identity/collector.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-163ba3e11e4f",
+      "title": "src/stigmergy/cli/config_cmd.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-1b445e2ce06c",
+      "title": "src/stigmergy/attention/action_correlation.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-1d14e6c460fa",
+      "title": "src/stigmergy/services/agent_prompts.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-1dadf5c3903d",
+      "title": "src/stigmergy/ownership/bulk_ingest.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-1f53cc0d58a4",
+      "title": "src/stigmergy/tracing/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-22d16f708906",
+      "title": "src/stigmergy/attention/model.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2496f0baa0e1",
+      "title": "src/stigmergy/mesh/health_pulse.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-289589800315",
+      "title": "src/stigmergy/adapters/linear.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-29f1874a3760",
+      "title": "src/stigmergy/unity/breathing.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2b19429ab342",
+      "title": "src/stigmergy/primitives/feedback.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2bb861fff058",
+      "title": "src/stigmergy/ownership/graph.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2bbb13b8d9d3",
+      "title": "src/stigmergy/structures/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2be789ac54f0",
+      "title": "src/stigmergy/mesh/worker.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2cca654a9b19",
+      "title": "src/stigmergy/primitives/inquiry.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-2cdfaf4d80a6",
+      "title": "src/stigmergy/attention/channel_migration.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-305b2157e2f8",
+      "title": "src/stigmergy/primitives/assessment.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-316770b55789",
+      "title": "src/stigmergy/unity/field_state.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-33c555e59ccc",
+      "title": "src/stigmergy/connectors/http.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-33f199f670a2",
+      "title": "src/stigmergy/graph/graph.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-36b7b3c68066",
+      "title": "src/stigmergy/identity/providers/slack.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-39de3a7d9b81",
+      "title": "src/stigmergy/unity/eigenmonitor.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-3f7d2228f3d1",
+      "title": "src/stigmergy/attention/phase_lock.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-41a360decfdb",
+      "title": "src/stigmergy/core/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-42aad5658819",
+      "title": "src/stigmergy/cli/output.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-48001655e979",
+      "title": "src/stigmergy/ownership/structural_mesh.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-482dfe95c69c",
+      "title": "src/stigmergy/attention/feedback_calibration.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-4892a672efa2",
+      "title": "src/stigmergy/identity/store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-4be776ffbbfe",
+      "title": "src/stigmergy/adapters/slack.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-4d40b73e214a",
+      "title": "src/stigmergy/policy/structure.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5141514d5a3b",
+      "title": "src/stigmergy/core/energy.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-52eb54d5f3ca",
+      "title": "src/stigmergy/services/token_budget.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5328ad7767fd",
+      "title": "src/stigmergy/unity/field_bridge.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-53ed5c422b6d",
+      "title": "src/stigmergy/mesh/temporal.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-54052b2db8ad",
+      "title": "src/stigmergy/policy/budgets.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-54121f4ce1d2",
+      "title": "src/stigmergy/core/embedding_weights.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-54579c274e84",
+      "title": "src/stigmergy/mesh/scoring.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-582e1bf15fda",
+      "title": "src/stigmergy/primitives/schemas.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5aef4ea13150",
+      "title": "src/stigmergy/cli/discovery.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5b87aa48cfd7",
+      "title": "src/stigmergy/ownership/features.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5cd1565ea1cc",
+      "title": "src/stigmergy/attention/reemission.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5da6d4dc348f",
+      "title": "src/stigmergy/identity/providers/github.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-5dd8bb860a5f",
+      "title": "src/stigmergy/pipeline/processor.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-60a3336b6e02",
+      "title": "src/stigmergy/policy/traces.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-6153ce32b7ae",
+      "title": "src/stigmergy/adapters/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-672988483cbd",
+      "title": "src/stigmergy/ownership/adapters/gleif.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-67e1140242f7",
+      "title": "src/stigmergy/core/merge.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-6e5947beff36",
+      "title": "src/stigmergy/adapters/github.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-70887b04c63a",
+      "title": "src/stigmergy/identity/provider.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-71db73f74dc4",
+      "title": "src/stigmergy/cli/run_cmd.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-7340000f80b6",
+      "title": "src/stigmergy/constraints/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-7815d2b51edb",
+      "title": "src/stigmergy/connectors/redis.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-79371fcf285c",
+      "title": "src/stigmergy/identity/providers/linear.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-7c6f9d5ee719",
+      "title": "src/stigmergy/services/vector_store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-7cb3f33cc65d",
+      "title": "src/stigmergy/cli/linear_live.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-7d4fa43f3b1e",
+      "title": "src/stigmergy/mesh/state_store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-7e9074f49181",
+      "title": "src/stigmergy/mesh/annotations.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-82a77fab9abb",
+      "title": "src/stigmergy/cli/github_live.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-854d1144677d",
+      "title": "src/stigmergy/services/embedding.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8a63de3bab78",
+      "title": "src/stigmergy/structures/lsh.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8be1344ea8c7",
+      "title": "src/stigmergy/cli/check_cmd.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8d485c80f134",
+      "title": "src/stigmergy/adapters/grafana.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8e12bb65369f",
+      "title": "src/stigmergy/policy/spectral.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8e507577a44d",
+      "title": "src/stigmergy/policy/engine.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8e72c7601715",
+      "title": "src/stigmergy/ownership/structural_signals.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8ee791bf45cb",
+      "title": "src/stigmergy/identity/providers/static.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-8fd76b98ab21",
+      "title": "src/stigmergy/graph/identity.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-917373870c72",
+      "title": "src/stigmergy/primitives/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9322c54214d0",
+      "title": "src/stigmergy/primitives/context.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-93d6c3bfeaa9",
+      "title": "src/stigmergy/attention/solo_ownership.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-94770f4cbe9a",
+      "title": "src/stigmergy/mesh/fingerprints.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-952a9ffa7b0e",
+      "title": "src/stigmergy/mesh/insights.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9622141b5c62",
+      "title": "src/stigmergy/identity/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-969aa234e203",
+      "title": "src/stigmergy/connectors/metrics.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-97ff6cd6246a",
+      "title": "src/stigmergy/core/familiarity.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-98a5a7792f9f",
+      "title": "src/stigmergy/delivery/base.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-994342f3dd2c",
+      "title": "src/stigmergy/unity/calibration.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9a9a7dea0ffc",
+      "title": "src/stigmergy/core/consensus.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9b1f1a9020e7",
+      "title": "src/stigmergy/unity/field_config.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9bf442dd3819",
+      "title": "src/stigmergy/tracing/trace.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9e620b908e00",
+      "title": "src/stigmergy/mesh/insight_store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9f96d1b0e857",
+      "title": "src/stigmergy/cli/budget.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-9fbbf7312f29",
+      "title": "src/stigmergy/identity/providers/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a0ab3d2771bf",
+      "title": "src/stigmergy/ownership/adapters/psc.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a10776068754",
+      "title": "src/stigmergy/mesh/mesh.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a2a3f2f47513",
+      "title": "src/stigmergy/services/llm.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a30adeadef32",
+      "title": "src/stigmergy/ownership/wallet_signals.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a35ac0a34803",
+      "title": "src/stigmergy/services/embedding_strategies.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a3c1edfba91a",
+      "title": "src/stigmergy/attention/exposure.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a4011aedeae5",
+      "title": "src/stigmergy/unity/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a4a344427c6b",
+      "title": "src/stigmergy/primitives/signal.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a4ad1f1b18f1",
+      "title": "src/stigmergy/mesh/discovery_store.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a6fcd516d305",
+      "title": "src/stigmergy/mesh/stability.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a7386086cc23",
+      "title": "src/stigmergy/policy/signals.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a812a66e1cac",
+      "title": "src/stigmergy/cli/init_cmd.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-a9f2a6e65cfc",
+      "title": "src/stigmergy/cli/grafana_live.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-ae31a752a804",
+      "title": "src/stigmergy/pipeline/ingestion.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-b73c2b4528cc",
+      "title": "src/stigmergy/graph/extractor.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-bc4f98ad06c3",
+      "title": "src/stigmergy/adapters/base.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-c371fca498ba",
+      "title": "src/stigmergy/cli/config_schema.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-c7962226cf67",
+      "title": "src/stigmergy/unity/field_engine.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-c85ac6729240",
+      "title": "src/stigmergy/services/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-c929d19f45ae",
+      "title": "src/stigmergy/graph/metrics.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-c9a4239686e6",
+      "title": "src/stigmergy/unity/diversity.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-ca6224f2281e",
+      "title": "src/stigmergy/structures/ring_buffer.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-cc9e70901b7a",
+      "title": "src/stigmergy/cli/anthropic_llm.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "sh"
+      ],
+      "id": "code-mod-stigmergy-cce8d00b6ced",
+      "title": "scripts/download_data.sh",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-cf180596a852",
+      "title": "src/stigmergy/structures/trie.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d31becb39f5d",
+      "title": "src/stigmergy/identity/resolver.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d41461649980",
+      "title": "src/stigmergy/mesh/corroboration.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d48f4705c5b5",
+      "title": "src/stigmergy/mesh/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d5c2568edc6b",
+      "title": "src/stigmergy/constraints/filter.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d6c8382852f6",
+      "title": "src/stigmergy/attention/portfolio.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d77c4dfd1e2a",
+      "title": "src/stigmergy/cli/main.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-d878475a1605",
+      "title": "src/stigmergy/identity/sensitivity.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-daec428abe32",
+      "title": "src/stigmergy/mesh/meta_modeler.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-dd37c292373c",
+      "title": "src/stigmergy/attention/linguistic.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-dd49c4159a74",
+      "title": "src/stigmergy/cli/temporal_state.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-de32b48ddef5",
+      "title": "src/stigmergy/mesh/inquiry.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-dee762a89508",
+      "title": "src/stigmergy/ownership/mesh_bridge.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-e67fd5a26d67",
+      "title": "src/stigmergy/unity/pid_controller.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-e9eaff9d0982",
+      "title": "src/stigmergy/ownership/bitcoin_bridge.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-ea964bc30269",
+      "title": "src/stigmergy/cli/slack_live.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-f299f909dba3",
+      "title": "src/stigmergy/connectors/stream.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-f2ae9eb6283d",
+      "title": "src/stigmergy/primitives/agent.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-f5e6add2b9e2",
+      "title": "src/stigmergy/pipeline/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-f6e14426d9ae",
+      "title": "src/stigmergy/structures/simhash.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-fa5285b06bfa",
+      "title": "src/stigmergy/ownership/adapters/icij.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-fb234663a5e9",
+      "title": "src/stigmergy/mesh/topology.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-fb8c9e8a505f",
+      "title": "src/stigmergy/structures/bloom.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-fc21eece271d",
+      "title": "src/stigmergy/graph/__init__.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:40",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-mod-stigmergy-ffd0e7f11aea",
+      "title": "src/stigmergy/mesh/caucus.py",
+      "type": "artifact",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-00e5276e20cc",
+      "title": "StabilityEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-01aebec3a562",
+      "title": "CachedSignal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-01f9f60c7113",
+      "title": "FindingRoute",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-02a001fff6cc",
+      "title": "AttentionConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-038358bda13f",
+      "title": "CompressionTracker",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-05044a2ce2c4",
+      "title": "WorkerNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-068453182c75",
+      "title": "FeedbackCalibrationConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-06a484b63a3f",
+      "title": "MergeDetectionResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-08d7a3fe038b",
+      "title": "CalibrationDimension",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-09fee20edb8e",
+      "title": "MergeError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-0b1fff521685",
+      "title": "SemanticStrategy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-0bfc9cba9a07",
+      "title": "MatchSuggester",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-0c1666707a9e",
+      "title": "CorroborationResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-0e64539d9eff",
+      "title": "MetricName",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-0e928f694533",
+      "title": "TopologyAction",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-104690f6a54d",
+      "title": "PhaseLockAlert",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-110d7bbc0103",
+      "title": "Trie",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-116d79dd8d3e",
+      "title": "SurfacingDecision",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-11cfc665b698",
+      "title": "MigrationAlert",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1209ad77a100",
+      "title": "EdgeType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1522342eaedc",
+      "title": "SurfaceDecision",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-162740881065",
+      "title": "OwnershipGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-17d4c63af5d6",
+      "title": "SourceAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-196ae5435a06",
+      "title": "MatchCandidate",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-198bb436bc08",
+      "title": "SpectralSnapshot",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-19af33c036ab",
+      "title": "FieldBridge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1a1ed14a1006",
+      "title": "Finding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1a64d8fd2a12",
+      "title": "ConfirmationResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1ad6779184ff",
+      "title": "ScanWindow",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1bb7acb1ab0b",
+      "title": "FeedbackSummary",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1c570ce92fc1",
+      "title": "StaticLinearMdProvider",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1d527e4480e7",
+      "title": "CorroborationPayload",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1de6e7d582b5",
+      "title": "Edge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1e420ff734c3",
+      "title": "ScanResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-1fd479c350b0",
+      "title": "PIDController",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-20b5b2526bc2",
+      "title": "LLMService",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2255f6eb027b",
+      "title": "DiversityState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-22e5ca4468cb",
+      "title": "RedisClient",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-23eab4ac5d28",
+      "title": "ExposureEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-241870a71318",
+      "title": "Node",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-25c3e445f0f2",
+      "title": "InquiryResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-26b41f8c002e",
+      "title": "NormalizedDevianceConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-270812bc4e62",
+      "title": "LinearTeamConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-28ab01b77ebe",
+      "title": "HTTPClient",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-292cff8006e6",
+      "title": "NodeState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2a569e472e77",
+      "title": "BitcoinMeshResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2acd5c15ea59",
+      "title": "CalibrationAction",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2bb9e8123002",
+      "title": "StrategyFailure",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2ce6e21a8671",
+      "title": "BudgetConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2ded2d12d6ac",
+      "title": "WorkerProfile",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2e5c09a53ec1",
+      "title": "MockSlackAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-2f743b323c51",
+      "title": "FieldState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-300f642ad0f1",
+      "title": "WorkspaceConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3091b0da02f5",
+      "title": "MeshConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-33f11ff58273",
+      "title": "BudgetConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-34fa815eccee",
+      "title": "FieldConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-35537e2f8c13",
+      "title": "WeightedSimilarityResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-360e23ac3343",
+      "title": "CompetencyModel",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-368d37545d22",
+      "title": "EmbeddingDimensionWeights",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3731722101db",
+      "title": "RuleSet",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-38b3e69d6b9a",
+      "title": "ForkResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3965fe83296c",
+      "title": "StreamMessage",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3b06d5ba547e",
+      "title": "UnknownCollector",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3cdcad7a7f7c",
+      "title": "DataClassification",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3d4f61a3e95d",
+      "title": "MockLinearAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3d79583e5b20",
+      "title": "LifecycleManager",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3ecd57912261",
+      "title": "EntityType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-3f63987cc349",
+      "title": "OutputConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-40080efd0fe2",
+      "title": "LiveGrafanaAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-40419ec8d1c9",
+      "title": "MockStream",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-422aced739fd",
+      "title": "ContextRegistry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4269353a6f85",
+      "title": "PipelineConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-442618fa2a53",
+      "title": "MetaModelRecommendation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4456a801ef7e",
+      "title": "ArtifactDelivery",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4498824b6b6f",
+      "title": "PersonAttentionState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-44a1a3084a5b",
+      "title": "inquire.DimensionExtraction",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-46bc5a5dedfe",
+      "title": "CorroborationEngine",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-46ed55c73746",
+      "title": "EmbeddingStrategyRegistry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-47210c99d88b",
+      "title": "MetaModelerConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-47feaf83a52a",
+      "title": "Mesh",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4abbadd46eed",
+      "title": "Edge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4b35a889aa47",
+      "title": "FindingRouter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4c7ff21aac8a",
+      "title": "PersonProfile",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4e6599b6aa52",
+      "title": "CompressionTrend",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-4e9b7e3352d9",
+      "title": "ActivityBudget",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-50d8b2bdcf29",
+      "title": "FeedbackStatus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-51d65f1905c9",
+      "title": "ConstraintEvaluator",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5329626c1085",
+      "title": "AttentionParameters",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5417d571805a",
+      "title": "LiveSlackAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-542644d63241",
+      "title": "WorkerPosition",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5451c412dc87",
+      "title": "Caucus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-56acc05c327c",
+      "title": "FeedbackNotFoundError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-57280cbe3cb4",
+      "title": "LocalDelivery",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-582d20b44a64",
+      "title": "MergeReason",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-59df3b9b3177",
+      "title": "MatchSuggestionError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5bef148c01f4",
+      "title": "HTTPRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5d86eaf3d187",
+      "title": "GrafanaSourceConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5def494a8d06",
+      "title": "EmbedAllResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-5e594ce9a4b5",
+      "title": "MeshExperimentResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6166ba47cbcf",
+      "title": "DeliveryChannel",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-618555db94e5",
+      "title": "FeedbackError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-633b4f71dcbc",
+      "title": "Insight",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-638c7a8c6409",
+      "title": "EnergyState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6396a82c97a4",
+      "title": "PersonRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-662029d0d312",
+      "title": "TraceEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-66cbd74aa7ac",
+      "title": "CorroborationBatch",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-680e5832548b",
+      "title": "SpectralFingerprint",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-68665a95ba99",
+      "title": "ObservationContext",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6a4e49f4109e",
+      "title": "ActionCorrelation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6c7f94f4a636",
+      "title": "CalibrationState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6c96ca173c63",
+      "title": "ChangeRate",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6c9ba6148b94",
+      "title": "InsightDeduplicator",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6caec9a12dfd",
+      "title": "EigenMonitor",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6d183b6c6e40",
+      "title": "StubEmbeddingService",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6d797a81fe94",
+      "title": "AnnotationStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6def8a0bc0b2",
+      "title": "StreamConsumer",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6e100856580d",
+      "title": "FindingRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6e3f290bad90",
+      "title": "RunStats",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6f4c30849c7d",
+      "title": "LiveLinearAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-6f689cdd48ba",
+      "title": "Annotation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-70ae91deceb4",
+      "title": "MeshTrace",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-70c0774f6cf2",
+      "title": "SignalSource",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-70c9f2bd0ae7",
+      "title": "MetaModeler",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-74d105f98d3e",
+      "title": "AgentRegistry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7538a088e9d3",
+      "title": "QuorumFinding",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7601df92e331",
+      "title": "RingBuffer",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-76db8645f046",
+      "title": "SimHash",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7708f88506c2",
+      "title": "FamiliarityWeightsConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-79bd0b8155c3",
+      "title": "UnityConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7a7770bfed62",
+      "title": "Agent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7aeb73461ef6",
+      "title": "CompressionSignals",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7cdbb2f761d6",
+      "title": "ExtractionMethod",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7e78c5ecbf3c",
+      "title": "LinearSourceConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7ee9d9a015ef",
+      "title": "FeedbackRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7f63ff31db0c",
+      "title": "CalibrationApplicationError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7fc5a038b7a4",
+      "title": "MatchResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-7fdd24496f75",
+      "title": "Assessment",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8056f1014a71",
+      "title": "SinceSpec",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-805ccaeafd82",
+      "title": "CommunicationGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-80d2d1a8afde",
+      "title": "CadenceMonitor",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-813e7c5eb787",
+      "title": "SourcesConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-81c5a81285c5",
+      "title": "RunState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8220514d206e",
+      "title": "Pipeline",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8298ac146cbe",
+      "title": "TraceLog",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-83f5d1074405",
+      "title": "DuplicateFeedbackError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-83f8e844c75e",
+      "title": "SearchResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-843f2de2c2b3",
+      "title": "RecommendedArtifact",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-86241ad9a320",
+      "title": "BudgetEntry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-878b7f4dc6eb",
+      "title": "HTTPResponse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-880a3e1c0bda",
+      "title": "MeshTemporalConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-89771c099ede",
+      "title": "FindingRegistry",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8a17707a3a94",
+      "title": "SpectralAnalyzer",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8adb8ddd1989",
+      "title": "WorkerSnapshot",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8b02f819e006",
+      "title": "Trace",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8b31742d4c9d",
+      "title": "StructuralMeshResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8cf1095cb539",
+      "title": "LSHIndex",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-8e13ba7bf1cd",
+      "title": "ConsensusResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9269e22fcd19",
+      "title": "AssessmentSummary",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-93406ea67ea6",
+      "title": "MockHTTPClient",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-937588175d91",
+      "title": "StrategyInfo",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9448521c7a28",
+      "title": "CorrelationInsight",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-95f892f3bd65",
+      "title": "EmbeddingStrategy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-95fe60459997",
+      "title": "DimensionMatch",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-978accc7177f",
+      "title": "GitHubOrgProvider",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-981a4f591362",
+      "title": "FingerprintStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-991f07b3414a",
+      "title": "EnabledSkippedPartition",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-99f832c394a3",
+      "title": "CaucusResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9aa0d6de6db9",
+      "title": "EngineInquiryResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9aa45acfd3b3",
+      "title": "DollarBudgetTracker",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9b3fefcd50eb",
+      "title": "EmbeddingService",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9be3c82ccfd6",
+      "title": "AliasStoreProtocol",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9c5edf4514ba",
+      "title": "MergeCandidate",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9c66fbe59184",
+      "title": "SimHashIndex",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9cda2e392b53",
+      "title": "InMemoryVectorStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9dd380c2db5d",
+      "title": "TokenBudget",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9e83ca751ce0",
+      "title": "IdentityResolver",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9e965ea4c958",
+      "title": "TechnicalStrategy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9ed12566400a",
+      "title": "TemporalScanner",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-9f135fc5445d",
+      "title": "ContextStatus",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a026dbae593f",
+      "title": "PolicyEngine",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a06ae8e7f58e",
+      "title": "AnthropicLLMService",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a145845253a4",
+      "title": "DiscoveredConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a47d10b6aa61",
+      "title": "TopologyUpdate",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a661042d66ca",
+      "title": "BreathingController",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a6be040ae4c5",
+      "title": "ReceiveResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a73e5c8b5aff",
+      "title": "EigenState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a7548ead9e53",
+      "title": "MetricsBackend",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-a843211be436",
+      "title": "ScoringComponents",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-aa479e758c0f",
+      "title": "AliasStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-aa4ceba84f0e",
+      "title": "StabilityTracker",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ac95b1fc108e",
+      "title": "FeedbackRating",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-acba9e6c7b7c",
+      "title": "FieldEngine",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ae884f81f4e3",
+      "title": "BreathingState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-afa04907f5ce",
+      "title": "NoveltyTracker",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b0d73276bef8",
+      "title": "AgentConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b1498196f1ae",
+      "title": "MatchMethod",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b1b9ac7fec8d",
+      "title": "EmbeddingLLMService",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b1f90a728e9d",
+      "title": "UnknownIdentifier",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b20e1b9be5c8",
+      "title": "SoloOwnershipAlert",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b2b3cc885abc",
+      "title": "ConstraintResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b4951d0322a4",
+      "title": "LLMConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b50f3240ca8e",
+      "title": "AssessmentAction",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b54c8ab194b6",
+      "title": "WorkerSummary",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b61f69cd7690",
+      "title": "ExposureExtractor",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b6ce54fe401f",
+      "title": "SentimentResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-b889510b824f",
+      "title": "CalibratorProtocol",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-baddf7d7d7cb",
+      "title": "CorrelationBatch",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-bc499b04c2b5",
+      "title": "MetaModelAssessment",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-bc56b4b2abc4",
+      "title": "MockGitHubAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-bf6561b541db",
+      "title": "AgentSummary",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-c2a969caea3c",
+      "title": "FeedbackStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-c58912987f18",
+      "title": "StoreWriteError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-c5ccce884811",
+      "title": "TokenBudgetAllocation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-c78b53a73ba3",
+      "title": "InquiryDimension",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-c8ce15bd802d",
+      "title": "MetricUpdateRequest",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-c9b0f32cb0c0",
+      "title": "SincePolicy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ca409300965c",
+      "title": "LiveGitHubAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ca7e89354c69",
+      "title": "GitHubSourceConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-caa6de282de4",
+      "title": "SlackUsersProvider",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-cb20e073f0ab",
+      "title": "CouplingDetection",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-cb430930e20d",
+      "title": "VectorStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-cc354a01c237",
+      "title": "BusinessWeightMetrics",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-cdac3c8d41ee",
+      "title": "SignalFacts",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ce10c8aaaa15",
+      "title": "CorroborationAssessment",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d072508afaa1",
+      "title": "MetricsCollector",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d4856f3a0eab",
+      "title": "EntityNode",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d5a5fdbc30c7",
+      "title": "PolicyEvaluation",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d5f0adb30dca",
+      "title": "IdentityConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d7d036deed86",
+      "title": "OwnershipEdge",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d7e78ced4e45",
+      "title": "SlackSourceConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d823a0bc1b19",
+      "title": "FamiliarityWeights",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-d8da5919bea8",
+      "title": "CaucusConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-db171034ec51",
+      "title": "DimensionWeightsUpdateResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-dd0a2c71d09d",
+      "title": "HopRecord",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-de031781267f",
+      "title": "EdgeExtractor",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-de42a6f6dff5",
+      "title": "AhoCorasick",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-dee014d02557",
+      "title": "TraceStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-df005d088b10",
+      "title": "InterventionDecision",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-df50752febd9",
+      "title": "Context",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-dfab2dc6df5b",
+      "title": "LinearUsersProvider",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-dfd724fbf236",
+      "title": "StubLLMService",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e27c9e86ad2d",
+      "title": "BusinessWeightConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e34b199f734b",
+      "title": "AttentionModel",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e5dc158b87a6",
+      "title": "FieldAdjustment",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e64916fe0953",
+      "title": "IngestionQueue",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e66743749249",
+      "title": "Discovery",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e69f3343f143",
+      "title": "MockRedis",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e751496c498d",
+      "title": "Intervention",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e7f9c12cb8da",
+      "title": "BackpressureError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e8cf544b3b2d",
+      "title": "PolicySignal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e931738dd175",
+      "title": "StigmergyConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e96205fdaef4",
+      "title": "FeedbackResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-e9e3f0816f7a",
+      "title": "ConstraintAction",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-eb77610efa68",
+      "title": "AgentCalibration",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ec7d44de8210",
+      "title": "PIDState",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ee75e8eba898",
+      "title": "IdentityResolutionError",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ef182ff329b8",
+      "title": "BusinessWeightResult",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-ef5a89b044de",
+      "title": "ContextConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-efc67e97d77e",
+      "title": "IdentityProvider",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f05fd584942e",
+      "title": "InsightStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f20bc1d8ea47",
+      "title": "MetricEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f32ecbeecf14",
+      "title": "StreamProducer",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f38f4d27e0f4",
+      "title": "DiscoveryStore",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f3e41483b968",
+      "title": "SignalCache",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f3fcdbfcbb84",
+      "title": "ReemissionEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f439836a949d",
+      "title": "MeshWorkerConfig",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f4b5dc6935d0",
+      "title": "WorkerVerdict",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f57e0a1bb6ce",
+      "title": "MeshHealthPulse",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f61352526d84",
+      "title": "SocialStrategy",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f61e2cec20cb",
+      "title": "Signal",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f648157cc11e",
+      "title": "HealthPulseCollector",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f6c6b2b47fd8",
+      "title": "CountingBloomFilter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f71446bf59e6",
+      "title": "StaticCSVProvider",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f7d9bbe8d590",
+      "title": "ResolutionHandler",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-f94227992d13",
+      "title": "MockGrafanaAdapter",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-fa297eb55714",
+      "title": "LifecycleEvent",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-fc51de327078",
+      "title": "MetricType",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-fdc79a38bd20",
+      "title": "RiskCluster",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    },
+    {
+      "domains": [
+        "code",
+        "python"
+      ],
+      "id": "code-sym-stigmergy-fddc9327bbd9",
+      "title": "StructureGraph",
+      "type": "concept",
+      "updated_at": "2026-05-30T14:50:39",
+      "weight": 0.5
+    }
+  ],
+  "repo": "stigmergy",
+  "source_updated_at": "2026-05-30T14:50:40",
+  "version": 1
+}

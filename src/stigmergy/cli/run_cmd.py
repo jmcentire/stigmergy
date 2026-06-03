@@ -72,6 +72,16 @@ CONFIG_PATH = Path(".stigmergy") / "config.yaml"
 STATE_PATH = Path(".stigmergy") / "state.yaml"
 DEDUP_INDEX_PATH = Path(".stigmergy") / "dedup_index.json"
 
+# Ceiling on how far back an automated (no --since) backfill will reach.
+# Without this, an interrupted run leaves a checkpoint whose timestamp can be
+# months old; each subsequent run then re-fetches the entire backlog (tens of
+# thousands of signals), drains only ~1 day of it before the launchd timeout,
+# and never converges — so its findings freeze. Clamping `since` to a recent
+# window keeps fetches cheap, lets a run actually complete (which clears the
+# checkpoint), and keeps the daily output fresh. Override via env for a manual
+# catch-up; explicit `--since` bypasses the clamp entirely.
+MAX_BACKFILL_DAYS = int(os.environ.get("STIGMERGY_MAX_BACKFILL_DAYS", "7"))
+
 # Approximate tokens per word (GPT/Claude tokenizers average ~1.3 tokens/word)
 _TOKENS_PER_WORD = 1.3
 # Estimated output tokens per agent assessment (action + confidence + reasoning)
@@ -1523,6 +1533,21 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
             since = datetime.fromisoformat(last_run)
         else:
             since = datetime.now(timezone.utc) - timedelta(days=30)
+
+    # Bound the automated backfill window. A stale checkpoint (or last_run) can
+    # point months back; left alone, the run re-fetches the whole backlog and
+    # times out before draining it, freezing the findings. Clamp to a recent
+    # window so the fetch stays cheap and the run can complete. An explicit
+    # --since (since_days is not None) is honored verbatim — manual catch-up.
+    if since_days is None:
+        floor = datetime.now(timezone.utc) - timedelta(days=MAX_BACKFILL_DAYS)
+        if since < floor:
+            info(
+                f"Clamping backfill window: checkpoint/last_run was {since.date()}, "
+                f"using {floor.date()} (MAX_BACKFILL_DAYS={MAX_BACKFILL_DAYS}). "
+                f"Older unprocessed signals are skipped so the run can converge."
+            )
+            since = floor
 
     # Collect all signals from all sources
     all_signals: list[Signal] = []

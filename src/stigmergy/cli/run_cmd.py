@@ -1466,6 +1466,60 @@ def _refresh_repos_if_available(config: StigmergyConfig) -> None:
         info(f"  {ok} repos fetched successfully")
 
 
+def _resolve_backfill_since(
+    state: dict,
+    since_days: int | None,
+    now: datetime | None = None,
+) -> tuple[datetime, list[str]]:
+    """Resolve the backfill 'since' cutoff (pure — no I/O, for testability).
+
+    Priority: checkpoint (resume an interrupted run) > --since flag > last_run
+    > 30-day default. On the automated path (since_days is None) the result is
+    clamped to MAX_BACKFILL_DAYS so a stale checkpoint can't drag the window
+    months back and stall the run. An explicit --since is honored verbatim.
+
+    Returns (since, notes) where notes are human-readable lines the caller
+    should info()-log.
+    """
+    now = now or datetime.now(timezone.utc)
+    notes: list[str] = []
+    checkpoint = state.get("checkpoint")
+
+    def _resume_note(cp: dict) -> str:
+        return (
+            f"Resuming from checkpoint: {cp['signals_processed']}/{cp['total_signals']} "
+            f"signals processed (${cp.get('spend_usd', 0):.2f} spent)"
+        )
+
+    if checkpoint and since_days is not None:
+        # --since sets the window, but resume from the checkpoint if it is newer.
+        since = now - timedelta(days=since_days)
+        resume_ts = datetime.fromisoformat(checkpoint["timestamp"])
+        if resume_ts > since:
+            notes.append(_resume_note(checkpoint))
+            since = resume_ts
+    elif since_days is not None:
+        since = now - timedelta(days=since_days)
+    elif checkpoint:
+        since = datetime.fromisoformat(checkpoint["timestamp"])
+        notes.append(_resume_note(checkpoint))
+    else:
+        last_run = state.get("last_run")
+        since = datetime.fromisoformat(last_run) if last_run else now - timedelta(days=30)
+
+    if since_days is None:
+        floor = now - timedelta(days=MAX_BACKFILL_DAYS)
+        if since < floor:
+            notes.append(
+                f"Clamping backfill window: checkpoint/last_run was {since.date()}, "
+                f"using {floor.date()} (MAX_BACKFILL_DAYS={MAX_BACKFILL_DAYS}). "
+                f"Older unprocessed signals are skipped so the run can converge."
+            )
+            since = floor
+
+    return since, notes
+
+
 async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | None = None) -> int:
     """Single-pass mesh mode: backfill sources, route through mesh, print results."""
     from stigmergy.mesh.temporal import TemporalScanner
@@ -1503,51 +1557,14 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     info(f"Mesh initialized: {mesh.worker_count} workers, {len(config.agents)} agents, {graph_info}")
     print()
 
-    # Determine the "since" cutoff for signal fetching.
-    # Priority: checkpoint (resume interrupted run) > --since flag > last_run > 30 days
+    # Determine the "since" cutoff for signal fetching (resume > --since >
+    # last_run > 30d), clamped to MAX_BACKFILL_DAYS on the automated path.
+    # See _resolve_backfill_since for the rules (unit-tested there).
     state = _load_state()
-    checkpoint = state.get("checkpoint")
     prev_sources = set(state.get("last_sources", []))
-    if checkpoint and since_days is not None:
-        # --since flag sets the fetch window, but skip already-processed signals
-        since = datetime.now(timezone.utc) - timedelta(days=since_days)
-        resume_ts = datetime.fromisoformat(checkpoint["timestamp"])
-        if resume_ts > since:
-            info(f"Resuming from checkpoint: {checkpoint['signals_processed']}/{checkpoint['total_signals']} "
-                 f"signals processed (${checkpoint.get('spend_usd', 0):.2f} spent)")
-            since = resume_ts
-    elif since_days is not None:
-        since = datetime.now(timezone.utc) - timedelta(days=since_days)
-    elif checkpoint:
-        # No --since flag but checkpoint exists from an interrupted run.
-        # Resume from checkpoint timestamp so we don't re-fetch/re-process
-        # signals that were already handled. The persisted dedup index
-        # provides a second layer of protection for any overlap.
-        resume_ts = datetime.fromisoformat(checkpoint["timestamp"])
-        info(f"Resuming from checkpoint: {checkpoint['signals_processed']}/{checkpoint['total_signals']} "
-             f"signals processed (${checkpoint.get('spend_usd', 0):.2f} spent)")
-        since = resume_ts
-    else:
-        last_run = state.get("last_run")
-        if last_run:
-            since = datetime.fromisoformat(last_run)
-        else:
-            since = datetime.now(timezone.utc) - timedelta(days=30)
-
-    # Bound the automated backfill window. A stale checkpoint (or last_run) can
-    # point months back; left alone, the run re-fetches the whole backlog and
-    # times out before draining it, freezing the findings. Clamp to a recent
-    # window so the fetch stays cheap and the run can complete. An explicit
-    # --since (since_days is not None) is honored verbatim — manual catch-up.
-    if since_days is None:
-        floor = datetime.now(timezone.utc) - timedelta(days=MAX_BACKFILL_DAYS)
-        if since < floor:
-            info(
-                f"Clamping backfill window: checkpoint/last_run was {since.date()}, "
-                f"using {floor.date()} (MAX_BACKFILL_DAYS={MAX_BACKFILL_DAYS}). "
-                f"Older unprocessed signals are skipped so the run can converge."
-            )
-            since = floor
+    since, _since_notes = _resolve_backfill_since(state, since_days)
+    for _note in _since_notes:
+        info(_note)
 
     # Collect all signals from all sources
     all_signals: list[Signal] = []

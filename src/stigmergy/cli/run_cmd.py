@@ -2023,6 +2023,11 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
         for ins in all_insights
     ]
     changed_findings = finding_registry.ingest_insights(buffered, insight_store.run_id)
+    # New findings = surfaced for the first time ever (times_surfaced == 1).
+    # Zero new findings across runs is the signature of a stuck pipeline
+    # (the Feb–Jun freeze re-surfaced the same 20 findings every day) — used
+    # below for the stale-findings guard and the end-of-run STATUS line.
+    new_finding_count = sum(1 for f in changed_findings if getattr(f, "times_surfaced", 0) == 1)
 
     # Auto-detect state changes: check if this run's signals indicate
     # action on deferred/normalized findings (e.g., commits by actors
@@ -2323,8 +2328,19 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
         "insights_raw": raw_insight_total,
         "insights_display_unique": display_unique,
         "stopped_reason": stopped_reason,
+        "new_findings": new_finding_count,
+        "spend_usd": round(budget.daily_spend, 4),
         "findings_registry": finding_registry.summary(),
     }
+    # Stale-findings guard. A run can report "complete" yet surface nothing new
+    # — that is exactly how the pipeline sat frozen for months without anyone
+    # noticing. Track consecutive zero-new-finding runs and escalate the volume.
+    if new_finding_count == 0:
+        stale_streak = int(state.get("consecutive_no_new_findings", 0)) + 1
+    else:
+        stale_streak = 0
+    state["consecutive_no_new_findings"] = stale_streak
+
     # Clear checkpoint on complete run; preserve on interrupted/budget runs
     # so the next run can resume from where we left off
     if stopped_reason == "complete":
@@ -2340,7 +2356,34 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     if hasattr(mesh, '_llm') and mesh._llm is not None and hasattr(mesh._llm, 'close'):
         await mesh._llm.close()
 
-    return 0
+    # ── Machine-readable STATUS line + status-based exit code ──────────────
+    # Make the run's health unmissable instead of buried at the end of a long
+    # log, and propagate a non-zero exit so launchd/monitoring actually trips
+    # when a run does not finish (root incident: exit stayed 0 while dead).
+    exit_code = {
+        "complete": 0,
+        "sigterm": 2,          # killed by timeout(1) before draining the window
+        "budget_exhausted": 3, # hit the daily/hourly cap mid-run
+        "circuit_breaker": 4,
+        "interrupted": 5,
+    }.get(stopped_reason, 6)
+
+    status_word = "OK" if exit_code == 0 else "INCOMPLETE"
+    status_line = (
+        f"STATUS: {status_word} | stopped_reason={stopped_reason} "
+        f"| signals={len(traces)}/{total_signals} | new_findings={new_finding_count} "
+        f"| spend=${budget.daily_spend:.2f} | exit={exit_code}"
+    )
+    (info if exit_code == 0 else error)(status_line)
+
+    if stale_streak >= 1:
+        warn(
+            f"STALE FINDINGS: {stale_streak} consecutive run(s) produced 0 new findings. "
+            f"If this persists, the pipeline is likely stuck (window/checkpoint/source access) "
+            f"— investigate rather than trusting the unchanged output."
+        )
+
+    return exit_code
 
 
 def _process_mesh_signal(

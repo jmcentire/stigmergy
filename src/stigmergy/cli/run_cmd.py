@@ -538,6 +538,31 @@ def _resolve_llm(config: StigmergyConfig):
     return StubLLMService()
 
 
+def _resolve_fast_llm(config: StigmergyConfig, quality_llm):
+    """Resolve the cheap per-signal LLM tier (worker extraction + surfacer).
+
+    Returns a separate client on config.llm.fast_model when it differs from the
+    quality model; otherwise returns the quality client unchanged (single-tier).
+    Falls back to the quality client on any construction error.
+    """
+    fast_model = getattr(config.llm, "fast_model", "") or ""
+    if (
+        quality_llm is None
+        or not fast_model
+        or fast_model == config.llm.model
+        or config.llm.provider != "anthropic"
+    ):
+        return quality_llm
+    try:
+        from stigmergy.cli.anthropic_llm import AnthropicLLMService
+        fast = AnthropicLLMService(model=fast_model)
+        info(f"  Tiered LLM: fast={fast_model} (per-signal) / quality={config.llm.model} (correlator)")
+        return fast
+    except Exception as exc:
+        warn(f"Could not build fast LLM ({fast_model}): {exc}. Using quality model for all calls.")
+        return quality_llm
+
+
 async def _preflight_llm(llm) -> None:
     """Verify LLM is reachable before starting a run.
 
@@ -1138,6 +1163,11 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
     # Only pass real LLM; stub mode means mechanical fallback.
     llm_service = _resolve_llm(config)
     mesh_llm = llm_service if not isinstance(llm_service, StubLLMService) else None
+    # Tiered models: fast_llm (cheap) handles the high-volume per-signal calls
+    # (worker fact-extraction + surfacer); mesh_llm (quality) handles the
+    # batched correlator/reflect, corroboration, and meta-modeler. When no
+    # fast_model is configured, fast_llm IS mesh_llm (single tier).
+    fast_llm = _resolve_fast_llm(config, mesh_llm)
 
     # Inject LLM, annotation store, and circuit breaker into agents.
     # The circuit breaker aborts the run if LLM becomes unreachable mid-flight.
@@ -1184,7 +1214,8 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
 
     if mesh_llm is not None:
         for agent in agents_list:
-            agent._llm = mesh_llm
+            agent._llm = fast_llm          # surfacer/evaluate — high-volume, cheap tier
+            agent._correlator_llm = mesh_llm  # reflect/correlator — batched, quality tier
             agent._annotations = annotation_store
             agent._circuit_breaker = _circuit_breaker
             agent._compression_tracker = _agent_comp_tracker
@@ -1208,8 +1239,12 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
         max_threshold=wc.max_threshold,
         threshold_curve=wc.threshold_curve,
         high_relevance_offset=wc.high_relevance_offset,
-        llm=mesh_llm,
+        llm=fast_llm,
     )
+    # Quality tier for the batched correlator/corroboration and for propagation
+    # to forked agents' reflect() (see Mesh fork logic). Workers use mesh._llm
+    # (fast) for per-signal fact extraction.
+    mesh._correlator_llm = mesh_llm
 
     # Warm-start dedup index from previous run
     if DEDUP_INDEX_PATH.exists() and config.pipeline.dedup_enabled:
@@ -1304,7 +1339,10 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
     )
     budget.set_model_pricing(config.llm.model)
     if mesh_llm is not None:
-        budget.set_llm(mesh_llm)
+        # Track each tier at its own model's pricing. add_priced_llm dedupes by
+        # client identity, so a single-tier setup (fast_llm is mesh_llm) registers once.
+        budget.add_priced_llm(mesh_llm, config.llm.model)
+        budget.add_priced_llm(fast_llm, getattr(config.llm, "fast_model", "") or config.llm.model)
 
     # Signal cache for cross-signal observation
     signal_cache = SignalCache(capacity=500)
@@ -1345,7 +1383,7 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
         graph=structure_graph,
         budget=activity_budget,
         trace_store=trace_store,
-        llm=mesh_llm,
+        llm=fast_llm,
     )
 
     # Spectral fingerprint store — per-signal activation vectors for
@@ -1520,6 +1558,44 @@ def _resolve_backfill_since(
     return since, notes
 
 
+# Short pure-acknowledgement phrases — meaningless on their own. Compared after
+# lowercasing and stripping surrounding punctuation/emoji.
+_ACK_PHRASES = frozenset({
+    "ok", "okay", "k", "kk", "kthx", "thanks", "thank you", "thx", "ty", "tysm",
+    "ty!", "np", "no problem", "yes", "yep", "yeah", "ya", "no", "nope", "sure",
+    "sounds good", "sgtm", "lgtm", "+1", "-1", "done", "done!", "ditto", "same",
+    "agreed", "agree", "nice", "cool", "great", "awesome", "lol", "haha", "ack",
+    "acked", "got it", "gotit", "yw", "ditto.", "+1!", "this", "indeed", "right",
+})
+
+
+def _is_noise_signal(sig) -> bool:
+    """True if a signal is obvious low-value chaff that should skip the mesh.
+
+    Conservative: only drops empties, pure emoji/punctuation, short pure-acks,
+    and Slack system leftovers. Anything with real words and length stays.
+    """
+    content = (getattr(sig, "content", "") or "").strip()
+    if not content:
+        return True
+    # Slack system leftovers (defence in depth; the adapter drops most).
+    meta = getattr(sig, "metadata", None) or {}
+    if meta.get("subtype") in (
+        "channel_join", "channel_leave", "bot_add", "bot_remove",
+        "channel_topic", "channel_purpose", "channel_name",
+        "pinned_item", "unpinned_item",
+    ):
+        return True
+    # No alphanumeric characters at all — pure emoji / reaction / punctuation.
+    if not any(c.isalnum() for c in content):
+        return True
+    # Short pure-acknowledgements.
+    normalized = content.lower().strip(" \t\n.!?,:;)(_*~`\"'")
+    if len(content) <= 16 and normalized in _ACK_PHRASES:
+        return True
+    return False
+
+
 async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | None = None) -> int:
     """Single-pass mesh mode: backfill sources, route through mesh, print results."""
     from stigmergy.mesh.temporal import TemporalScanner
@@ -1598,6 +1674,19 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
                 extras.append(f"{s['filtered']} empty/system filtered")
         extra_note = f" ({', '.join(extras)})" if extras else ""
         info(f"  {source_name}: {source_count} signals fetched{extra_note}")
+
+    # Noise pre-filter — drop low-value signals (empty, pure-emoji/reaction,
+    # short acks like "ok"/"thanks"/"lgtm", system leftovers) BEFORE they incur
+    # any per-signal LLM cost. Conservative by design: only obvious chaff. This
+    # is the bulk cost lever on chatty Slack corpora. Disable with
+    # STIGMERGY_DISABLE_PREFILTER=1.
+    if not os.environ.get("STIGMERGY_DISABLE_PREFILTER"):
+        _pre = len(all_signals)
+        all_signals = [s for s in all_signals if not _is_noise_signal(s)]
+        _dropped = _pre - len(all_signals)
+        if _dropped:
+            _pct = _dropped * 100 // max(_pre, 1)
+            info(f"  Pre-filter: dropped {_dropped} noise signals ({_pct}%); {len(all_signals)} remain")
 
     info(f"\nRouting {len(all_signals)} signals through mesh...")
     separator()
@@ -1684,10 +1773,14 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
         # Track actual API token spend (not estimates)
         budget.sync_from_llm()
 
-        # Agent reflection — spectral observation
-        insights, _raw = await _reflect_and_cache(sig, trace, mesh, agent_registry, signal_cache, comm_graph)
-        raw_insight_total += _raw
-        budget.sync_from_llm()  # Reflect also makes LLM calls
+        # Agent reflection — spectral observation. Skip near-duplicates: the
+        # signal was already routed and reflected when first seen, so reflecting
+        # again is pure LLM spend for a finding we already have.
+        insights, _raw = [], 0
+        if not trace.duplicate:
+            insights, _raw = await _reflect_and_cache(sig, trace, mesh, agent_registry, signal_cache, comm_graph)
+            raw_insight_total += _raw
+            budget.sync_from_llm()  # Reflect also makes LLM calls
 
         # Policy evaluation — structural signals + agent judgment
         from stigmergy.policy.traces import TraceEvent as PolicyTraceEvent
@@ -1972,7 +2065,7 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     quorum_findings, corr_metrics = await run_corroboration(
         all_insights,
         list(mesh.workers),
-        llm=mesh._llm,
+        llm=getattr(mesh, "_correlator_llm", None) or mesh._llm,
         comm_graph=comm_graph,
     )
     corroboration_summary(quorum_findings, corr_metrics)
@@ -2372,6 +2465,9 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     # Close LLM client so asyncio.run() can exit cleanly
     if hasattr(mesh, '_llm') and mesh._llm is not None and hasattr(mesh._llm, 'close'):
         await mesh._llm.close()
+    _corr_llm = getattr(mesh, "_correlator_llm", None)
+    if _corr_llm is not None and _corr_llm is not mesh._llm and hasattr(_corr_llm, "close"):
+        await _corr_llm.close()
 
     # ── Machine-readable STATUS line + status-based exit code ──────────────
     # Make the run's health unmissable instead of buried at the end of a long
@@ -3341,7 +3437,7 @@ async def _run_loop_mesh(config: StigmergyConfig, live: bool, since_days: int | 
         quorum_findings_loop, corr_metrics_loop = await _run_corr_loop(
             all_insights,
             list(mesh.workers),
-            llm=mesh._llm,
+            llm=getattr(mesh, "_correlator_llm", None) or mesh._llm,
             comm_graph=comm_graph,
         )
         corroboration_summary(quorum_findings_loop, corr_metrics_loop)
@@ -3480,6 +3576,9 @@ async def _run_loop_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     # Close LLM client so asyncio.run() can exit cleanly
     if hasattr(mesh, '_llm') and mesh._llm is not None and hasattr(mesh._llm, 'close'):
         await mesh._llm.close()
+    _corr_llm = getattr(mesh, "_correlator_llm", None)
+    if _corr_llm is not None and _corr_llm is not mesh._llm and hasattr(_corr_llm, "close"):
+        await _corr_llm.close()
 
     # Restore original SIGTERM handler
     signal_mod.signal(signal_mod.SIGTERM, _original_sigterm)

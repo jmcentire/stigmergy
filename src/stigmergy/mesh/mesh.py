@@ -909,7 +909,10 @@ class Mesh:
                 # without this, forked agents fall back to mechanical
                 # heuristics instead of using agent intelligence.
                 if self._llm is not None:
-                    agent._llm = self._llm
+                    agent._llm = self._llm  # fast tier (surfacer/evaluate)
+                    # Quality tier for reflect() — keep forked agents' correlator
+                    # on the same model as their parents.
+                    agent._correlator_llm = getattr(self, "_correlator_llm", None)
                     # Inherit annotation store and circuit breaker from a sibling agent
                     siblings = self._agents.for_context(worker.context.id)
                     if siblings:

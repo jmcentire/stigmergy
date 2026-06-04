@@ -124,7 +124,10 @@ class Agent:
         self.rules = rules or RuleSet()
         self.weights: dict[str, float] = weights or {}  # domain -> concern weight
         self.state: dict[str, Any] = state or {}
-        self._llm = llm
+        self._llm = llm  # fast/cheap tier — surfacer (evaluate) + mechanical fallbacks
+        # Quality tier for the batched correlator (reflect). When None, reflect
+        # falls back to self._llm. Injected by run_cmd / propagated on fork.
+        self._correlator_llm = None
         self._annotations = None  # AnnotationStore — injected after construction
         self._discovery_store = None  # DiscoveryStore — injected by run_cmd for mesh context
         self._compression_tracker = None  # CompressionTracker — injected by run_cmd
@@ -465,7 +468,10 @@ class Agent:
                     mesh_lines.append(f"- [{dtype}] (strength={strength:.2f}): {summary}")
                 mesh_context = "\n".join(mesh_lines)
 
-        batch = await self._llm.extract(
+        # Correlator runs on the quality tier when configured; the surfacer and
+        # mechanical paths stay on the cheap self._llm.
+        correlator_llm = self._correlator_llm or self._llm
+        batch = await correlator_llm.extract(
             CorrelationBatch,
             correlator_prompt(
                 summaries,

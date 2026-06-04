@@ -70,6 +70,11 @@ class AgentConfig(BaseModel):
 class LLMConfig(BaseModel):
     provider: str = "stub"
     model: str = "claude-haiku-4-5-20251001"
+    # Tiered models: `model` is the quality tier (batched correlator/reflect,
+    # corroboration, meta-modeler); `fast_model` is the cheap tier for the
+    # high-volume per-signal calls (worker fact-extraction + surfacer). When
+    # equal (or fast_model empty), a single client is used for everything.
+    fast_model: str = ""
 
 
 class BudgetConfig(BaseModel):

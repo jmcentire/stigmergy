@@ -61,12 +61,38 @@ class DollarBudgetTracker:
     _llm_ref: object | None = None
     _last_input_tokens: int = 0
     _last_output_tokens: int = 0
+    # Multi-client tracking: each entry is a dict with keys
+    # {llm, in_rate, out_rate, last_in, last_out}. Lets a tiered setup
+    # (cheap per-signal model + quality correlator model) be priced correctly.
+    _priced_llms: list = field(default_factory=list)
 
     def set_llm(self, llm) -> None:
-        """Attach LLM service for actual token tracking."""
+        """Attach LLM service for actual token tracking (priced at the
+        tracker's configured rates). Back-compat single-client entry point."""
         self._llm_ref = llm
         self._last_input_tokens = getattr(llm, "total_input_tokens", 0)
         self._last_output_tokens = getattr(llm, "total_output_tokens", 0)
+
+    def add_priced_llm(self, llm, model: str) -> None:
+        """Register an LLM client tracked at its OWN model's pricing.
+
+        Use for tiered setups so each client's tokens are costed correctly
+        (e.g. Haiku per-signal calls vs Sonnet correlator). Idempotent per
+        client identity. Supersedes set_llm when present.
+        """
+        if llm is None:
+            return
+        for entry in self._priced_llms:
+            if entry["llm"] is llm:
+                return
+        inp, out = pricing_for_model(model)
+        self._priced_llms.append({
+            "llm": llm,
+            "in_rate": inp,
+            "out_rate": out,
+            "last_in": getattr(llm, "total_input_tokens", 0),
+            "last_out": getattr(llm, "total_output_tokens", 0),
+        })
 
     def set_model_pricing(self, model: str) -> None:
         """Auto-detect pricing from model name if not explicitly configured."""
@@ -119,6 +145,28 @@ class DollarBudgetTracker:
 
         Call this after each signal to track real API spend instead of estimates.
         """
+        # Tiered path: price each registered client at its own model's rates.
+        if self._priced_llms:
+            self._maybe_reset_hour()
+            self._maybe_reset_day()
+            for entry in self._priced_llms:
+                llm = entry["llm"]
+                current_in = getattr(llm, "total_input_tokens", 0)
+                current_out = getattr(llm, "total_output_tokens", 0)
+                delta_in = current_in - entry["last_in"]
+                delta_out = current_out - entry["last_out"]
+                if delta_in > 0 or delta_out > 0:
+                    cost = (
+                        delta_in * entry["in_rate"] / 1_000_000
+                        + delta_out * entry["out_rate"] / 1_000_000
+                    )
+                    self._daily_spend_usd += cost
+                    self._hourly_spend_usd += cost
+                entry["last_in"] = current_in
+                entry["last_out"] = current_out
+            return
+
+        # Single-client path (back-compat): price at the tracker's rates.
         llm = self._llm_ref
         if llm is None:
             return

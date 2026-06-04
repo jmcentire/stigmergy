@@ -272,7 +272,11 @@ class Agent:
         # Agent-powered correlation — batched, not per-signal.
         # The correlator is expensive and reasons over the same cache
         # window, so running it every signal just repeats the same work.
-        if self._llm is not None:
+        # Gate on the correlator client, which may be a distinct quality tier
+        # (self._correlator_llm) even when the per-signal tier (self._llm) is
+        # mechanical/None — otherwise cheap mode would silence the correlator.
+        correlator_llm = self._correlator_llm or self._llm
+        if correlator_llm is not None:
             if self._reflect_counter % self._reflect_interval == 0:
                 # Backoff if we've had consecutive failures (rate limit recovery)
                 if self._circuit_breaker is not None:

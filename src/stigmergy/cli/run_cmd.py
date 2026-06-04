@@ -545,7 +545,14 @@ def _resolve_fast_llm(config: StigmergyConfig, quality_llm):
     quality model; otherwise returns the quality client unchanged (single-tier).
     Falls back to the quality client on any construction error.
     """
-    fast_model = getattr(config.llm, "fast_model", "") or ""
+    fast_model = (getattr(config.llm, "fast_model", "") or "").strip()
+    # Sentinel: run the high-volume per-signal tier MECHANICALLY (no LLM). The
+    # worker fact-extraction and surfacer fall back to free term extraction, so
+    # all LLM spend goes to the quality correlator (which reads raw content
+    # anyway). The cheapest setting.
+    if fast_model.lower() in ("none", "off", "mechanical", "stub", "heuristic"):
+        info("  Per-signal tier: MECHANICAL (no LLM) — extraction/surfacer free; LLM only on correlator")
+        return None
     if (
         quality_llm is None
         or not fast_model
@@ -1212,10 +1219,12 @@ def bootstrap_mesh(config: StigmergyConfig) -> tuple:
         if field_engine.load_state():
             info("  Restored unity field engine state from previous session")
 
+    _reflect_interval = max(1, getattr(config.llm, "reflect_interval", 10))
     if mesh_llm is not None:
         for agent in agents_list:
-            agent._llm = fast_llm          # surfacer/evaluate — high-volume, cheap tier
+            agent._llm = fast_llm          # surfacer/evaluate — high-volume, cheap tier (None = mechanical)
             agent._correlator_llm = mesh_llm  # reflect/correlator — batched, quality tier
+            agent._reflect_interval = _reflect_interval  # fewer correlator calls = cheaper
             agent._annotations = annotation_store
             agent._circuit_breaker = _circuit_breaker
             agent._compression_tracker = _agent_comp_tracker
@@ -1626,8 +1635,9 @@ async def _run_once_mesh(config: StigmergyConfig, live: bool, since_days: int | 
 
     # Preflight: verify LLM is reachable before committing to a full run.
     # Without LLM, agents fall back to mechanical heuristics — a useless run.
-    if mesh._llm is not None:
-        await _preflight_llm(mesh._llm)
+    _preflight_target = mesh._llm or getattr(mesh, "_correlator_llm", None)
+    if _preflight_target is not None:
+        await _preflight_llm(_preflight_target)
 
     graph_info = policy_engine._graph.summary() if policy_engine._graph.node_count > 0 else "no structure graph"
     info(f"Mesh initialized: {mesh.worker_count} workers, {len(config.agents)} agents, {graph_info}")
@@ -2613,8 +2623,9 @@ async def _run_loop_mesh(config: StigmergyConfig, live: bool, since_days: int | 
     prev_worker_count = mesh.worker_count
 
     # Preflight: verify LLM is reachable before committing to a full run.
-    if mesh._llm is not None:
-        await _preflight_llm(mesh._llm)
+    _preflight_target = mesh._llm or getattr(mesh, "_correlator_llm", None)
+    if _preflight_target is not None:
+        await _preflight_llm(_preflight_target)
 
     graph_info = policy_engine._graph.summary() if policy_engine._graph.node_count > 0 else "no structure graph"
     info(f"Mesh initialized: {mesh.worker_count} workers, {len(config.agents)} agents, {graph_info}")

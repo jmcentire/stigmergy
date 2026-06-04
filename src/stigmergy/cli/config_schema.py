@@ -74,7 +74,12 @@ class LLMConfig(BaseModel):
     # corroboration, meta-modeler); `fast_model` is the cheap tier for the
     # high-volume per-signal calls (worker fact-extraction + surfacer). When
     # equal (or fast_model empty), a single client is used for everything.
+    # Set fast_model to "none"/"mechanical" to run the per-signal tier with no
+    # LLM at all (free term extraction) — the cheapest mode.
     fast_model: str = ""
+    # How often the correlator (the LLM finding-generator) fires, in signals.
+    # Higher = fewer LLM calls = cheaper (and bigger context per call).
+    reflect_interval: int = 10
 
 
 class BudgetConfig(BaseModel):
